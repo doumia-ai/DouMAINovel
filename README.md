@@ -99,7 +99,7 @@
 ```bash
 # 1. 克隆项目
 <<<<<<< Updated upstream
-git clone https://github.com/xiamuceer-j/豆妙AI创作.git
+git clone https://github.com/doumia-ai/豆妙AI创作.git
 cd 豆妙AI创作
 =======
 git clone https://github.com/doumia-ai/DouMAINovel.git
@@ -370,8 +370,8 @@ ports:
 感谢所有为本项目做出贡献的开发者！
 
 <<<<<<< Updated upstream
-<a href="https://github.com/xiamuceer-j/豆妙AI创作/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=xiamuceer-j/豆妙AI创作" />
+<a href="https://github.com/doumia-ai/豆妙AI创作/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=doumia-ai/豆妙AI创作" />
 =======
 <a href="https://github.com/doumia-ai/DouMAINovel/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=doumia-ai/DouMAINovel" />
@@ -399,7 +399,7 @@ ports:
 ## 📧 联系方式
 
 <<<<<<< Updated upstream
-- 提交 [Issue](https://github.com/xiamuceer-j/豆妙AI创作/issues)
+- 提交 [Issue](https://github.com/doumia-ai/豆妙AI创作/issues)
 =======
 - 提交 [Issue](https://github.com/doumia-ai/DouMAINovel/issues)
 >>>>>>> Stashed changes
@@ -420,11 +420,11 @@ Made with ❤️
 ## Star History
 
 <<<<<<< Updated upstream
-<a href="https://www.star-history.com/#xiamuceer-j/豆妙AI创作&type=date&legend=top-left">
+<a href="https://www.star-history.com/#doumia-ai/豆妙AI创作&type=date&legend=top-left">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=xiamuceer-j/豆妙AI创作&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=xiamuceer-j/豆妙AI创作&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=xiamuceer-j/豆妙AI创作&type=date&legend=top-left" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=doumia-ai/豆妙AI创作&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=doumia-ai/豆妙AI创作&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=doumia-ai/豆妙AI创作&type=date&legend=top-left" />
 =======
 <a href="https://www.star-history.com/#doumia-ai/DouMAINovel&type=date&legend=top-left">
  <picture>
