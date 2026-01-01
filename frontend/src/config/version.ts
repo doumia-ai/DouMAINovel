@@ -18,7 +18,7 @@ export const VERSION_INFO = {
   
   // 链接信息
 <<<<<<< Updated upstream
-  githubUrl: 'https://github.com/xiamuceer-j/豆妙AI创作',
+  githubUrl: 'https://github.com/doumia-ai/豆妙AI创作',
 =======
   githubUrl: 'https://github.com/doumia-ai/DouMAINovel',
 >>>>>>> Stashed changes
@@ -29,7 +29,7 @@ export const VERSION_INFO = {
   licenseUrl: 'https://www.gnu.org/licenses/gpl-3.0.html',
   
   // 作者信息
-  author: 'xiamuceer-j',
+  author: 'doumia-ai',
 };
 
 /**
