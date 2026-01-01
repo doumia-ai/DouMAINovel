@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Typography, Space, Divider, Badge, Button } from 'antd';
-import { GithubOutlined, CopyrightOutlined, HeartFilled, ClockCircleOutlined, GiftOutlined } from '@ant-design/icons';
+import { Typography, Space, Divider, Badge, Tooltip, Button } from 'antd';
+import { CopyrightOutlined, GiftOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { VERSION_INFO, getVersionString } from '../config/version';
 import { checkLatestVersion } from '../services/versionService';
 
@@ -70,28 +70,29 @@ export default function AppFooter() {
             flexWrap: 'wrap'
           }}>
             <Badge dot={hasUpdate} offset={[-8, 2]}>
-              <Text
-                onClick={handleVersionClick}
-                style={{
-                  fontSize: 11,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  color: 'var(--color-primary)',
-                  cursor: hasUpdate ? 'pointer' : 'default',
-                }}
-                title={hasUpdate ? `发现新版本 v${latestVersion}，点击查看` : '当前版本'}
-              >
-                <strong style={{ color: 'var(--color-text-primary)' }}>{VERSION_INFO.projectName}</strong>
-                <span>{getVersionString()}</span>
-              </Text>
+              <Tooltip title={hasUpdate ? `发现新版本 v${latestVersion}，点击查看` : '当前版本'}>
+                <Text
+                  onClick={handleVersionClick}
+                  style={{
+                    fontSize: 11,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    color: 'var(--color-primary)',
+                    cursor: hasUpdate ? 'pointer' : 'default',
+                  }}
+                >
+                  <strong style={{ color: 'var(--color-text-primary)' }}>{VERSION_INFO.projectName}</strong>
+                  <span>{getVersionString()}</span>
+                </Text>
+              </Tooltip>
             </Badge>
             <Divider type="vertical" style={{ margin: '0 4px', borderColor: 'var(--color-border)' }} />
             <Button
               type="text"
               size="small"
               icon={<GiftOutlined />}
-              onClick={() => window.open('https://mumuverse.space:1588/', '_blank')}
+              onClick={() => window.open('https://ciii.eu.org/', '_blank')}
               style={{
                 color: 'var(--color-text-secondary)',
                 fontSize: 11,
@@ -106,7 +107,7 @@ export default function AppFooter() {
             </Button>
             <Divider type="vertical" style={{ margin: '0 4px', borderColor: 'var(--color-border)' }} />
             <Link
-              href={VERSION_INFO.githubUrl}
+              href={VERSION_INFO.licenseUrl}
               target="_blank"
               rel="noopener noreferrer"
               style={{
@@ -117,15 +118,20 @@ export default function AppFooter() {
                 color: 'var(--color-text-secondary)',
               }}
             >
-              <GithubOutlined style={{ fontSize: 12 }} />
+              <CopyrightOutlined style={{ fontSize: 11 }} />
+              <span>{VERSION_INFO.license}</span>
             </Link>
+            <Divider type="vertical" style={{ margin: '0 4px', borderColor: 'var(--color-border)' }} />
             <Text
               style={{
                 fontSize: 10,
                 color: 'var(--color-text-tertiary)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
               }}
             >
-              <ClockCircleOutlined style={{ fontSize: 10, marginRight: 4 }} />
+              <ClockCircleOutlined style={{ fontSize: 10 }} />
               {VERSION_INFO.buildTime}
             </Text>
           </div>
@@ -143,70 +149,41 @@ export default function AppFooter() {
           >
             {/* 版本信息 */}
             <Badge dot={hasUpdate} offset={[-8, 2]}>
-              <Text
-                onClick={handleVersionClick}
-                style={{
-                  fontSize: 12,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  color: 'var(--color-text-secondary)',
-                  textShadow: 'none',
-                  cursor: hasUpdate ? 'pointer' : 'default',
-                  transition: 'all 0.3s',
-                }}
-                onMouseEnter={(e) => {
-                  if (hasUpdate) {
-                    e.currentTarget.style.transform = 'scale(1.05)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (hasUpdate) {
-                    e.currentTarget.style.transform = 'scale(1)';
-                  }
-                }}
-                title={hasUpdate ? `发现新版本 v${latestVersion}，点击查看` : '当前版本'}
-              >
-                <strong style={{ color: 'var(--color-text-primary)' }}>{VERSION_INFO.projectName}</strong>
-                <span>{getVersionString()}</span>
-              </Text>
+              <Tooltip title={hasUpdate ? `发现新版本 v${latestVersion}，点击查看` : '当前版本'}>
+                <Text
+                  onClick={handleVersionClick}
+                  style={{
+                    fontSize: 12,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    color: 'var(--color-text-secondary)',
+                    textShadow: 'none',
+                    cursor: hasUpdate ? 'pointer' : 'default',
+                    transition: 'all 0.3s',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (hasUpdate) {
+                      e.currentTarget.style.transform = 'scale(1.05)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (hasUpdate) {
+                      e.currentTarget.style.transform = 'scale(1)';
+                    }
+                  }}
+                >
+                  <strong style={{ color: 'var(--color-text-primary)' }}>{VERSION_INFO.projectName}</strong>
+                  <span>{getVersionString()}</span>
+                </Text>
+              </Tooltip>
             </Badge>
-
-            {/* GitHub 链接 */}
-            <Link
-              href={VERSION_INFO.githubUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                fontSize: 12,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                color: 'var(--color-text-secondary)',
-              }}
-            >
-              <GithubOutlined style={{ fontSize: 13 }} />
-              <span>GitHub</span>
-            </Link>
-
-            {/* LinuxDO 社区 */}
-            <Link
-              href={VERSION_INFO.linuxDoUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                fontSize: 12,
-                color: 'var(--color-text-secondary)',
-              }}
-            >
-              LinuxDO 社区
-            </Link>
 
             {/* 赞助按钮 */}
             <Button
               type="primary"
               icon={<GiftOutlined style={{ fontSize: 14 }} />}
-              onClick={() => window.open('https://mumuverse.space:1588/', '_blank')}
+              onClick={() => window.open('https://ciii.eu.org/', '_blank')}
               style={{
                 background: 'var(--color-primary)',
                 border: 'none',
@@ -261,22 +238,6 @@ export default function AppFooter() {
             >
               <ClockCircleOutlined style={{ fontSize: 12 }} />
               <span>{VERSION_INFO.buildTime}</span>
-            </Text>
-
-            {/* 致谢信息 */}
-            <Text
-              style={{
-                fontSize: 12,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-                color: 'var(--color-text-secondary)',
-                textShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
-              }}
-            >
-              <span>Made with</span>
-              <HeartFilled style={{ color: 'var(--color-error)', fontSize: 11 }} />
-              <span>by {VERSION_INFO.author}</span>
             </Text>
           </Space>
         )}

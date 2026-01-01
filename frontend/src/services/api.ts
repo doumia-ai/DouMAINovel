@@ -46,6 +46,12 @@ import type {
   PresetUpdateRequest,
   PresetListResponse,
   ChapterPlanItem,
+  KeyPool,
+  KeyPoolCreateRequest,
+  KeyPoolUpdateRequest,
+  KeyPoolListResponse,
+  KeyPoolStatsResponse,
+  KeyPoolTestResult,
 } from '../types';
 
 interface MCPPluginSimpleCreate {
@@ -270,6 +276,33 @@ export const settingsApi = {
     api.post<unknown, APIKeyPreset>('/settings/presets/from-current', null, {
       params: { name, description }
     }),
+
+  // Key 池管理
+  getKeyPools: () =>
+    api.get<unknown, KeyPoolListResponse>('/settings/key-pools'),
+
+  createKeyPool: (data: KeyPoolCreateRequest) =>
+    api.post<unknown, KeyPool>('/settings/key-pools', data),
+
+  getKeyPool: (poolId: string) =>
+    api.get<unknown, KeyPool>(`/settings/key-pools/${poolId}`),
+
+  updateKeyPool: (poolId: string, data: KeyPoolUpdateRequest) =>
+    api.put<unknown, KeyPool>(`/settings/key-pools/${poolId}`, data),
+
+  deleteKeyPool: (poolId: string) =>
+    api.delete<unknown, { message: string; pool_id: string }>(`/settings/key-pools/${poolId}`),
+
+  getKeyPoolStats: (poolId: string) =>
+    api.get<unknown, KeyPoolStatsResponse>(`/settings/key-pools/${poolId}/stats`),
+
+  resetKeyStatus: (poolId: string, key: string) =>
+    api.post<unknown, { message: string; key_preview: string }>(`/settings/key-pools/${poolId}/reset-key`, null, {
+      params: { key }
+    }),
+
+  testKeyPool: (poolId: string) =>
+    api.post<unknown, KeyPoolTestResult>(`/settings/key-pools/${poolId}/test`),
 };
 
 export const projectApi = {

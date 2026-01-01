@@ -17,12 +17,15 @@ from app.models.settings import Settings
 from app.schemas.settings import (
     SettingsCreate, SettingsUpdate, SettingsResponse,
     APIKeyPreset, APIKeyPresetConfig, PresetCreateRequest,
-    PresetUpdateRequest, PresetResponse, PresetListResponse
+    PresetUpdateRequest, PresetResponse, PresetListResponse,
+    KeyPoolCreateRequest, KeyPoolUpdateRequest, KeyPoolResponse,
+    KeyPoolListResponse, KeyPoolStatsResponse
 )
 from app.user_manager import User
 from app.logger import get_logger
 from app.config import settings as app_settings, PROJECT_ROOT
-from app.services.ai_service import AIService, create_user_ai_service, create_user_ai_service_with_mcp
+from app.services.ai_service import AIService, create_user_ai_service
+from app.services.key_pool_manager import key_pool_manager
 
 logger = get_logger(__name__)
 
@@ -65,7 +68,7 @@ async def get_user_ai_service(
         select(Settings).where(Settings.user_id == user.user_id)
     )
     settings = result.scalar_one_or_none()
-    
+
     if not settings:
         # 如果用户没有设置，从.env读取并保存
         env_defaults = read_env_defaults()
@@ -77,35 +80,29 @@ async def get_user_ai_service(
         await db.commit()
         await db.refresh(settings)
         logger.info(f"用户 {user.user_id} 首次使用AI服务，已从.env同步设置到数据库")
-    
-    # 查询用户的所有MCP插件状态
-    mcp_result = await db.execute(
-        select(MCPPlugin).where(MCPPlugin.user_id == user.user_id)
-    )
-    mcp_plugins = mcp_result.scalars().all()
-    
-    # 检查是否有启用的MCP插件
-    enable_mcp = any(plugin.enabled for plugin in mcp_plugins) if mcp_plugins else False
-    
-    if mcp_plugins:
-        enabled_count = sum(1 for p in mcp_plugins if p.enabled)
-        logger.info(f"用户 {user.user_id} 有 {len(mcp_plugins)} 个MCP插件，{enabled_count} 个启用，{enable_mcp} 决定使用MCP")
-    else:
-        logger.debug(f"用户 {user.user_id} 没有配置MCP插件，禁用MCP")
-    
-    # ✅ 使用支持MCP的工厂函数创建AI服务实例
-    # 传递 user_id 和 db_session，使得 AIService 能够自动加载用户配置的MCP工具
-    return create_user_ai_service_with_mcp(
+
+    # 加载 Key 池配置
+    key_pool_manager.load_from_preferences(user.user_id, settings.preferences)
+
+    # 检查是否有匹配的 Key 池
+    enable_key_pool = key_pool_manager.find_pool_for_request(
+        user.user_id,
+        settings.api_provider,
+        settings.api_base_url or "",
+        settings.llm_model
+    ) is not None
+
+    # 使用用户设置创建AI服务实例（包括系统提示词）
+    return create_user_ai_service(
         api_provider=settings.api_provider,
         api_key=settings.api_key,
         api_base_url=settings.api_base_url or "",
         model_name=settings.llm_model,
         temperature=settings.temperature,
         max_tokens=settings.max_tokens,
-        user_id=user.user_id,          # ✅ 传递 user_id
-        db_session=db,                 # ✅ 传递 db_session
         system_prompt=settings.system_prompt,
-        enable_mcp=enable_mcp,         # 根据MCP插件状态动态决定
+        user_id=user.user_id,
+        enable_key_pool=enable_key_pool
     )
 
 
@@ -1055,3 +1052,235 @@ async def create_preset_from_current(
     
     logger.info(f"用户 {user.user_id} 从当前配置创建预设: {name}")
     return await create_preset(create_request, user, db)
+
+
+# ========== Key 池管理 API ==========
+
+@router.get("/key-pools", response_model=KeyPoolListResponse)
+async def get_key_pools(
+    user: User = Depends(require_login),
+    db: AsyncSession = Depends(get_db)
+):
+    """获取所有 Key 池"""
+    settings = await get_user_settings(user.user_id, db)
+    key_pool_manager.load_from_preferences(user.user_id, settings.preferences)
+
+    pools = key_pool_manager.get_user_pools(user.user_id)
+    return {
+        "pools": pools,
+        "total": len(pools)
+    }
+
+
+@router.post("/key-pools", response_model=KeyPoolResponse)
+async def create_key_pool(
+    data: KeyPoolCreateRequest,
+    user: User = Depends(require_login),
+    db: AsyncSession = Depends(get_db)
+):
+    """创建 Key 池"""
+    settings = await get_user_settings(user.user_id, db)
+    key_pool_manager.load_from_preferences(user.user_id, settings.preferences)
+
+    pool = key_pool_manager.create_pool(
+        user_id=user.user_id,
+        name=data.name,
+        provider=data.provider,
+        base_url=data.base_url,
+        model=data.model,
+        keys=data.keys,
+        enabled=data.enabled
+    )
+
+    # 保存到 preferences
+    settings.preferences = key_pool_manager.save_to_preferences(user.user_id, settings.preferences)
+    await db.commit()
+
+    pool_dict = pool.to_dict()
+    pool_dict["key_count"] = len(pool.keys)
+    pool_dict["keys_preview"] = [k[:8] + "..." + k[-4:] if len(k) > 16 else k[:8] + "..." for k in pool.keys]
+    pool_dict["total_requests"] = 0
+
+    return pool_dict
+
+
+@router.get("/key-pools/{pool_id}", response_model=KeyPoolResponse)
+async def get_key_pool(
+    pool_id: str,
+    user: User = Depends(require_login),
+    db: AsyncSession = Depends(get_db)
+):
+    """获取指定 Key 池"""
+    settings = await get_user_settings(user.user_id, db)
+    key_pool_manager.load_from_preferences(user.user_id, settings.preferences)
+
+    pool = key_pool_manager.get_pool(user.user_id, pool_id)
+    if not pool:
+        raise HTTPException(status_code=404, detail="Key 池不存在")
+
+    pool_dict = pool.to_dict()
+    pool_dict["key_count"] = len(pool.keys)
+    pool_dict["keys_preview"] = [k[:8] + "..." + k[-4:] if len(k) > 16 else k[:8] + "..." for k in pool.keys]
+
+    stats = key_pool_manager.get_pool_stats(user.user_id, pool_id)
+    pool_dict["total_requests"] = stats.get("total_requests", 0)
+
+    return pool_dict
+
+
+@router.put("/key-pools/{pool_id}", response_model=KeyPoolResponse)
+async def update_key_pool(
+    pool_id: str,
+    data: KeyPoolUpdateRequest,
+    user: User = Depends(require_login),
+    db: AsyncSession = Depends(get_db)
+):
+    """更新 Key 池"""
+    settings = await get_user_settings(user.user_id, db)
+    key_pool_manager.load_from_preferences(user.user_id, settings.preferences)
+
+    pool = key_pool_manager.update_pool(
+        user_id=user.user_id,
+        pool_id=pool_id,
+        name=data.name,
+        keys=data.keys,
+        enabled=data.enabled
+    )
+
+    if not pool:
+        raise HTTPException(status_code=404, detail="Key 池不存在")
+
+    # 保存到 preferences
+    settings.preferences = key_pool_manager.save_to_preferences(user.user_id, settings.preferences)
+    await db.commit()
+
+    pool_dict = pool.to_dict()
+    pool_dict["key_count"] = len(pool.keys)
+    pool_dict["keys_preview"] = [k[:8] + "..." + k[-4:] if len(k) > 16 else k[:8] + "..." for k in pool.keys]
+
+    stats = key_pool_manager.get_pool_stats(user.user_id, pool_id)
+    pool_dict["total_requests"] = stats.get("total_requests", 0)
+
+    return pool_dict
+
+
+@router.delete("/key-pools/{pool_id}")
+async def delete_key_pool(
+    pool_id: str,
+    user: User = Depends(require_login),
+    db: AsyncSession = Depends(get_db)
+):
+    """删除 Key 池"""
+    settings = await get_user_settings(user.user_id, db)
+    key_pool_manager.load_from_preferences(user.user_id, settings.preferences)
+
+    success = key_pool_manager.delete_pool(user.user_id, pool_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Key 池不存在")
+
+    # 保存到 preferences
+    settings.preferences = key_pool_manager.save_to_preferences(user.user_id, settings.preferences)
+    await db.commit()
+
+    return {"message": "Key 池已删除", "pool_id": pool_id}
+
+
+@router.get("/key-pools/{pool_id}/stats", response_model=KeyPoolStatsResponse)
+async def get_key_pool_stats(
+    pool_id: str,
+    user: User = Depends(require_login),
+    db: AsyncSession = Depends(get_db)
+):
+    """获取 Key 池统计"""
+    settings = await get_user_settings(user.user_id, db)
+    key_pool_manager.load_from_preferences(user.user_id, settings.preferences)
+
+    stats = key_pool_manager.get_pool_stats(user.user_id, pool_id)
+    if not stats:
+        raise HTTPException(status_code=404, detail="Key 池不存在")
+
+    return stats
+
+
+@router.post("/key-pools/{pool_id}/reset-key")
+async def reset_key_status(
+    pool_id: str,
+    key: str,
+    user: User = Depends(require_login),
+    db: AsyncSession = Depends(get_db)
+):
+    """重置 Key 状态"""
+    settings = await get_user_settings(user.user_id, db)
+    key_pool_manager.load_from_preferences(user.user_id, settings.preferences)
+
+    success = key_pool_manager.reset_key_status(user.user_id, pool_id, key)
+    if not success:
+        raise HTTPException(status_code=404, detail="Key 不存在")
+
+    # 保存到 preferences
+    settings.preferences = key_pool_manager.save_to_preferences(user.user_id, settings.preferences)
+    await db.commit()
+
+    key_preview = key[:8] + "..." + key[-4:] if len(key) > 16 else key[:8] + "..."
+    return {"message": "Key 状态已重置", "key_preview": key_preview}
+
+
+@router.post("/key-pools/{pool_id}/test")
+async def test_key_pool(
+    pool_id: str,
+    user: User = Depends(require_login),
+    db: AsyncSession = Depends(get_db)
+):
+    """测试 Key 池中的所有 Key"""
+    settings = await get_user_settings(user.user_id, db)
+    key_pool_manager.load_from_preferences(user.user_id, settings.preferences)
+
+    pool = key_pool_manager.get_pool(user.user_id, pool_id)
+    if not pool:
+        raise HTTPException(status_code=404, detail="Key 池不存在")
+
+    results = []
+    for key in pool.keys:
+        key_preview = key[:8] + "..." + key[-4:] if len(key) > 16 else key[:8] + "..."
+        try:
+            start_time = time.time()
+
+            # 创建临时 AI 服务实例测试
+            test_service = AIService(
+                api_provider=pool.provider,
+                api_key=key,
+                api_base_url=pool.base_url,
+                default_model=pool.model,
+                default_temperature=0.7,
+                default_max_tokens=100
+            )
+
+            await test_service.generate_text(
+                prompt="测试连接",
+                provider=pool.provider,
+                model=pool.model,
+                temperature=0.7,
+                max_tokens=50
+            )
+
+            response_time = round((time.time() - start_time) * 1000, 2)
+            results.append({
+                "key_preview": key_preview,
+                "success": True,
+                "message": "连接成功",
+                "response_time_ms": response_time
+            })
+        except Exception as e:
+            results.append({
+                "key_preview": key_preview,
+                "success": False,
+                "message": str(e)[:100]
+            })
+
+    return {
+        "pool_id": pool_id,
+        "pool_name": pool.name,
+        "results": results,
+        "success_count": sum(1 for r in results if r["success"]),
+        "total_count": len(results)
+    }

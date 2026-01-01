@@ -77,7 +77,7 @@ export default function Sponsor() {
                     {/* 头部标题区域 */}
                     <div style={{ textAlign: 'center', marginBottom: 'clamp(20px, 4vh, 32px)' }}>
                         <Title level={1} style={{ marginBottom: '8px', fontSize: 'clamp(24px, 5vw, 32px)', fontWeight: 'bold' }}>
-                            赞助 MuMuAINovel
+                            赞助 豆妙AI创作
                         </Title>
                         <Text type="secondary" style={{ fontSize: 'clamp(11px, 2vw, 13px)', letterSpacing: '2px' }}>
                             SUPPORT AI NOVEL CREATION
@@ -91,7 +91,7 @@ export default function Sponsor() {
                             color: '#fff'
                         }}>
                             <Title level={4} style={{ color: '#fff', marginBottom: '8px' }}>
-                                📚 MuMuAINovel - 基于 AI 的智能小说创作助手
+                                📚 豆妙AI创作 - 基于 AI 的智能小说创作助手
                             </Title>
                             <Paragraph style={{ color: '#fff', fontSize: '14px', margin: 0 }}>
                                 支持多AI模型、智能向导、角色管理、章节编辑等强大功能
@@ -197,7 +197,7 @@ export default function Sponsor() {
                         marginTop: 'auto'
                     }}>
                         <Title level={4} style={{ marginBottom: '12px', fontSize: 'clamp(16px, 3vw, 20px)' }}>
-                            💖 感谢您对 MuMuAINovel 项目的支持
+                            💖 感谢您对 豆妙AI创作 项目的支持
                         </Title>
                         <Paragraph style={{ fontSize: 'clamp(12px, 2vw, 14px)', color: '#666', marginBottom: '12px' }}>
                             您的赞助将帮助我们持续改进产品，提供更好的AI小说创作体验
