@@ -16,8 +16,9 @@ RUN npm install
 # 复制前端源代码
 COPY frontend/ ./
 
-# 临时修改vite配置，使其输出到dist目录（而不是../backend/static）
-RUN sed -i "s|outDir: '../backend/static'|outDir: 'dist'|g" vite.config.ts
+
+# 关键：通过环境变量控制输出目录
+ENV VITE_OUT_DIR=dist
 
 # 构建前端
 RUN npm run build
