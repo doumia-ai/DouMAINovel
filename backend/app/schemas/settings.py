@@ -90,7 +90,66 @@ class PresetResponse(APIKeyPreset):
 class PresetListResponse(BaseModel):
     """预设列表响应"""
     model_config = ConfigDict(protected_namespaces=())
-    
+
     presets: List[PresetResponse] = Field(..., description="预设列表")
     total: int = Field(..., description="总数")
     active_preset_id: Optional[str] = Field(None, description="当前激活的预设ID")
+
+
+# ========== Key 池相关模型 ==========
+
+class KeyPoolCreateRequest(BaseModel):
+    """创建 Key 池请求"""
+    name: str
+    provider: str
+    base_url: str
+    model: str
+    keys: List[str]
+    enabled: bool = True
+
+
+class KeyPoolUpdateRequest(BaseModel):
+    """更新 Key 池请求"""
+    name: Optional[str] = None
+    keys: Optional[List[str]] = None
+    enabled: Optional[bool] = None
+
+
+class KeyStatsResponse(BaseModel):
+    """单个 Key 统计响应"""
+    key_preview: str
+    key_full: str
+    request_count: int
+    last_used: Optional[str] = None
+    error_count: int
+    is_disabled: bool
+
+
+class KeyPoolResponse(BaseModel):
+    """Key 池响应"""
+    id: str
+    name: str
+    provider: str
+    base_url: str
+    model: str
+    keys: List[str]
+    keys_preview: List[str] = []
+    key_count: int = 0
+    enabled: bool
+    created_at: Optional[str] = None
+    total_requests: int = 0
+
+
+class KeyPoolListResponse(BaseModel):
+    """Key 池列表响应"""
+    pools: List[KeyPoolResponse]
+    total: int
+
+
+class KeyPoolStatsResponse(BaseModel):
+    """Key 池统计响应"""
+    pool_id: str
+    keys: List[KeyStatsResponse]
+    total_requests: int
+    active_keys: int
+    disabled_keys: int

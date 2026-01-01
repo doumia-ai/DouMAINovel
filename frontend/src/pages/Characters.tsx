@@ -9,10 +9,11 @@ import { SSELoadingOverlay } from '../components/SSELoadingOverlay';
 import type { Character } from '../types';
 import { characterApi } from '../services/api';
 import { SSEPostClient } from '../utils/sseClient';
-import api from '../services/api';
+import axios from 'axios';
 
 const { Title } = Typography;
 const { TextArea } = Input;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 interface Career {
   id: string;
@@ -58,11 +59,12 @@ export default function Characters() {
   const fetchCareers = async () => {
     if (!currentProject?.id) return;
     try {
-      const response = await api.get<unknown, { main_careers: Career[]; sub_careers: Career[] }>('/careers', {
-        params: { project_id: currentProject.id }
+      const response = await axios.get(`${API_BASE_URL}/api/careers`, {
+        params: { project_id: currentProject.id },
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
-      setMainCareers(response.main_careers || []);
-      setSubCareers(response.sub_careers || []);
+      setMainCareers(response.data.main_careers || []);
+      setSubCareers(response.data.sub_careers || []);
     } catch (error) {
       console.error('获取职业列表失败:', error);
     }

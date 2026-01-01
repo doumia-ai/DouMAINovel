@@ -16,7 +16,7 @@ router = APIRouter()
 # GitHub API配置
 GITHUB_API_BASE = "https://api.github.com"
 REPO_OWNER = "xiamuceer-j"
-REPO_NAME = "MuMuAINovel"
+REPO_NAME = "豆妙AI创作"
 
 # 缓存配置
 _cache = {
@@ -82,7 +82,7 @@ async def fetch_github_commits(page: int = 1, per_page: int = 30) -> List[dict]:
     
     headers = {
         "Accept": "application/vnd.github.v3+json",
-        "User-Agent": "MuMuAINovel-App"
+        "User-Agent": "豆妙AI创作-App"
     }
     
     try:

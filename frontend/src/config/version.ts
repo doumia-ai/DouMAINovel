@@ -13,11 +13,11 @@ export const VERSION_INFO = {
   buildTime: import.meta.env.VITE_BUILD_TIME || new Date().toISOString().split('T')[0],
   
   // 项目信息
-  projectName: 'MuMuAINovel',
+  projectName: '豆妙AI创作',
   projectFullName: 'MuMu AI 小说创作助手',
   
   // 链接信息
-  githubUrl: 'https://github.com/xiamuceer-j/MuMuAINovel',
+  githubUrl: 'https://github.com/xiamuceer-j/豆妙AI创作',
   linuxDoUrl: 'https://linux.do/t/topic/1106333',
   
   // 许可证

@@ -14,37 +14,8 @@ import ChapterReader from '../components/ChapterReader';
 
 const { TextArea } = Input;
 
-// localStorage 缓存键名
-const WORD_COUNT_CACHE_KEY = 'chapter_default_word_count';
-const DEFAULT_WORD_COUNT = 3000;
-
-// 从 localStorage 读取缓存的字数
-const getCachedWordCount = (): number => {
-  try {
-    const cached = localStorage.getItem(WORD_COUNT_CACHE_KEY);
-    if (cached) {
-      const value = parseInt(cached, 10);
-      if (!isNaN(value) && value >= 500 && value <= 10000) {
-        return value;
-      }
-    }
-  } catch (error) {
-    console.warn('读取字数缓存失败:', error);
-  }
-  return DEFAULT_WORD_COUNT;
-};
-
-// 保存字数到 localStorage
-const setCachedWordCount = (value: number): void => {
-  try {
-    localStorage.setItem(WORD_COUNT_CACHE_KEY, String(value));
-  } catch (error) {
-    console.warn('保存字数缓存失败:', error);
-  }
-};
-
 export default function Chapters() {
-  const { currentProject, chapters, outlines, setCurrentChapter, setCurrentProject } = useStore();
+  const { currentProject, chapters, setCurrentChapter, setCurrentProject } = useStore();
   const [modal, contextHolder] = Modal.useModal();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
@@ -57,7 +28,7 @@ export default function Chapters() {
   const contentTextAreaRef = useRef<any>(null);
   const [writingStyles, setWritingStyles] = useState<WritingStyle[]>([]);
   const [selectedStyleId, setSelectedStyleId] = useState<number | undefined>();
-  const [targetWordCount, setTargetWordCount] = useState<number>(getCachedWordCount);
+  const [targetWordCount, setTargetWordCount] = useState<number>(3000);
   const [availableModels, setAvailableModels] = useState<Array<{ value: string, label: string }>>([]);
   const [selectedModel, setSelectedModel] = useState<string | undefined>();
   const [batchSelectedModel, setBatchSelectedModel] = useState<string | undefined>(); // 批量生成的模型选择
@@ -969,13 +940,13 @@ export default function Chapters() {
     // 设置批量生成的模型选择状态
     setBatchSelectedModel(defaultModel || undefined);
 
-    // 重置表单并设置初始值（使用缓存的字数）
+    // 重置表单并设置初始值
     batchForm.setFieldsValue({
       startChapterNumber: firstIncompleteChapter.chapter_number,
       count: 5,
       enableAnalysis: false,
       styleId: selectedStyleId,
-      targetWordCount: getCachedWordCount(),
+      targetWordCount: 3000,
     });
 
     setBatchGenerateVisible(true);
@@ -1026,14 +997,27 @@ export default function Chapters() {
             tooltip="one-to-many模式下，章节必须关联到大纲"
           >
             <Select placeholder="请选择所属大纲">
-              {/* 直接使用 store 中的 outlines 数据，而不是从现有章节中提取 */}
-              {[...outlines]
-                .sort((a, b) => a.order_index - b.order_index)
-                .map(outline => (
+              {sortedChapters.length > 0 && (() => {
+                // 从现有章节中提取大纲信息
+                const outlineMap = new Map();
+                sortedChapters.forEach(ch => {
+                  if (ch.outline_id && ch.outline_title) {
+                    outlineMap.set(ch.outline_id, {
+                      id: ch.outline_id,
+                      title: ch.outline_title,
+                      order: ch.outline_order || 0
+                    });
+                  }
+                });
+                const uniqueOutlines = Array.from(outlineMap.values())
+                  .sort((a, b) => a.order - b.order);
+
+                return uniqueOutlines.map(outline => (
                   <Select.Option key={outline.id} value={outline.id}>
-                    第{outline.order_index}卷：{outline.title}
+                    第{outline.order}卷：{outline.title}
                   </Select.Option>
-                ))}
+                ));
+              })()}
             </Select>
           </Form.Item>
 
@@ -1571,7 +1555,7 @@ export default function Chapters() {
           {!isMobile && (
             <Tag color="blue">
               {currentProject.outline_mode === 'one-to-one'
-                ? '传统模式：章节由大纲管理，请在大纲页面操作'
+                ? '传统模式：章节由大纲一对一管理，请在大纲页面操作'
                 : '细化模式：章节可在大纲页面展开'}
             </Tag>
           )}
@@ -2009,7 +1993,7 @@ export default function Chapters() {
             name="title"
             tooltip={
               currentProject.outline_mode === 'one-to-one'
-                ? "章节标题由大纲管理，请在大纲页面修改"
+                ? "章节标题由大纲管理，建议在大纲页面统一修改"
                 : "一对多模式下可以修改章节标题"
             }
             rules={
@@ -2027,7 +2011,7 @@ export default function Chapters() {
           <Form.Item
             label="章节序号"
             name="chapter_number"
-            tooltip="章节序号不允许修改，请删除对应大纲，重新生成"
+            tooltip="章节序号由大纲的顺序决定，无法修改。请在大纲页面使用上移/下移功能调整顺序"
           >
             <Input type="number" placeholder="章节排序序号" disabled />
           </Form.Item>
@@ -2177,7 +2161,7 @@ export default function Chapters() {
           }}>
             <Form.Item
               label="目标字数"
-              tooltip="AI生成章节时的目标字数，实际可能略有偏差（修改后会自动记住）"
+              tooltip="AI生成章节时的目标字数，实际可能略有偏差"
               style={{ flex: 1, marginBottom: isMobile ? 16 : 0 }}
             >
               <InputNumber
@@ -2185,11 +2169,7 @@ export default function Chapters() {
                 max={10000}
                 step={100}
                 value={targetWordCount}
-                onChange={(value) => {
-                  const newValue = value || DEFAULT_WORD_COUNT;
-                  setTargetWordCount(newValue);
-                  setCachedWordCount(newValue);
-                }}
+                onChange={(value) => setTargetWordCount(value || 3000)}
                 disabled={isGenerating}
                 style={{ width: '100%' }}
                 formatter={(value) => `${value} 字`}
@@ -2373,7 +2353,7 @@ export default function Chapters() {
               count: 5,
               enableAnalysis: true,  // 强制启用同步分析
               styleId: selectedStyleId,
-              targetWordCount: getCachedWordCount(),
+              targetWordCount: 3000,
               model: selectedModel,
             }}
           >
@@ -2445,7 +2425,7 @@ export default function Chapters() {
 
             <Form.Item
               label="目标字数"
-              tooltip="AI生成章节时的目标字数，实际生成字数可能略有偏差（修改后会自动记住）"
+              tooltip="AI生成章节时的目标字数，实际生成字数可能略有偏差"
             >
               <Form.Item
                 name="targetWordCount"
@@ -2460,15 +2440,10 @@ export default function Chapters() {
                   style={{ width: '100%' }}
                   formatter={(value) => `${value} 字`}
                   parser={(value) => value?.replace(' 字', '') as any}
-                  onChange={(value) => {
-                    if (value) {
-                      setCachedWordCount(value);
-                    }
-                  }}
                 />
               </Form.Item>
               <div style={{ color: '#666', fontSize: 12, marginTop: 4 }}>
-                建议范围：500-10000字（修改后自动记住）
+                建议范围：500-10000字，默认3000字
               </div>
             </Form.Item>
 

@@ -741,3 +741,68 @@ export interface MCPToolCallResponse {
   result?: unknown;
   error?: string;
 }
+
+// Key 池相关类型定义
+export interface KeyPool {
+  id: string;
+  name: string;
+  provider: string;
+  base_url: string;
+  model: string;
+  keys: string[];
+  keys_preview: string[];
+  key_count: number;
+  enabled: boolean;
+  created_at?: string;
+  total_requests: number;
+}
+
+export interface KeyPoolCreateRequest {
+  name: string;
+  provider: string;
+  base_url: string;
+  model: string;
+  keys: string[];
+  enabled?: boolean;
+}
+
+export interface KeyPoolUpdateRequest {
+  name?: string;
+  keys?: string[];
+  enabled?: boolean;
+}
+
+export interface KeyPoolListResponse {
+  pools: KeyPool[];
+  total: number;
+}
+
+export interface KeyStats {
+  key_preview: string;
+  key_full: string;
+  request_count: number;
+  last_used?: string;
+  error_count: number;
+  is_disabled: boolean;
+}
+
+export interface KeyPoolStatsResponse {
+  pool_id: string;
+  keys: KeyStats[];
+  total_requests: number;
+  active_keys: number;
+  disabled_keys: number;
+}
+
+export interface KeyPoolTestResult {
+  pool_id: string;
+  pool_name: string;
+  results: Array<{
+    key_preview: string;
+    success: boolean;
+    message: string;
+    response_time_ms?: number;
+  }>;
+  success_count: number;
+  total_count: number;
+}

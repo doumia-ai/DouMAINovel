@@ -4,6 +4,7 @@ import { Card, Form, Input, Button, Select, Slider, InputNumber, message, Space,
 import { SettingOutlined, SaveOutlined, DeleteOutlined, ReloadOutlined, ArrowLeftOutlined, InfoCircleOutlined, CheckCircleOutlined, CloseCircleOutlined, ThunderboltOutlined, PlusOutlined, EditOutlined, CopyOutlined } from '@ant-design/icons';
 import { settingsApi } from '../services/api';
 import type { SettingsUpdate, APIKeyPreset, PresetCreateRequest, APIKeyPresetConfig } from '../types';
+import KeyPoolManager from '../components/KeyPoolManager';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -1227,6 +1228,11 @@ export default function SettingsPage() {
                   key: 'presets',
                   label: '配置预设',
                   children: renderPresetsList(),
+                },
+                {
+                  key: 'keypool',
+                  label: 'Key 池轮询',
+                  children: <KeyPoolManager isMobile={isMobile} />,
                 },
               ]}
             />
