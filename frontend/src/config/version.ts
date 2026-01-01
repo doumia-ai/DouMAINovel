@@ -17,7 +17,11 @@ export const VERSION_INFO = {
   projectFullName: 'MuMu AI 小说创作助手',
   
   // 链接信息
+<<<<<<< Updated upstream
   githubUrl: 'https://github.com/xiamuceer-j/豆妙AI创作',
+=======
+  githubUrl: 'https://github.com/doumia-ai/DouMAINovel',
+>>>>>>> Stashed changes
   linuxDoUrl: 'https://linux.do/t/topic/1106333',
   
   // 许可证
