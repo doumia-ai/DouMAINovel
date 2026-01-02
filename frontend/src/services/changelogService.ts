@@ -37,7 +37,7 @@ export interface ChangelogEntry {
 
 const GITHUB_API_BASE = 'https://api.github.com';
 const REPO_OWNER = 'doumia-ai';
-const REPO_NAME = '豆妙AI创作';
+const REPO_NAME = 'DouMAINovel';
 
 /**
  * 提交类型映射表
