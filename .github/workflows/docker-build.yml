@@ -15,11 +15,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          lfs: true
-
-      - name: Pull LFS files
-        run: git lfs pull
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -42,7 +37,7 @@ jobs:
             type=raw,value=latest
             type=ref,event=tag
 
-      - name: Build and push Docker image
+      - name: Build and push Docker image (with cache)
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -50,3 +45,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+          # ⭐ 核心：buildx 缓存
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
