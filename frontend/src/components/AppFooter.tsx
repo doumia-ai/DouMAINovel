@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Typography, Space, Divider, Badge, Tooltip, Button } from 'antd';
-import { CopyrightOutlined, GiftOutlined, ClockCircleOutlined } from '@ant-design/icons';
+import { CopyrightOutlined, GiftOutlined, ClockCircleOutlined, GithubOutlined, ForkOutlined } from '@ant-design/icons';
 import { VERSION_INFO, getVersionString } from '../config/version';
 import { checkLatestVersion } from '../services/versionService';
 
@@ -88,19 +88,6 @@ export default function AppFooter() {
               </Tooltip>
             </Badge>
             <Divider type="vertical" style={{ margin: '0 4px', borderColor: 'var(--color-border)' }} />
-            {/* 原项目来源说明 */}
-            <Text style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
-              基于{' '}
-              <Link
-                href="https://github.com/xiamuceer-j/MuMuAINovel"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: 'inherit', textDecoration: 'underline' }}
-              >
-                MuMuAINovel
-              </Link>
-            </Text>
-            <Divider type="vertical" style={{ margin: '0 4px', borderColor: 'var(--color-border)' }} />
             {/* GitHub 源代码链接 */}
             <Link
               href={VERSION_INFO.githubUrl}
@@ -108,11 +95,14 @@ export default function AppFooter() {
               rel="noopener noreferrer"
               style={{
                 fontSize: 11,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
                 color: 'var(--color-text-secondary)',
-                textDecoration: 'underline',
               }}
             >
-              源代码
+              <GithubOutlined style={{ fontSize: 12 }} />
+              <span>GitHub</span>
             </Link>
             <Divider type="vertical" style={{ margin: '0 4px', borderColor: 'var(--color-border)' }} />
             <Button
@@ -161,6 +151,23 @@ export default function AppFooter() {
               <ClockCircleOutlined style={{ fontSize: 10 }} />
               {VERSION_INFO.buildTime}
             </Text>
+            <Divider type="vertical" style={{ margin: '0 4px', borderColor: 'var(--color-border)' }} />
+            {/* 原项目来源说明 */}
+            <Link
+              href="https://github.com/xiamuceer-j/MuMuAINovel"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                fontSize: 11,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                color: 'var(--color-text-secondary)',
+              }}
+            >
+              <ForkOutlined style={{ fontSize: 11 }} />
+              <span>基于 MuMuAINovel</span>
+            </Link>
           </div>
         ) : (
           // PC端：完整布局
@@ -206,20 +213,6 @@ export default function AppFooter() {
               </Tooltip>
             </Badge>
 
-            {/* 原项目来源说明 */}
-            <Text style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
-              基于{' '}
-              <Link
-                href="https://github.com/xiamuceer-j/MuMuAINovel"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: 'inherit', textDecoration: 'underline' }}
-              >
-                MuMuAINovel
-              </Link>
-              {' '}开源项目开发
-            </Text>
-
             {/* GitHub 源代码链接 */}
             <Link
               href={VERSION_INFO.githubUrl}
@@ -227,11 +220,14 @@ export default function AppFooter() {
               rel="noopener noreferrer"
               style={{
                 fontSize: 12,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
                 color: 'var(--color-text-secondary)',
-                textDecoration: 'underline',
               }}
             >
-              查看源代码（GitHub）
+              <GithubOutlined style={{ fontSize: 13 }} />
+              <span>GitHub</span>
             </Link>
 
             {/* 赞助按钮 */}
@@ -294,6 +290,23 @@ export default function AppFooter() {
               <ClockCircleOutlined style={{ fontSize: 12 }} />
               <span>{VERSION_INFO.buildTime}</span>
             </Text>
+
+            {/* 原项目来源说明 */}
+            <Link
+              href="https://github.com/xiamuceer-j/MuMuAINovel"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                fontSize: 12,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                color: 'var(--color-text-secondary)',
+              }}
+            >
+              <ForkOutlined style={{ fontSize: 13 }} />
+              <span>基于 MuMuAINovel</span>
+            </Link>
           </Space>
         )}
       </div>
