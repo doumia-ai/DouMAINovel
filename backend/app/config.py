@@ -106,6 +106,9 @@ class Settings(BaseSettings):
     SESSION_EXPIRE_MINUTES: int = 120  # 会话过期时间（分钟），默认2小时
     SESSION_REFRESH_THRESHOLD_MINUTES: int = 30  # 会话刷新阈值（分钟），剩余时间少于此值时可刷新
     
+    # GitHub API 配置
+    GITHUB_TOKEN: Optional[str] = None  # GitHub Personal Access Token，可将 API 限制从 60 次/小时提升到 5000 次/小时
+    
     class Config:
         env_file = ".env"
         case_sensitive = False

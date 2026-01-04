@@ -222,6 +222,7 @@ export function groupChangelogByDate(entries: ChangelogEntry[]): Map<string, Cha
 
 /**
  * 检查是否应该获取更新日志（避免频繁请求）
+ * GitHub API 未认证请求限制为每小时 60 次，因此使用 24 小时缓存
  */
 export function shouldFetchChangelog(): boolean {
   const lastFetch = localStorage.getItem('changelog_last_fetch');
@@ -232,9 +233,9 @@ export function shouldFetchChangelog(): boolean {
   
   const lastFetchTime = new Date(lastFetch).getTime();
   const now = Date.now();
-  const oneHourMs = 60 * 60 * 1000; // 1小时
+  const twentyFourHoursMs = 24 * 60 * 60 * 1000; // 24小时
   
-  return now - lastFetchTime >= oneHourMs;
+  return now - lastFetchTime >= twentyFourHoursMs;
 }
 
 /**
