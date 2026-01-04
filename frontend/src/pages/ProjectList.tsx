@@ -507,6 +507,12 @@ export default function ProjectList() {
                                 label: 'MCP插件',
                                 icon: <ApiOutlined />,
                                 onClick: () => navigate('/mcp-plugins')
+                              },
+                              {
+                                key: 'genres',
+                                label: '类型管理',
+                                icon: <BookOutlined />,
+                                onClick: () => navigate('/genres')
                               }
                             ]
                           }}
@@ -626,6 +632,12 @@ export default function ProjectList() {
                             label: 'MCP插件',
                             icon: <ApiOutlined />,
                             onClick: () => navigate('/mcp-plugins')
+                          },
+                          {
+                            key: 'genres',
+                            label: '类型管理',
+                            icon: <BookOutlined />,
+                            onClick: () => navigate('/genres')
                           }
                         ]
                       }}

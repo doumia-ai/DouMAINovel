@@ -53,27 +53,7 @@ class PromptService:
 
 <guidelines priority="P1">
 【类型指导原则】
-
-**现代都市/言情/青春**：
-- 时间：当代社会（2020年代）或近未来（2030-2050年）
-- 避免：大崩解、纪元、末日等宏大概念
-- 重点：具体城市环境、职场文化、社会现状
-
-**历史/古代**：
-- 时间：明确的历史朝代或虚构古代
-- 重点：时代特征、礼教制度、阶级分化
-
-**玄幻/仙侠/修真**：
-- 时间：修炼文明的特定时期
-- 重点：修炼规则、灵气环境、门派势力
-
-**科幻**：
-- 时间：未来明确时期（如2150年、星际时代初期）
-- 重点：科技水平、社会形态、文明转折
-
-**奇幻/魔法**：
-- 时间：魔法文明的特定阶段
-- 重点：魔法体系、种族关系、大陆格局
+{genre_guide}
 
 **设定尺度控制**：
 - 现代都市：聚焦某个城市、行业、阶层
@@ -2287,7 +2267,7 @@ class PromptService:
                 "name": "世界构建",
                 "category": "世界构建",
                 "description": "用于生成小说世界观设定，包括时间背景、地理位置、氛围基调和世界规则",
-                "parameters": ["title", "theme", "genre", "description"]
+                "parameters": ["title", "theme", "genre", "description", "genre_guide"]
             },
             "CHARACTERS_BATCH_GENERATION": {
                 "name": "批量角色生成",
@@ -2514,6 +2494,80 @@ class PromptService:
             if template["template_key"] == template_key:
                 return template
         return None
+
+    @classmethod
+    async def get_genre_guide(cls, genre_name: str, db) -> str:
+        """
+        获取指定类型的AI生成指导配置
+
+        Args:
+            genre_name: 类型名称
+            db: 数据库会话
+
+        Returns:
+            格式化的类型指导文本，如果类型不存在则返回默认指导
+        """
+        from sqlalchemy import select
+        from app.models.genre import Genre
+        from app.logger import get_logger
+
+        logger = get_logger(__name__)
+
+        if not genre_name or not db:
+            return cls._get_default_genre_guide()
+
+        try:
+            result = await db.execute(
+                select(Genre).where(Genre.name == genre_name)
+            )
+            genre = result.scalar_one_or_none()
+
+            if genre:
+                logger.info(f"✅ 使用类型指导: {genre_name}")
+                # 构建格式化的指导文本
+                guide_parts = [f"**{genre_name}类型**："]
+                guide_parts.append(genre.description or "")
+
+                if genre.world_building_guide:
+                    guide_parts.append(f"\n{genre.world_building_guide}")
+
+                if genre.keywords:
+                    # 安全处理 keywords，过滤空值
+                    if isinstance(genre.keywords, list):
+                        keywords_str = "、".join(str(k) for k in genre.keywords if k)
+                    else:
+                        keywords_str = str(genre.keywords)
+                    if keywords_str:
+                        guide_parts.append(f"\n关键元素：{keywords_str}")
+
+                if genre.example_works:
+                    guide_parts.append(f"\n参考作品：{genre.example_works}")
+
+                return "\n".join(guide_parts)
+            else:
+                logger.info(f"⚪ 类型 '{genre_name}' 不存在，使用默认指导")
+                return cls._get_default_genre_guide()
+
+        except Exception as e:
+            logger.warning(f"获取类型指导失败: {e}，使用默认指导")
+            return cls._get_default_genre_guide()
+
+    @staticmethod
+    def _get_default_genre_guide() -> str:
+        """返回默认的类型指导"""
+        return """**通用类型**：
+- 根据题材选择合适的时间背景
+- 现代题材：当代社会或近未来
+- 历史题材：明确的历史朝代
+- 幻想题材：修炼/魔法文明的特定时期
+- 科幻题材：未来明确时期
+
+世界观构建要点：
+1. 设定与题材匹配的时间背景
+2. 构建合理的社会环境和势力分布
+3. 设计符合类型特征的核心规则
+4. 注意设定的内在逻辑自洽"""
+
 
 # ========== 全局实例 ==========
 prompt_service = PromptService()
