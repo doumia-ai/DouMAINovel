@@ -1279,7 +1279,7 @@ export default function SettingsPage() {
               rules={[{ required: true, message: '请选择API提供商' }]}
             >
               <Select>
-                <Select.Option value="openai">OpenAI</Select.Option>
+                <Select.Option value="openai">OpenAI Compatible</Select.Option>
                 {/* <Select.Option value="anthropic">Anthropic (Claude)</Select.Option> */}
                 <Select.Option value="gemini">Google Gemini</Select.Option>
               </Select>

@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Dropdown, Avatar, Space, Typography, message, Modal, Form, Input, Button } from 'antd';
+import { Dropdown, Avatar, Space, Typography, message, Modal, Form, Input, Button, Segmented } from 'antd';
 import { UserOutlined, LogoutOutlined, TeamOutlined, CrownOutlined, LockOutlined } from '@ant-design/icons';
 import { authApi } from '../services/api';
 import type { User } from '../types';
 import type { MenuProps } from 'antd';
 import { useNavigate } from 'react-router-dom';
+import { useTheme, ThemeMode } from '../contexts/ThemeContext';
 
 const { Text } = Typography;
 
@@ -14,6 +15,7 @@ export default function UserMenu() {
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [changePasswordForm] = Form.useForm();
   const [changingPassword, setChangingPassword] = useState(false);
+  const { themeMode, actualTheme, setThemeMode } = useTheme();
 
   useEffect(() => {
     loadCurrentUser();
@@ -62,6 +64,12 @@ export default function UserMenu() {
     }
   };
 
+  const themeOptions = [
+    { label: '浅色', value: 'light' as ThemeMode },
+    { label: '深色', value: 'dark' as ThemeMode },
+    { label: '自动', value: 'auto' as ThemeMode },
+  ];
+
   const menuItems: MenuProps['items'] = [
     {
       key: 'user-info',
@@ -76,6 +84,30 @@ export default function UserMenu() {
         </div>
       ),
       disabled: true,
+    },
+    {
+      type: 'divider',
+    },
+    {
+      key: 'theme-switcher',
+      label: (
+        <div style={{ padding: '4px 0' }} onClick={(e) => e.stopPropagation()}>
+          <div style={{
+            fontSize: 12,
+            color: 'var(--color-text-secondary)',
+            marginBottom: 8
+          }}>
+            主题模式
+          </div>
+          <Segmented
+            value={themeMode}
+            onChange={(value) => setThemeMode(value as ThemeMode)}
+            options={themeOptions}
+            block
+            size="small"
+          />
+        </div>
+      ),
     },
     {
       type: 'divider',
@@ -112,6 +144,9 @@ export default function UserMenu() {
     return null;
   }
 
+  // 根据主题获取背景色
+  const bgColor = actualTheme === 'dark' ? 'rgba(36, 36, 56, 0.6)' : 'rgba(255, 255, 255, 0.6)';
+
   return (
     <>
       <Dropdown menu={{ items: menuItems }} placement="bottomRight">
@@ -122,7 +157,7 @@ export default function UserMenu() {
             alignItems: 'center',
             gap: 12,
             padding: '8px 16px',
-            background: 'rgba(255, 255, 255, 0.6)', // 保持半透明以配合 Backdrop
+            background: bgColor,
             backdropFilter: 'blur(10px)',
             WebkitBackdropFilter: 'blur(10px)',
             borderRadius: 24,
@@ -131,12 +166,12 @@ export default function UserMenu() {
             boxShadow: 'var(--shadow-card)',
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'var(--color-bg-container)'; // 悬浮时变实
+            e.currentTarget.style.background = 'var(--color-bg-container)';
             e.currentTarget.style.transform = 'translateY(-2px)';
             e.currentTarget.style.boxShadow = 'var(--shadow-elevated)';
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.6)';
+            e.currentTarget.style.background = bgColor;
             e.currentTarget.style.transform = 'translateY(0)';
             e.currentTarget.style.boxShadow = 'var(--shadow-card)';
           }}
@@ -148,7 +183,7 @@ export default function UserMenu() {
               size={40}
               style={{
                 backgroundColor: 'var(--color-primary)',
-                border: '3px solid #fff',
+                border: `3px solid var(--color-bg-container)`,
                 boxShadow: 'var(--shadow-card)',
               }}
             />

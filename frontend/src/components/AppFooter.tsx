@@ -88,6 +88,33 @@ export default function AppFooter() {
               </Tooltip>
             </Badge>
             <Divider type="vertical" style={{ margin: '0 4px', borderColor: 'var(--color-border)' }} />
+            {/* 原项目来源说明 */}
+            <Text style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
+              基于{' '}
+              <Link
+                href="https://github.com/xiamuceer-j/MuMuAINovel"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: 'inherit', textDecoration: 'underline' }}
+              >
+                MuMuAINovel
+              </Link>
+            </Text>
+            <Divider type="vertical" style={{ margin: '0 4px', borderColor: 'var(--color-border)' }} />
+            {/* GitHub 源代码链接 */}
+            <Link
+              href={VERSION_INFO.githubUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                fontSize: 11,
+                color: 'var(--color-text-secondary)',
+                textDecoration: 'underline',
+              }}
+            >
+              源代码
+            </Link>
+            <Divider type="vertical" style={{ margin: '0 4px', borderColor: 'var(--color-border)' }} />
             <Button
               type="text"
               size="small"
@@ -178,6 +205,34 @@ export default function AppFooter() {
                 </Text>
               </Tooltip>
             </Badge>
+
+            {/* 原项目来源说明 */}
+            <Text style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
+              基于{' '}
+              <Link
+                href="https://github.com/xiamuceer-j/MuMuAINovel"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: 'inherit', textDecoration: 'underline' }}
+              >
+                MuMuAINovel
+              </Link>
+              {' '}开源项目开发
+            </Text>
+
+            {/* GitHub 源代码链接 */}
+            <Link
+              href={VERSION_INFO.githubUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                fontSize: 12,
+                color: 'var(--color-text-secondary)',
+                textDecoration: 'underline',
+              }}
+            >
+              查看源代码（GitHub）
+            </Link>
 
             {/* 赞助按钮 */}
             <Button

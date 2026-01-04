@@ -898,3 +898,73 @@ export const adminApi = {
       message: string;
     }>(`/admin/users/${userId}`),
 };
+
+// 类型管理API
+export interface Genre {
+  id: string;
+  name: string;
+  is_builtin: boolean;
+  description?: string;
+  world_building_guide?: string;
+  character_guide?: string;
+  plot_guide?: string;
+  writing_style_guide?: string;
+  example_works?: string;
+  keywords?: string[];
+  sort_order: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface GenreCreate {
+  name: string;
+  description?: string;
+  world_building_guide?: string;
+  character_guide?: string;
+  plot_guide?: string;
+  writing_style_guide?: string;
+  example_works?: string;
+  keywords?: string[];
+}
+
+export interface GenreUpdate {
+  name?: string;
+  description?: string;
+  world_building_guide?: string;
+  character_guide?: string;
+  plot_guide?: string;
+  writing_style_guide?: string;
+  example_works?: string;
+  keywords?: string[];
+}
+
+export interface GenreListResponse {
+  genres: Genre[];
+  total: number;
+}
+
+export const genreApi = {
+  // 获取类型列表
+  getGenres: (includeBuiltin: boolean = true) =>
+    api.get<unknown, GenreListResponse>('/genres', { params: { include_builtin: includeBuiltin } }),
+
+  // 根据ID获取类型
+  getGenre: (id: string) =>
+    api.get<unknown, Genre>(`/genres/${id}`),
+
+  // 根据名称获取类型
+  getGenreByName: (name: string) =>
+    api.get<unknown, Genre>(`/genres/by-name/${encodeURIComponent(name)}`),
+
+  // 创建类型
+  createGenre: (data: GenreCreate) =>
+    api.post<unknown, Genre>('/genres', data),
+
+  // 更新类型
+  updateGenre: (id: string, data: GenreUpdate) =>
+    api.put<unknown, Genre>(`/genres/${id}`, data),
+
+  // 删除类型
+  deleteGenre: (id: string) =>
+    api.delete<unknown, { success: boolean; message: string }>(`/genres/${id}`),
+};

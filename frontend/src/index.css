@@ -69,6 +69,58 @@
   -ms-text-size-adjust: 100%;
 }
 
+/* ===== 深色模式 (Dark Mode) ===== */
+:root.theme-dark {
+  /* 主色调：深色模式下稍微提亮 */
+  --color-primary: #5A9BA5;
+  --color-primary-hover: #6DB3BD;
+  --color-primary-active: #4A8A94;
+
+  /* 辅助色 - 深色模式下调整 */
+  --color-success: #73D13D;
+  --color-warning: #FFC53D;
+  --color-error: #FF7875;
+  --color-info: #40A9FF;
+
+  /* 功能色背景/边框 - 深色模式 */
+  --color-success-bg: rgba(115, 209, 61, 0.1);
+  --color-success-border: rgba(115, 209, 61, 0.3);
+  --color-warning-bg: rgba(255, 197, 61, 0.1);
+  --color-warning-border: rgba(255, 197, 61, 0.3);
+  --color-error-bg: rgba(255, 120, 117, 0.1);
+  --color-error-border: rgba(255, 120, 117, 0.3);
+  --color-info-bg: rgba(64, 169, 255, 0.1);
+  --color-info-border: rgba(64, 169, 255, 0.3);
+
+  /* 背景色 - 深色模式 */
+  --color-bg-base: #1a1a2e;
+  --color-bg-container: #242438;
+  --color-bg-layout: #16162a;
+  --color-bg-spotlight: #5A9BA5;
+  --color-bg-mask: rgba(0, 0, 0, 0.65);
+
+  /* 文本色 - 深色模式 */
+  --color-text-base: #E8E8E8;
+  --color-text-primary: #E8E8E8;
+  --color-text-secondary: #A8A8A8;
+  --color-text-tertiary: #787878;
+  --color-text-quaternary: #585858;
+
+  /* 边框色 - 深色模式 */
+  --color-border: #3D3D5C;
+  --color-border-secondary: #2D2D4A;
+
+  /* 阴影 - 深色模式 */
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-elevated: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-primary: 0 4px 16px rgba(90, 155, 165, 0.3);
+  --shadow-header: 0 2px 8px rgba(0, 0, 0, 0.3);
+
+  color-scheme: dark;
+  color: var(--color-text-base);
+  background-color: var(--color-bg-base);
+}
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -91,24 +143,24 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--color-bg-layout);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
+  background: var(--color-text-quaternary);
   border-radius: 4px;
   transition: background 0.3s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+  background: var(--color-text-tertiary);
 }
 
 /* Firefox 滚动条样式 */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #c1c1c1 #f1f1f1;
+  scrollbar-color: var(--color-text-quaternary) var(--color-bg-layout);
 }
 
 /* 移动端响应式样式 */
@@ -409,4 +461,64 @@ body {
   padding: 8px 16px;
   font-weight: 500;
   box-shadow: 0 4px 12px rgba(77, 128, 136, 0.3);
+}
+
+/* ===== 深色模式侧边栏样式 (Dark Mode Sidebar) ===== */
+:root.theme-dark .modern-sider {
+  background: linear-gradient(180deg,
+      rgba(36, 36, 56, 0.95) 0%,
+      rgba(26, 26, 46, 0.98) 100%) !important;
+  border-right: 1px solid rgba(90, 155, 165, 0.15);
+  box-shadow:
+    4px 0 24px rgba(0, 0, 0, 0.3),
+    1px 0 0 rgba(90, 155, 165, 0.1) inset;
+}
+
+/* 深色模式下菜单项悬停效果 */
+:root.theme-dark .modern-sider .ant-menu-item:not(.ant-menu-item-selected):hover {
+  background: linear-gradient(135deg,
+      rgba(90, 155, 165, 0.2) 0%,
+      rgba(109, 179, 189, 0.28) 100%) !important;
+  box-shadow:
+    0 2px 8px rgba(90, 155, 165, 0.2),
+    inset 0 0 0 1px rgba(90, 155, 165, 0.25);
+}
+
+/* 深色模式下选中项样式 */
+:root.theme-dark .modern-sider .ant-menu-item-selected {
+  background: linear-gradient(135deg,
+      var(--color-primary) 0%,
+      #6DB3BD 50%,
+      var(--color-primary-hover) 100%) !important;
+  box-shadow:
+    0 6px 20px rgba(90, 155, 165, 0.5),
+    0 3px 8px rgba(90, 155, 165, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* 深色模式下侧边栏底部渐变遮罩 */
+:root.theme-dark .modern-sider::after {
+  background: linear-gradient(to top,
+      rgba(26, 26, 46, 0.95) 0%,
+      transparent 100%);
+}
+
+/* 深色模式下未选中菜单项颜色 */
+:root.theme-dark .modern-sider .ant-menu-item:not(.ant-menu-item-selected),
+:root.theme-dark .modern-sider .ant-menu-item:not(.ant-menu-item-selected) a {
+  color: var(--color-text-secondary) !important;
+}
+
+:root.theme-dark .modern-sider .ant-menu-item:not(.ant-menu-item-selected) .anticon {
+  color: var(--color-primary) !important;
+}
+
+/* 深色模式下悬停时文字颜色 */
+:root.theme-dark .modern-sider .ant-menu-item:not(.ant-menu-item-selected):hover,
+:root.theme-dark .modern-sider .ant-menu-item:not(.ant-menu-item-selected):hover a {
+  color: var(--color-primary-hover) !important;
+}
+
+:root.theme-dark .modern-sider .ant-menu-item:not(.ant-menu-item-selected):hover .anticon {
+  color: var(--color-primary-hover) !important;
 }

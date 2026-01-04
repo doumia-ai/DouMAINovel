@@ -14,7 +14,7 @@ class Project(Base):
     title = Column(String(200), nullable=False, comment="项目标题")
     description = Column(Text, comment="项目简介")
     theme = Column(Text, comment="主题")
-    genre = Column(String(50), comment="小说类型")
+    genre = Column(String(200), comment="小说类型")
     target_words = Column(Integer, default=0, comment="目标字数")
     current_words = Column(Integer, default=0, comment="当前字数")
     status = Column(String(20), default="planning", comment="创作状态")

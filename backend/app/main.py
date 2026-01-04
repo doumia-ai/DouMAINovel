@@ -27,8 +27,35 @@ logger = get_logger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期管理"""
+
+    # 初始化内置小说类型
+    try:
+        from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
+        from app.database import get_engine
+        from app.services.genre_init import init_builtin_genres
+        # 使用系统用户ID获取共享引擎
+        engine = await get_engine("system")
+        AsyncSessionLocal = async_sessionmaker(
+            engine,
+            class_=AsyncSession,
+            expire_on_commit=False
+        )
+        async with AsyncSessionLocal() as db:
+            await init_builtin_genres(db)
+    except ImportError as e:
+        logger.error(f"初始化内置类型失败 - 模块导入错误: {e}")
+    except ConnectionError as e:
+        logger.error(f"初始化内置类型失败 - 数据库连接错误: {e}")
+    except Exception as e:
+        # 区分数据库未迁移和其他错误
+        error_msg = str(e).lower()
+        if "no such table" in error_msg or "relation" in error_msg and "does not exist" in error_msg:
+            logger.warning(f"初始化内置类型跳过 - 数据库表不存在（请先运行迁移）: {e}")
+        else:
+            logger.error(f"初始化内置类型失败: {e}")
+
     logger.info("应用启动完成")
-    
+
     yield
     
     # 清理MCP插件
@@ -127,7 +154,7 @@ from app.api import (
     wizard_stream, relationships, organizations,
     auth, users, settings, writing_styles, memories,
     mcp_plugins, admin, inspiration, prompt_templates,
-    changelog, careers
+    changelog, careers, genres
 )
 
 app.include_router(auth.router, prefix="/api")
@@ -141,6 +168,7 @@ app.include_router(inspiration.router, prefix="/api")
 app.include_router(outlines.router, prefix="/api")
 app.include_router(characters.router, prefix="/api")
 app.include_router(careers.router, prefix="/api")  # 职业管理API
+app.include_router(genres.router, prefix="/api/genres", tags=["类型管理"])  # 类型管理API
 app.include_router(chapters.router, prefix="/api")
 app.include_router(relationships.router, prefix="/api")
 app.include_router(organizations.router, prefix="/api")

@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { ConfigProvider } from 'antd';
+import { ConfigProvider, theme } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import ProjectList from './pages/ProjectList';
 import ProjectWizardNew from './pages/ProjectWizardNew';
@@ -19,17 +19,36 @@ import Settings from './pages/Settings';
 import MCPPlugins from './pages/MCPPlugins';
 import UserManagement from './pages/UserManagement';
 import PromptTemplates from './pages/PromptTemplates';
+import Genres from './pages/Genres';
 import Sponsor from './pages/Sponsor';
 // import Polish from './pages/Polish';
 import Login from './pages/Login';
 import AuthCallback from './pages/AuthCallback';
 import ProtectedRoute from './components/ProtectedRoute';
 import AppFooter from './components/AppFooter';
+import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import './App.css';
 
-function App() {
+function AppContent() {
+  const { actualTheme } = useTheme();
+
   return (
-    <ConfigProvider locale={zhCN}>
+    <ConfigProvider
+      locale={zhCN}
+      theme={{
+        algorithm: actualTheme === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm,
+        token: {
+          colorPrimary: actualTheme === 'dark' ? '#5A9BA5' : '#4D8088',
+          colorBgContainer: actualTheme === 'dark' ? '#242438' : '#FFFFFF',
+          colorBgElevated: actualTheme === 'dark' ? '#2D2D4A' : '#FFFFFF',
+          colorBgLayout: actualTheme === 'dark' ? '#1a1a2e' : '#F8F6F1',
+          colorText: actualTheme === 'dark' ? '#E8E8E8' : '#2B2B2B',
+          colorTextSecondary: actualTheme === 'dark' ? '#A8A8A8' : '#595959',
+          colorBorder: actualTheme === 'dark' ? '#3D3D5C' : '#D9D9D9',
+          colorBorderSecondary: actualTheme === 'dark' ? '#2D2D4A' : '#F0F0F0',
+        },
+      }}
+    >
       <BrowserRouter
         future={{
           v7_startTransition: true,
@@ -47,6 +66,7 @@ function App() {
           <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           <Route path="/prompt-templates" element={<ProtectedRoute><><PromptTemplates /><AppFooter /></></ProtectedRoute>} />
           <Route path="/mcp-plugins" element={<ProtectedRoute><MCPPlugins /></ProtectedRoute>} />
+          <Route path="/genres" element={<ProtectedRoute><Genres /></ProtectedRoute>} />
           <Route path="/user-management" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
           <Route path="/chapters/:chapterId/reader" element={<ProtectedRoute><ChapterReader /></ProtectedRoute>} />
           <Route path="/project/:projectId" element={<ProtectedRoute><ProjectDetail /></ProtectedRoute>}>
@@ -66,6 +86,14 @@ function App() {
         </Routes>
       </BrowserRouter>
     </ConfigProvider>
+  );
+}
+
+function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
   );
 }
 

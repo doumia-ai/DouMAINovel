@@ -16,13 +16,19 @@ router = APIRouter()
 # GitHub API配置
 GITHUB_API_BASE = "https://api.github.com"
 REPO_OWNER = "doumia-ai"
-REPO_NAME = "豆妙AI创作"
+REPO_NAME = "DouMAINovel"
+
+# 从配置获取 GitHub Token
+def get_github_token() -> str | None:
+    """获取 GitHub Token"""
+    from app.config import settings
+    return settings.GITHUB_TOKEN
 
 # 缓存配置
 _cache = {
     "data": None,
     "timestamp": None,
-    "ttl": timedelta(hours=1)  # 缓存1小时
+    "ttl": timedelta(hours=24)  # 缓存24小时（提升缓存时间以减少 API 调用）
 }
 
 
@@ -82,15 +88,36 @@ async def fetch_github_commits(page: int = 1, per_page: int = 30) -> List[dict]:
     
     headers = {
         "Accept": "application/vnd.github.v3+json",
-        "User-Agent": "豆妙AI创作-App"
+        "User-Agent": "DouMAINovel-App"
     }
+    
+    # 如果配置了 GitHub Token，添加认证头
+    # 认证后 API 限制从 60 次/小时提升到 5000 次/小时
+    github_token = get_github_token()
+    if github_token:
+        headers["Authorization"] = f"Bearer {github_token}"
+        logger.debug("使用 GitHub Token 进行认证")
     
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(url, params=params, headers=headers)
+            
+            # 记录 API 限制信息
+            rate_limit = response.headers.get("X-RateLimit-Limit", "unknown")
+            rate_remaining = response.headers.get("X-RateLimit-Remaining", "unknown")
+            logger.debug(f"GitHub API 限制: {rate_remaining}/{rate_limit}")
+            
             response.raise_for_status()
             return response.json()
-    except httpx.HTTPError as e:
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 403:
+            rate_remaining = e.response.headers.get("X-RateLimit-Remaining", "0")
+            if rate_remaining == "0":
+                logger.error("GitHub API 速率限制已达上限，请配置 GITHUB_TOKEN 或稍后重试")
+                raise HTTPException(
+                    status_code=429,
+                    detail="GitHub API 请求次数已达上限（每小时60次）。请在 .env 文件中配置 GITHUB_TOKEN 以提升限制到 5000 次/小时。"
+                )
         logger.error(f"GitHub API请求失败: {str(e)}")
         raise HTTPException(
             status_code=502,
