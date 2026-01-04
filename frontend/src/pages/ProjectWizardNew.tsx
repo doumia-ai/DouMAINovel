@@ -33,7 +33,7 @@ export default function ProjectWizardNew() {
   const [resumeProjectId, setResumeProjectId] = useState<string | null>(null);
   const [genres, setGenres] = useState<Genre[]>([]);
   const [genresLoading, setGenresLoading] = useState(true);
-  const [genresLoadError, setGenresLoadError] = useState(false);
+  const [, setGenresLoadError] = useState(false);
 
   useEffect(() => {
     const handleResize = () => {

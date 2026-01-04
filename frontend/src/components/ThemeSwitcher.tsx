@@ -1,5 +1,5 @@
 import { Segmented } from 'antd';
-import { useTheme, ThemeMode } from '../contexts/ThemeContext';
+import { useTheme, type ThemeMode } from '../contexts/ThemeContext';
 
 interface ThemeSwitcherProps {
   style?: React.CSSProperties;
