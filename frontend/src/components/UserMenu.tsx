@@ -5,7 +5,7 @@ import { authApi } from '../services/api';
 import type { User } from '../types';
 import type { MenuProps } from 'antd';
 import { useNavigate } from 'react-router-dom';
-import { useTheme, ThemeMode } from '../contexts/ThemeContext';
+import { useTheme, type ThemeMode } from '../contexts/ThemeContext';
 
 const { Text } = Typography;
 
