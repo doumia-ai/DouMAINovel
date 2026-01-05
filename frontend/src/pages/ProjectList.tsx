@@ -336,7 +336,7 @@ export default function ProjectList() {
       height: '100vh',
       display: 'flex',
       flexDirection: 'column',
-      background: 'linear-gradient(180deg, var(--color-bg-base) 0%, #EEF2F3 100%)',
+      background: 'var(--color-bg-base)',
       overflow: 'hidden'
     }}>
       {contextHolder}
@@ -356,7 +356,7 @@ export default function ProjectList() {
             style={{
               background: 'linear-gradient(135deg, var(--color-primary) 0%, #5A9BA5 50%, var(--color-primary-hover) 100%)',
               borderRadius: window.innerWidth <= 768 ? 16 : 24,
-              boxShadow: '0 12px 40px rgba(77, 128, 136, 0.25), 0 4px 12px rgba(0, 0, 0, 0.06)',
+              boxShadow: 'var(--shadow-primary)',
               border: 'none',
               position: 'relative',
               overflow: 'hidden'
@@ -670,15 +670,15 @@ export default function ProjectList() {
               <Alert
                 message={
                   <Space align="center" style={{ width: '100%' }}>
-                    <InfoCircleOutlined style={{ fontSize: 16, color: '#1890ff' }} />
-                    <Text strong style={{ fontSize: window.innerWidth <= 768 ? 13 : 14 }}>
+                    <InfoCircleOutlined style={{ fontSize: 16, color: 'var(--color-info)' }} />
+                    <Text strong style={{ fontSize: window.innerWidth <= 768 ? 13 : 14, color: 'var(--color-text-primary)' }}>
                       首次使用提示
                     </Text>
                   </Space>
                 }
                 description={
                   <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                    <Text style={{ fontSize: window.innerWidth <= 768 ? 12 : 13 }}>
+                    <Text style={{ fontSize: window.innerWidth <= 768 ? 12 : 13, color: 'var(--color-text-secondary)' }}>
                       在开始创作之前，请先配置您的AI接口。系统支持OpenAI和Anthropic两种接口。
                     </Text>
                     <Space size={8}>
@@ -713,8 +713,8 @@ export default function ProjectList() {
                 style={{
                   marginTop: window.innerWidth <= 768 ? 16 : 24,
                   borderRadius: 12,
-                  background: 'linear-gradient(135deg, #e6f7ff 0%, #f0f5ff 100%)',
-                  border: '1px solid #91d5ff'
+                  background: 'var(--color-info-bg)',
+                  border: '1px solid var(--color-info-border)'
                 }}
               />
             )}
@@ -849,7 +849,7 @@ export default function ProjectList() {
                 <Empty
                   description={
                     <Space direction="vertical" size={16}>
-                      <Text style={{ fontSize: 16, color: '#8c8c8c' }}>
+                      <Text style={{ fontSize: 16, color: 'var(--color-text-tertiary)' }}>
                         还没有项目，开始创建你的第一个小说项目吧！
                       </Text>
                       <Space size={12}>
@@ -964,7 +964,7 @@ export default function ProjectList() {
                             <Paragraph
                               ellipsis={{ rows: 2 }}
                               style={{
-                                color: 'rgba(0,0,0,0.65)',
+                                color: 'var(--color-text-secondary)',
                                 minHeight: 44,
                                 marginBottom: 16
                               }}
@@ -992,9 +992,9 @@ export default function ProjectList() {
                                 <div style={{
                                   textAlign: 'center',
                                   padding: '14px 0',
-                                  background: 'linear-gradient(135deg, #E8F4FC 0%, #F0F9FF 100%)',
+                                  background: 'var(--color-info-bg)',
                                   borderRadius: 12,
-                                  border: '1px solid rgba(24, 144, 255, 0.15)'
+                                  border: '1px solid var(--color-info-border)'
                                 }}>
                                   <div style={{ fontSize: 22, fontWeight: 'bold', color: 'var(--color-primary)' }}>
                                     {project.current_words >= 1000000
@@ -1011,9 +1011,9 @@ export default function ProjectList() {
                                 <div style={{
                                   textAlign: 'center',
                                   padding: '14px 0',
-                                  background: 'linear-gradient(135deg, #F0FDF4 0%, #ECFDF5 100%)',
+                                  background: 'var(--color-success-bg)',
                                   borderRadius: 12,
-                                  border: '1px solid rgba(82, 196, 26, 0.15)'
+                                  border: '1px solid var(--color-success-border)'
                                 }}>
                                   <div style={{ fontSize: 22, fontWeight: 'bold', color: 'var(--color-success)' }}>
                                     {project.target_words
@@ -1033,7 +1033,7 @@ export default function ProjectList() {
                             <div style={{
                               marginTop: 18,
                               paddingTop: 16,
-                              borderTop: '1px solid rgba(0, 0, 0, 0.06)',
+                              borderTop: '1px solid var(--color-border-secondary)',
                               display: 'flex',
                               justifyContent: 'space-between',
                               alignItems: 'center'
@@ -1106,7 +1106,7 @@ export default function ProjectList() {
         >
           <Space direction="vertical" size={16} style={{ width: '100%' }}>
             <div>
-              <p style={{ marginBottom: '12px', color: '#666', fontSize: window.innerWidth <= 768 ? 13 : 14 }}>
+              <p style={{ marginBottom: '12px', color: 'var(--color-text-secondary)', fontSize: window.innerWidth <= 768 ? 13 : 14 }}>
                 选择之前导出的 JSON 格式项目文件
               </p>
               <Upload
@@ -1130,11 +1130,11 @@ export default function ProjectList() {
             )}
 
             {validationResult && (
-              <Card size="small" style={{ background: validationResult.valid ? '#f6ffed' : '#fff2f0' }}>
+              <Card size="small" style={{ background: validationResult.valid ? 'var(--color-success-bg)' : 'var(--color-error-bg)' }}>
                 <Space direction="vertical" size={8} style={{ width: '100%' }}>
                   <div>
                     <Text strong style={{
-                      color: validationResult.valid ? '#52c41a' : '#ff4d4f',
+                      color: validationResult.valid ? 'var(--color-success)' : 'var(--color-error)',
                       fontSize: window.innerWidth <= 768 ? 13 : 14
                     }}>
                       {validationResult.valid ? '✓ 文件验证通过' : '✗ 文件验证失败'}
@@ -1184,7 +1184,7 @@ export default function ProjectList() {
                       <ul style={{
                         margin: '4px 0 0 0',
                         paddingLeft: '20px',
-                        color: '#ff4d4f',
+                        color: 'var(--color-error)',
                         fontSize: window.innerWidth <= 768 ? 12 : 13
                       }}>
                         {validationResult.errors.map((error: string, index: number) => (
@@ -1200,7 +1200,7 @@ export default function ProjectList() {
                       <ul style={{
                         margin: '4px 0 0 0',
                         paddingLeft: '20px',
-                        color: '#faad14',
+                        color: 'var(--color-warning)',
                         fontSize: window.innerWidth <= 768 ? 12 : 13
                       }}>
                         {validationResult.warnings.map((warning: string, index: number) => (
@@ -1239,7 +1239,7 @@ export default function ProjectList() {
             {/* 导出选项 */}
             <Card
               size="small"
-              style={{ background: '#f5f5f5' }}
+              style={{ background: 'var(--color-bg-layout)' }}
               styles={{ body: { padding: window.innerWidth <= 768 ? 12 : 16 } }}
             >
               <Space direction="vertical" size={12} style={{ width: '100%' }}>
@@ -1259,7 +1259,7 @@ export default function ProjectList() {
                   <Text style={{ fontSize: window.innerWidth <= 768 ? 13 : 14 }}>包含写作风格</Text>
                   <InfoCircleOutlined
                     title="导出项目关联的写作风格数据"
-                    style={{ color: '#999', fontSize: window.innerWidth <= 768 ? 12 : 14 }}
+                    style={{ color: 'var(--color-text-tertiary)', fontSize: window.innerWidth <= 768 ? 12 : 14 }}
                   />
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1277,7 +1277,7 @@ export default function ProjectList() {
                   <Text style={{ fontSize: window.innerWidth <= 768 ? 13 : 14 }}>包含生成历史</Text>
                   <InfoCircleOutlined
                     title="导出AI生成的历史记录（最多100条）"
-                    style={{ color: '#999', fontSize: window.innerWidth <= 768 ? 12 : 14 }}
+                    style={{ color: 'var(--color-text-tertiary)', fontSize: window.innerWidth <= 768 ? 12 : 14 }}
                   />
                 </div>
               </Space>
@@ -1316,8 +1316,8 @@ export default function ProjectList() {
                         hoverable
                         style={{
                           cursor: 'pointer',
-                          border: selectedProjectIds.includes(project.id) ? '2px solid #1890ff' : '1px solid #d9d9d9',
-                          background: selectedProjectIds.includes(project.id) ? '#e6f7ff' : '#fff'
+                          border: selectedProjectIds.includes(project.id) ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+                          background: selectedProjectIds.includes(project.id) ? 'var(--color-info-bg)' : 'var(--color-bg-container)'
                         }}
                         onClick={() => handleToggleProject(project.id)}
                       >
@@ -1327,7 +1327,7 @@ export default function ProjectList() {
                             onChange={() => handleToggleProject(project.id)}
                             onClick={(e) => e.stopPropagation()}
                           />
-                          <BookOutlined style={{ fontSize: 20, color: '#1890ff' }} />
+                          <BookOutlined style={{ fontSize: 20, color: 'var(--color-primary)' }} />
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
                               <Text strong style={{ fontSize: window.innerWidth <= 768 ? 13 : 14 }}>{project.title}</Text>

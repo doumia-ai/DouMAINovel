@@ -251,14 +251,14 @@ export default function AuthCallback() {
           <p>系统已为您自动生成默认密码，您可以选择设置自定义密码或继续使用默认密码。</p>
           {passwordStatus?.default_password && (
             <div style={{
-              background: '#f0f2f5',
+              background: 'var(--color-bg-layout)',
               padding: 12,
               borderRadius: 4,
               marginTop: 12
             }}>
               <strong>账号：</strong>{passwordStatus.username}<br />
               <strong>默认密码：</strong><code style={{
-                background: '#fff',
+                background: 'var(--color-bg-container)',
                 padding: '2px 8px',
                 borderRadius: 3,
                 color: '#1890ff',

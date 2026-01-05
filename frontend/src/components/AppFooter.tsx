@@ -3,11 +3,13 @@ import { Typography, Space, Divider, Badge, Tooltip, Button } from 'antd';
 import { CopyrightOutlined, GiftOutlined, ClockCircleOutlined, GithubOutlined, ForkOutlined } from '@ant-design/icons';
 import { VERSION_INFO, getVersionString } from '../config/version';
 import { checkLatestVersion } from '../services/versionService';
+import { useTheme } from '../contexts/ThemeContext';
 
 const { Text, Link } = Typography;
 
 export default function AppFooter() {
   const isMobile = window.innerWidth <= 768;
+  const { actualTheme } = useTheme();
   const [hasUpdate, setHasUpdate] = useState(false);
   const [latestVersion, setLatestVersion] = useState('');
   const [releaseUrl, setReleaseUrl] = useState('');
@@ -50,7 +52,7 @@ export default function AppFooter() {
         padding: isMobile ? '8px 12px' : '10px 16px',
         zIndex: 100,
         boxShadow: 'var(--shadow-card)',
-        backgroundColor: 'rgba(255, 255, 255, 0.8)', // 半透明背景以支持 backdrop-filter
+        backgroundColor: actualTheme === 'dark' ? 'rgba(26, 26, 46, 0.8)' : 'rgba(255, 255, 255, 0.8)',
       }}
     >
       <div

@@ -29,7 +29,7 @@ export const SSELoadingOverlay: React.FC<SSELoadingOverlayProps> = ({
       zIndex: 9999
     }}>
       <div style={{
-        background: '#fff',
+        background: 'var(--color-bg-container)',
         borderRadius: 12,
         padding: '40px 60px',
         minWidth: 400,
@@ -93,7 +93,7 @@ export const SSELoadingOverlay: React.FC<SSELoadingOverlayProps> = ({
         <div style={{
           textAlign: 'center',
           fontSize: 16,
-          color: '#595959',
+          color: 'var(--color-text-secondary)',
           minHeight: 24,
           padding: '0 20px'
         }}>
@@ -104,7 +104,7 @@ export const SSELoadingOverlay: React.FC<SSELoadingOverlayProps> = ({
         <div style={{
           textAlign: 'center',
           fontSize: 13,
-          color: '#8c8c8c',
+          color: 'var(--color-text-tertiary)',
           marginTop: 16
         }}>
           请勿关闭页面,生成过程需要一定时间

@@ -1068,9 +1068,9 @@ export default function Chapters() {
                 </p>
                 <div style={{
                   padding: 12,
-                  background: '#fff7e6',
+                  background: 'var(--color-warning-bg)',
                   borderRadius: 4,
-                  border: '1px solid #ffd591',
+                  border: '1px solid var(--color-warning-border)',
                   marginBottom: 12
                 }}>
                   <div><strong>标题：</strong>{conflictChapter.title}</div>
@@ -1327,7 +1327,7 @@ export default function Chapters() {
                         key={idx}
                         size="small"
                         style={{
-                          backgroundColor: '#fafafa',
+                          backgroundColor: 'var(--color-bg-layout)',
                           maxWidth: '100%',
                           overflow: 'hidden'
                         }}
@@ -1575,9 +1575,9 @@ export default function Chapters() {
                 style={{
                   padding: '16px',
                   marginBottom: 16,
-                  background: '#fff',
+                  background: 'var(--color-bg-container)',
                   borderRadius: 8,
-                  border: '1px solid #f0f0f0',
+                  border: '1px solid var(--color-border)',
                   flexDirection: isMobile ? 'column' : 'row',
                   alignItems: isMobile ? 'flex-start' : 'center',
                 }}
@@ -1749,9 +1749,9 @@ export default function Chapters() {
                 }
                 style={{
                   marginBottom: 16,
-                  background: '#fff',
+                  background: 'var(--color-bg-container)',
                   borderRadius: 8,
-                  border: '1px solid #f0f0f0',
+                  border: '1px solid var(--color-border)',
                 }}
               >
                 <List

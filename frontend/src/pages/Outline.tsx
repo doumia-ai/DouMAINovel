@@ -1049,7 +1049,7 @@ export default function Outline() {
                               key={sceneIdx}
                               size="small"
                               style={{
-                                backgroundColor: '#fafafa',
+                                backgroundColor: 'var(--color-bg-layout)',
                                 maxWidth: '100%',
                                 overflow: 'hidden'
                               }}
@@ -1163,7 +1163,7 @@ export default function Outline() {
                       <Card size="small" title="场景">
                         <Space direction="vertical" size="small" style={{ width: '100%' }}>
                           {plan.scenes.map((scene, sceneIdx) => (
-                            <Card key={sceneIdx} size="small" style={{ backgroundColor: '#fafafa' }}>
+                            <Card key={sceneIdx} size="small" style={{ backgroundColor: 'var(--color-bg-layout)' }}>
                               <div><strong>地点：</strong>{scene.location}</div>
                               <div><strong>角色：</strong>{scene.characters.join('、')}</div>
                               <div><strong>目的：</strong>{scene.purpose}</div>
@@ -1500,7 +1500,7 @@ export default function Outline() {
                   <Card size="small" title="场景" bordered={false}>
                     <Space direction="vertical" size="small" style={{ width: '100%' }}>
                       {batchPreviewData.expansion_results[selectedOutlineIdx].chapter_plans[selectedChapterIdx].scenes!.map((scene: any, sceneIdx: number) => (
-                        <Card key={sceneIdx} size="small" style={{ backgroundColor: '#fafafa' }}>
+                        <Card key={sceneIdx} size="small" style={{ backgroundColor: 'var(--color-bg-layout)' }}>
                           <div><strong>地点：</strong>{scene.location}</div>
                           <div><strong>角色：</strong>{scene.characters.join('、')}</div>
                           <div><strong>目的：</strong>{scene.purpose}</div>

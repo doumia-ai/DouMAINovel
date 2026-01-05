@@ -383,7 +383,7 @@ export default function Relationships() {
                       key={category}
                       size="small"
                       title={categoryLabels[category] || category}
-                      headStyle={{ backgroundColor: '#f5f5f5' }}
+                      headStyle={{ backgroundColor: 'var(--color-bg-layout)' }}
                     >
                       <Space direction="vertical" style={{ width: '100%' }}>
                         {types.map(type => (

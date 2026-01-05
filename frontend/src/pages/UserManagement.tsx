@@ -36,6 +36,7 @@ import {
 import { adminApi } from '../services/api';
 import type { User } from '../types';
 import UserMenu from '../components/UserMenu';
+import { useTheme } from '../contexts/ThemeContext';
 
 const { Title, Text } = Typography;
 
@@ -45,6 +46,7 @@ interface UserWithStatus extends User {
 
 export default function UserManagement() {
   const navigate = useNavigate();
+  const { actualTheme } = useTheme();
   const [users, setUsers] = useState<UserWithStatus[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -506,9 +508,9 @@ export default function UserManagement() {
         <Card
           variant="borderless"
           style={{
-            background: 'rgba(255, 255, 255, 0.7)',
+            background: actualTheme === 'dark' ? 'rgba(36, 36, 56, 0.7)' : 'rgba(255, 255, 255, 0.7)',
             borderRadius: isMobile ? 16 : 24,
-            border: '1px solid rgba(255, 255, 255, 0.4)',
+            border: actualTheme === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(255, 255, 255, 0.4)',
             backdropFilter: 'blur(20px)',
             boxShadow: '0 4px 24px rgba(0, 0, 0, 0.04)',
             flex: 1,
