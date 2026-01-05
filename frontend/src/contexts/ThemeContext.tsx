@@ -13,13 +13,20 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 const THEME_STORAGE_KEY = 'mumu-novel-theme-mode';
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  // 从 localStorage 读取保存的主题模式
+  // 从 localStorage 读取保存的主题模式，如果没有保存则检测系统主题并设置为auto
   const [themeMode, setThemeModeState] = useState<ThemeMode>(() => {
     const saved = localStorage.getItem(THEME_STORAGE_KEY);
     if (saved === 'light' || saved === 'dark' || saved === 'auto') {
       return saved;
     }
-    return 'light'; // 默认浅色模式
+    // 首次使用：检测系统主题并设置为auto模式
+    if (typeof window !== 'undefined' && window.matchMedia) {
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      // 保存auto模式到localStorage
+      localStorage.setItem(THEME_STORAGE_KEY, 'auto');
+      return 'auto';
+    }
+    return 'light'; // 降级到浅色模式
   });
 
   // 系统主题偏好

@@ -1,5 +1,6 @@
 import { Segmented } from 'antd';
 import { useTheme, type ThemeMode } from '../contexts/ThemeContext';
+import { SunOutlined, MoonOutlined, LaptopOutlined } from '@ant-design/icons';
 
 interface ThemeSwitcherProps {
   style?: React.CSSProperties;
@@ -9,9 +10,30 @@ export default function ThemeSwitcher({ style }: ThemeSwitcherProps) {
   const { themeMode, setThemeMode } = useTheme();
 
   const options = [
-    { label: '浅色', value: 'light' as ThemeMode },
-    { label: '深色', value: 'dark' as ThemeMode },
-    { label: '自动', value: 'auto' as ThemeMode },
+    { 
+      label: (
+        <span title="浅色模式">
+          <SunOutlined style={{ fontSize: 16 }} />
+        </span>
+      ), 
+      value: 'light' as ThemeMode 
+    },
+    { 
+      label: (
+        <span title="深色模式">
+          <MoonOutlined style={{ fontSize: 16 }} />
+        </span>
+      ), 
+      value: 'dark' as ThemeMode 
+    },
+    { 
+      label: (
+        <span title="自动模式">
+          <LaptopOutlined style={{ fontSize: 16 }} />
+        </span>
+      ), 
+      value: 'auto' as ThemeMode 
+    },
   ];
 
   return (

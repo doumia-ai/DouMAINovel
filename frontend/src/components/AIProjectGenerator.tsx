@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Button, Space, Typography, message, Progress } from 'antd';
+import { Card, Button, Space, Typography, message, Progress, ConfigProvider, theme } from 'antd';
 import { CheckCircleOutlined, LoadingOutlined } from '@ant-design/icons';
 import { wizardStreamApi } from '../services/api';
 import type { ApiError } from '../types';
+import { useTheme } from '../contexts/ThemeContext';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -45,6 +46,7 @@ export const AIProjectGenerator: React.FC<AIProjectGeneratorProps> = ({
   resumeProjectId
 }) => {
   const navigate = useNavigate();
+  const { actualTheme } = useTheme();
 
   // 状态管理
   const [loading, setLoading] = useState(false);
@@ -803,26 +805,31 @@ export const AIProjectGenerator: React.FC<AIProjectGeneratorProps> = ({
 
   // 渲染生成进度页面
   const renderGenerating = () => (
-    <div style={{
-      textAlign: 'center',
-      padding: isMobile ? '32px 16px' : '40px 20px',
-      maxWidth: '100%',
-      overflow: 'hidden'
-    }}>
-      <Title
-        level={isMobile ? 4 : 3}
-        style={{
-          marginBottom: 32,
-          color: 'var(--color-text-primary)',
-          wordBreak: 'break-word',
-          whiteSpace: 'normal',
-          overflowWrap: 'break-word'
-        }}
-      >
-        正在为《{config.title}》生成内容
-      </Title>
+    <ConfigProvider
+      theme={{
+        algorithm: actualTheme === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm,
+      }}
+    >
+      <div style={{
+        textAlign: 'center',
+        padding: isMobile ? '32px 16px' : '40px 20px',
+        maxWidth: '100%',
+        overflow: 'hidden'
+      }}>
+        <Title
+          level={isMobile ? 4 : 3}
+          style={{
+            marginBottom: 32,
+            color: 'var(--color-text-primary)',
+            wordBreak: 'break-word',
+            whiteSpace: 'normal',
+            overflowWrap: 'break-word'
+          }}
+        >
+          正在为《{config.title}》生成内容
+        </Title>
 
-      <Card style={{ marginBottom: 24, maxWidth: '100%' }}>
+        <Card style={{ marginBottom: 24, maxWidth: '100%' }}>
         <Progress
           percent={progress}
           status={hasError ? 'exception' : (progress === 100 ? 'success' : 'active')}
@@ -963,7 +970,8 @@ export const AIProjectGenerator: React.FC<AIProjectGeneratorProps> = ({
         </Space>
       )}
 
-    </div>
+      </div>
+    </ConfigProvider>
   );
 
   return renderGenerating();
