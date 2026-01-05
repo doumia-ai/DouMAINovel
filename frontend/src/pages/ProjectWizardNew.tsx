@@ -151,7 +151,7 @@ export default function ProjectWizardNew() {
 
   // 渲染表单页面
   const renderForm = () => (
-    <Card>
+    <Card style={{ background: 'var(--color-bg-container)' }}>
       <Title level={isMobile ? 4 : 3} style={{ marginBottom: 24 }}>
         创建新项目
       </Title>

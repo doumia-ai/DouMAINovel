@@ -1,11 +1,6 @@
 name: Build and Push Docker Image
 
 on:
-  push:
-    branches:
-      - optimize
-    tags:
-      - "v*-e"
   workflow_dispatch:
 
 jobs:
@@ -45,7 +40,5 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-
-          # ⭐ 核心：buildx 缓存
           cache-from: type=gha
           cache-to: type=gha,mode=max

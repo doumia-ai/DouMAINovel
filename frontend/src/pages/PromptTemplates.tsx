@@ -249,7 +249,7 @@ export default function PromptTemplates() {
       {contextHolder}
       <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(180deg, var(--color-bg-base) 0%, #EEF2F3 100%)',
+      background: 'linear-gradient(180deg, var(--color-bg-base) 0%, var(--color-bg-layout) 100%)',
       padding: isMobile ? '20px 16px' : '40px 24px',
       display: 'flex',
       flexDirection: 'column',
