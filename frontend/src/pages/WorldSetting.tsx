@@ -1,10 +1,11 @@
-import { Card, Descriptions, Empty, Typography, Button, Modal, Form, Input, message, Flex } from 'antd';
+import { Card, Descriptions, Empty, Typography, Button, Modal, Form, Input, message, Flex, ConfigProvider, theme } from 'antd';
 import { GlobalOutlined, EditOutlined, SyncOutlined } from '@ant-design/icons';
 import { useState } from 'react';
 import { useStore } from '../store';
 import { cardStyles } from '../components/CardStyles';
 import { projectApi, wizardStreamApi } from '../services/api';
 import { SSELoadingOverlay } from '../components/SSELoadingOverlay';
+import { useTheme } from '../contexts/ThemeContext';
 
 const { Title, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -26,6 +27,7 @@ export default function WorldSetting() {
   } | null>(null);
   const [isSavingPreview, setIsSavingPreview] = useState(false);
   const [modal, contextHolder] = Modal.useModal();
+  const { actualTheme } = useTheme();
 
   // AI重新生成世界观
   const handleRegenerate = async () => {
@@ -131,95 +133,106 @@ export default function WorldSetting() {
 
   if (!hasWorldSetting) {
     return (
+      <ConfigProvider
+        theme={{
+          algorithm: actualTheme === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm,
+        }}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+          {/* 固定头部 */}
+          <div style={{
+            position: 'sticky',
+            top: 0,
+            zIndex: 10,
+            background: 'var(--color-bg-container)',
+            padding: '16px 0',
+            marginBottom: 16,
+            borderBottom: '1px solid var(--color-border-secondary)',
+            display: 'flex',
+            alignItems: 'center'
+          }}>
+            <GlobalOutlined style={{ fontSize: 24, marginRight: 12, color: 'var(--color-primary)' }} />
+            <h2 style={{ margin: 0, color: 'var(--color-text)' }}>世界设定</h2>
+          </div>
+
+          {/* 可滚动内容区域 */}
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            <Empty
+              description="暂无世界设定信息"
+              style={{ marginTop: 60 }}
+            >
+              <Paragraph type="secondary">
+                世界设定信息在创建项目向导中生成，用于构建小说的世界观背景。
+              </Paragraph>
+            </Empty>
+        </div>
+      </div>
+    </ConfigProvider>
+  );
+}
+
+  return (
+    <ConfigProvider
+      theme={{
+        algorithm: actualTheme === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm,
+      }}
+    >
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        {contextHolder}
         {/* 固定头部 */}
         <div style={{
           position: 'sticky',
           top: 0,
           zIndex: 10,
-          backgroundColor: '#fff',
+          background: 'var(--color-bg-container)',
           padding: '16px 0',
-          marginBottom: 16,
-          borderBottom: '1px solid var(--color-border-secondary)',
-          display: 'flex',
-          alignItems: 'center'
+          marginBottom: 24,
+          borderBottom: '1px solid var(--color-border-secondary)'
         }}>
-          <GlobalOutlined style={{ fontSize: 24, marginRight: 12, color: 'var(--color-primary)' }} />
-          <h2 style={{ margin: 0 }}>世界设定</h2>
-        </div>
-
-        {/* 可滚动内容区域 */}
-        <div style={{ flex: 1, overflowY: 'auto' }}>
-          <Empty
-            description="暂无世界设定信息"
-            style={{ marginTop: 60 }}
+          <Flex
+            justify="space-between"
+            align="flex-start"
+            gap={12}
+            wrap="wrap"
           >
-            <Paragraph type="secondary">
-              世界设定信息在创建项目向导中生成，用于构建小说的世界观背景。
-            </Paragraph>
-          </Empty>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {contextHolder}
-      {/* 固定头部 */}
-      <div style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 10,
-        backgroundColor: '#fff',
-        padding: '16px 0',
-        marginBottom: 24,
-        borderBottom: '1px solid #f0f0f0'
-      }}>
-        <Flex
-          justify="space-between"
-          align="flex-start"
-          gap={12}
-          wrap="wrap"
-        >
-          <div style={{ display: 'flex', alignItems: 'center', minWidth: 'fit-content' }}>
-            <GlobalOutlined style={{ fontSize: 24, marginRight: 12, color: 'var(--color-primary)' }} />
-            <h2 style={{ margin: 0, whiteSpace: 'nowrap' }}>世界设定</h2>
-          </div>
-          <Flex gap={8} wrap="wrap" style={{ flex: '0 1 auto' }}>
-            <Button
-              icon={<SyncOutlined />}
-              onClick={handleRegenerate}
-              disabled={isRegenerating}
-              style={{
-                minWidth: 'fit-content',
-                flex: '1 1 auto'
-              }}
-            >
-              <span className="button-text-mobile">AI重新生成</span>
-            </Button>
-            <Button
-              type="primary"
-              icon={<EditOutlined />}
-              onClick={() => {
-                editForm.setFieldsValue({
-                  world_time_period: currentProject.world_time_period || '',
-                  world_location: currentProject.world_location || '',
-                  world_atmosphere: currentProject.world_atmosphere || '',
-                  world_rules: currentProject.world_rules || '',
-                });
-                setIsEditModalVisible(true);
-              }}
-              style={{
-                minWidth: 'fit-content',
-                flex: '1 1 auto'
-              }}
-            >
-              <span className="button-text-mobile">编辑世界观</span>
-            </Button>
+            <div style={{ display: 'flex', alignItems: 'center', minWidth: 'fit-content' }}>
+              <GlobalOutlined style={{ fontSize: 24, marginRight: 12, color: 'var(--color-primary)' }} />
+              <h2 style={{ margin: 0, whiteSpace: 'nowrap' }}>世界设定</h2>
+            </div>
+            <Flex gap={8} wrap="wrap" style={{ flex: '0 1 auto' }}>
+              <Button
+                icon={<SyncOutlined />}
+                onClick={handleRegenerate}
+                disabled={isRegenerating}
+                style={{
+                  minWidth: 'fit-content',
+                  flex: '1 1 auto'
+                }}
+              >
+                <span className="button-text-mobile">AI重新生成</span>
+              </Button>
+              <Button
+                type="primary"
+                icon={<EditOutlined />}
+                onClick={() => {
+                  editForm.setFieldsValue({
+                    world_time_period: currentProject.world_time_period || '',
+                    world_location: currentProject.world_location || '',
+                    world_atmosphere: currentProject.world_atmosphere || '',
+                    world_rules: currentProject.world_rules || '',
+                  });
+                  setIsEditModalVisible(true);
+                }}
+                style={{
+                  minWidth: 'fit-content',
+                  flex: '1 1 auto'
+                }}
+              >
+                <span className="button-text-mobile">编辑世界观</span>
+              </Button>
+            </Flex>
           </Flex>
-        </Flex>
-      </div>
+        </div>
 
       {/* 可滚动内容区域 */}
       <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -337,100 +350,106 @@ export default function WorldSetting() {
       </div>
 
       {/* 编辑世界观模态框 */}
-      <Modal
-        title="编辑世界观"
-        open={isEditModalVisible}
-        centered
-        onCancel={() => {
-          setIsEditModalVisible(false);
-          editForm.resetFields();
+      <ConfigProvider
+        theme={{
+          algorithm: actualTheme === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm,
         }}
-        onOk={async () => {
-          try {
-            const values = await editForm.validateFields();
-            setIsSaving(true);
-
-            const updatedProject = await projectApi.updateProject(currentProject.id, {
-              world_time_period: values.world_time_period,
-              world_location: values.world_location,
-              world_atmosphere: values.world_atmosphere,
-              world_rules: values.world_rules,
-            });
-
-            setCurrentProject(updatedProject);
-            message.success('世界观更新成功');
+      >
+        <Modal
+          title="编辑世界观"
+          open={isEditModalVisible}
+          centered
+          onCancel={() => {
             setIsEditModalVisible(false);
             editForm.resetFields();
-          } catch (error) {
-            console.error('更新世界观失败:', error);
-            message.error('更新失败，请重试');
-          } finally {
-            setIsSaving(false);
-          }
-        }}
-        confirmLoading={isSaving}
-        width={800}
-        okText="保存"
-        cancelText="取消"
-      >
-        <Form
-          form={editForm}
-          layout="vertical"
-          style={{ marginTop: 16 }}
+          }}
+          onOk={async () => {
+            try {
+              const values = await editForm.validateFields();
+              setIsSaving(true);
+
+              const updatedProject = await projectApi.updateProject(currentProject.id, {
+                world_time_period: values.world_time_period,
+                world_location: values.world_location,
+                world_atmosphere: values.world_atmosphere,
+                world_rules: values.world_rules,
+              });
+
+              setCurrentProject(updatedProject);
+              message.success('世界观更新成功');
+              setIsEditModalVisible(false);
+              editForm.resetFields();
+            } catch (error) {
+              console.error('更新世界观失败:', error);
+              message.error('更新失败，请重试');
+            } finally {
+              setIsSaving(false);
+            }
+          }}
+          confirmLoading={isSaving}
+          width={800}
+          okText="保存"
+          cancelText="取消"
         >
-          <Form.Item
-            label="时间设定"
-            name="world_time_period"
-            rules={[{ required: true, message: '请输入时间设定' }]}
+          <Form
+            form={editForm}
+            layout="vertical"
+            style={{ marginTop: 16 }}
           >
-            <TextArea
-              rows={4}
-              placeholder="描述故事发生的时代背景..."
-              showCount
-              maxLength={1000}
-            />
-          </Form.Item>
+            <Form.Item
+              label="时间设定"
+              name="world_time_period"
+              rules={[{ required: true, message: '请输入时间设定' }]}
+            >
+              <TextArea
+                rows={4}
+                placeholder="描述故事发生的时代背景..."
+                showCount
+                maxLength={1000}
+              />
+            </Form.Item>
 
-          <Form.Item
-            label="地点设定"
-            name="world_location"
-            rules={[{ required: true, message: '请输入地点设定' }]}
-          >
-            <TextArea
-              rows={4}
-              placeholder="描述故事发生的地理位置和环境..."
-              showCount
-              maxLength={1000}
-            />
-          </Form.Item>
+            <Form.Item
+              label="地点设定"
+              name="world_location"
+              rules={[{ required: true, message: '请输入地点设定' }]}
+            >
+              <TextArea
+                rows={4}
+                placeholder="描述故事发生的地理位置和环境..."
+                showCount
+                maxLength={1000}
+              />
+            </Form.Item>
 
-          <Form.Item
-            label="氛围设定"
-            name="world_atmosphere"
-            rules={[{ required: true, message: '请输入氛围设定' }]}
-          >
-            <TextArea
-              rows={4}
-              placeholder="描述故事的整体氛围和基调..."
-              showCount
-              maxLength={1000}
-            />
-          </Form.Item>
+            <Form.Item
+              label="氛围设定"
+              name="world_atmosphere"
+              rules={[{ required: true, message: '请输入氛围设定' }]}
+            >
+              <TextArea
+                rows={4}
+                placeholder="描述故事的整体氛围和基调..."
+                showCount
+                maxLength={1000}
+              />
+            </Form.Item>
 
-          <Form.Item
-            label="规则设定"
-            name="world_rules"
-            rules={[{ required: true, message: '请输入规则设定' }]}
-          >
-            <TextArea
-              rows={4}
-              placeholder="描述这个世界的特殊规则和设定..."
-              showCount
-              maxLength={1000}
-            />
-          </Form.Item>
-        </Form>
-      </Modal>
+            <Form.Item
+              label="规则设定"
+              name="world_rules"
+              rules={[{ required: true, message: '请输入规则设定' }]}
+            >
+              <TextArea
+                rows={4}
+                placeholder="描述这个世界的特殊规则和设定..."
+                showCount
+                maxLength={1000}
+              />
+            </Form.Item>
+          </Form>
+        </Modal>
+      </ConfigProvider>
 
       {/* AI重新生成加载遮罩 */}
       <SSELoadingOverlay
@@ -440,92 +459,99 @@ export default function WorldSetting() {
       />
 
       {/* 预览重新生成的内容模态框 */}
-      <Modal
-        title="预览重新生成的世界观"
-        open={isPreviewModalVisible}
-        centered
-        width={900}
-        onOk={handleConfirmSave}
-        onCancel={handleCancelSave}
-        confirmLoading={isSavingPreview}
-        okText="确认替换"
-        cancelText="取消"
-        okButtonProps={{ danger: true }}
+      <ConfigProvider
+        theme={{
+          algorithm: actualTheme === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm,
+        }}
       >
-        {newWorldData && (
-          <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>
-            <div style={{ marginBottom: 24, padding: 16, background: 'var(--color-warning-bg)', border: '1px solid var(--color-warning-border)', borderRadius: 8 }}>
-              <Typography.Text type="warning" strong>
-                ⚠️ 注意：点击"确认替换"将会用新内容替换当前的世界观设定
-              </Typography.Text>
-            </div>
+        <Modal
+          title="预览重新生成的世界观"
+          open={isPreviewModalVisible}
+          centered
+          width={900}
+          onOk={handleConfirmSave}
+          onCancel={handleCancelSave}
+          confirmLoading={isSavingPreview}
+          okText="确认替换"
+          cancelText="取消"
+          okButtonProps={{ danger: true }}
+        >
+          {newWorldData && (
+            <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+              <div style={{ marginBottom: 24, padding: 16, background: 'var(--color-warning-bg)', border: '1px solid var(--color-warning-border)', borderRadius: 8 }}>
+                <Typography.Text type="warning" strong>
+                  ⚠️ 注意：点击"确认替换"将会用新内容替换当前的世界观设定
+                </Typography.Text>
+              </div>
 
-            <div style={{ marginBottom: 24 }}>
-              <Title level={5} style={{ color: 'var(--color-primary)', marginBottom: 12 }}>
-                时间设定
-              </Title>
-              <Paragraph style={{
-                fontSize: 15,
-                lineHeight: 1.8,
-                padding: 16,
-                background: '#f5f5f5',
-                borderRadius: 8,
-                borderLeft: '4px solid #1890ff'
-              }}>
-                {newWorldData.time_period}
-              </Paragraph>
-            </div>
+              <div style={{ marginBottom: 24 }}>
+                <Title level={5} style={{ color: 'var(--color-primary)', marginBottom: 12 }}>
+                  时间设定
+                </Title>
+                <Paragraph style={{
+                  fontSize: 15,
+                  lineHeight: 1.8,
+                  padding: 16,
+                  background: 'var(--color-bg-layout)',
+                  borderRadius: 8,
+                  borderLeft: '4px solid var(--color-primary)'
+                }}>
+                  {newWorldData.time_period}
+                </Paragraph>
+              </div>
 
-            <div style={{ marginBottom: 24 }}>
-              <Title level={5} style={{ color: '#52c41a', marginBottom: 12 }}>
-                地点设定
-              </Title>
-              <Paragraph style={{
-                fontSize: 15,
-                lineHeight: 1.8,
-                padding: 16,
-                background: '#f5f5f5',
-                borderRadius: 8,
-                borderLeft: '4px solid #52c41a'
-              }}>
-                {newWorldData.location}
-              </Paragraph>
-            </div>
+              <div style={{ marginBottom: 24 }}>
+                <Title level={5} style={{ color: 'var(--color-success)', marginBottom: 12 }}>
+                  地点设定
+                </Title>
+                <Paragraph style={{
+                  fontSize: 15,
+                  lineHeight: 1.8,
+                  padding: 16,
+                  background: 'var(--color-bg-layout)',
+                  borderRadius: 8,
+                  borderLeft: '4px solid var(--color-success)'
+                }}>
+                  {newWorldData.location}
+                </Paragraph>
+              </div>
 
-            <div style={{ marginBottom: 24 }}>
-              <Title level={5} style={{ color: '#faad14', marginBottom: 12 }}>
-                氛围设定
-              </Title>
-              <Paragraph style={{
-                fontSize: 15,
-                lineHeight: 1.8,
-                padding: 16,
-                background: '#f5f5f5',
-                borderRadius: 8,
-                borderLeft: '4px solid #faad14'
-              }}>
-                {newWorldData.atmosphere}
-              </Paragraph>
-            </div>
+              <div style={{ marginBottom: 24 }}>
+                <Title level={5} style={{ color: 'var(--color-warning)', marginBottom: 12 }}>
+                  氛围设定
+                </Title>
+                <Paragraph style={{
+                  fontSize: 15,
+                  lineHeight: 1.8,
+                  padding: 16,
+                  background: 'var(--color-bg-layout)',
+                  borderRadius: 8,
+                  borderLeft: '4px solid var(--color-warning)'
+                }}>
+                  {newWorldData.atmosphere}
+                </Paragraph>
+              </div>
 
-            <div style={{ marginBottom: 0 }}>
-              <Title level={5} style={{ color: '#f5222d', marginBottom: 12 }}>
-                规则设定
-              </Title>
-              <Paragraph style={{
-                fontSize: 15,
-                lineHeight: 1.8,
-                padding: 16,
-                background: '#f5f5f5',
-                borderRadius: 8,
-                borderLeft: '4px solid #f5222d'
-              }}>
-                {newWorldData.rules}
-              </Paragraph>
+              <div style={{ marginBottom: 0 }}>
+                <Title level={5} style={{ color: 'var(--color-error)', marginBottom: 12 }}>
+                  规则设定
+                </Title>
+                <Paragraph style={{
+                  fontSize: 15,
+                  lineHeight: 1.8,
+                  padding: 16,
+                  background: 'var(--color-bg-layout)',
+                  borderRadius: 8,
+                  borderLeft: '4px solid var(--color-error)'
+                }}>
+                  {newWorldData.rules}
+                </Paragraph>
+              </div>
             </div>
-          </div>
-        )}
-      </Modal>
+          )}
+        </Modal>
+      </ConfigProvider>
     </div>
+  </ConfigProvider>
   );
 }

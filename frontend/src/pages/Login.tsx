@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Button, Card, Space, Typography, message, Spin, Form, Input, Tabs } from 'antd';
+import { Button, Card, Space, Typography, message, Spin, Form, Input, Tabs, ConfigProvider, theme } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { authApi } from '../services/api';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import AnnouncementModal from '../components/AnnouncementModal';
+import { useTheme } from '../contexts/ThemeContext';
 
 const { Title, Paragraph } = Typography;
 
@@ -16,6 +17,7 @@ export default function Login() {
   const [linuxdoEnabled, setLinuxdoEnabled] = useState(false);
   const [form] = Form.useForm();
   const [showAnnouncement, setShowAnnouncement] = useState(false);
+  const { actualTheme } = useTheme();
 
   // 检查是否已登录和获取认证配置
   useEffect(() => {
@@ -132,23 +134,26 @@ export default function Login() {
         />
       </Form.Item>
       <Form.Item style={{ marginBottom: 0 }}>
-        <Button
-          type="primary"
-          htmlType="submit"
-          loading={loading}
-          block
-          style={{
-            height: 48,
-            fontSize: 16,
-            fontWeight: 600,
-            background: 'var(--color-primary)',
-            border: 'none',
-            borderRadius: '12px',
-            boxShadow: 'var(--shadow-primary)',
+        <ConfigProvider
+          theme={{
+            algorithm: actualTheme === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm,
           }}
         >
-          登录
-        </Button>
+          <Button
+            type="primary"
+            htmlType="submit"
+            loading={loading}
+            block
+            style={{
+              height: 48,
+              fontSize: 16,
+              fontWeight: 600,
+              borderRadius: '12px',
+            }}
+          >
+            登录
+          </Button>
+        </ConfigProvider>
       </Form.Item>
     </Form>
   );
@@ -156,45 +161,46 @@ export default function Login() {
   // 渲染LinuxDO登录
   const renderLinuxDOLogin = () => (
     <div style={{ padding: '24px 0 8px' }}>
-      <Button
-        type="primary"
-        size="large"
-        icon={
-          <img
-            src="/favicon.ico"
-            alt="LinuxDO"
+        <ConfigProvider
+          theme={{
+            algorithm: actualTheme === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm,
+          }}
+        >
+          <Button
+            type="primary"
+            size="large"
+            icon={
+              <img
+                src="/favicon.ico"
+                alt="LinuxDO"
+                style={{
+                  width: 20,
+                  height: 20,
+                  marginRight: 8,
+                  verticalAlign: 'middle',
+                }}
+              />
+            }
+            loading={loading}
+            onClick={handleLinuxDOLogin}
+            block
             style={{
-              width: 20,
-              height: 20,
-              marginRight: 8,
-              verticalAlign: 'middle',
+              height: 52,
+              fontSize: 16,
+              fontWeight: 600,
+              borderRadius: '12px',
+              transition: 'all 0.3s ease',
             }}
-          />
-        }
-        loading={loading}
-        onClick={handleLinuxDOLogin}
-        block
-        style={{
-          height: 52,
-          fontSize: 16,
-          fontWeight: 600,
-          background: 'var(--color-primary)',
-          border: 'none',
-          borderRadius: '12px',
-          boxShadow: 'var(--shadow-primary)',
-          transition: 'all 0.3s ease',
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.transform = 'translateY(-2px)';
-          e.currentTarget.style.boxShadow = 'var(--shadow-elevated)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = 'translateY(0)';
-          e.currentTarget.style.boxShadow = 'var(--shadow-primary)';
-        }}
-      >
-        使用 LinuxDO 登录
-      </Button>
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+            }}
+          >
+            使用 LinuxDO 登录
+          </Button>
+        </ConfigProvider>
     </div>
   );
 
