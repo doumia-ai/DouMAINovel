@@ -21,8 +21,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
     // 首次使用：检测系统主题并设置为auto模式
     if (typeof window !== 'undefined' && window.matchMedia) {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      // 保存auto模式到localStorage
+      // 检测系统主题偏好并保存auto模式到localStorage
+      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        localStorage.setItem(THEME_STORAGE_KEY, 'auto');
+        return 'auto';
+      }
       localStorage.setItem(THEME_STORAGE_KEY, 'auto');
       return 'auto';
     }
