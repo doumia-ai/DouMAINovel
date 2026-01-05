@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Form, Input, Button, Select, Slider, InputNumber, message, Space, Typography, Spin, Modal, Alert, Grid, Tabs, List, Tag, Popconfirm, Empty, Row, Col } from 'antd';
+import { Card, Form, Input, Button, Select, Slider, InputNumber, message, Space, Typography, Spin, Modal, Alert, Grid, Tabs, List, Tag, Popconfirm, Empty, Row, Col, ConfigProvider, theme } from 'antd';
 import { SettingOutlined, SaveOutlined, DeleteOutlined, ReloadOutlined, ArrowLeftOutlined, InfoCircleOutlined, CheckCircleOutlined, CloseCircleOutlined, ThunderboltOutlined, PlusOutlined, EditOutlined, CopyOutlined } from '@ant-design/icons';
 import { settingsApi } from '../services/api';
 import type { SettingsUpdate, APIKeyPreset, PresetCreateRequest, APIKeyPresetConfig } from '../types';
 import KeyPoolManager from '../components/KeyPoolManager';
+import { useTheme } from '../contexts/ThemeContext';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -35,6 +36,7 @@ export default function SettingsPage() {
     suggestions?: string[];
   } | null>(null);
   const [showTestResult, setShowTestResult] = useState(false);
+  const { actualTheme } = useTheme();
 
   // 预设相关状态
   const [activeTab, setActiveTab] = useState('current');
@@ -622,7 +624,11 @@ export default function SettingsPage() {
   );
 
   return (
-    <>
+    <ConfigProvider
+      theme={{
+        algorithm: actualTheme === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm,
+      }}
+    >
       {contextHolder}
       <div style={{
         minHeight: '100vh',
@@ -703,7 +709,7 @@ export default function SettingsPage() {
           <Card
             variant="borderless"
             style={{
-              background: 'rgba(255, 255, 255, 0.95)',
+              background: actualTheme === 'dark' ? 'rgba(36, 36, 56, 0.95)' : 'rgba(255, 255, 255, 0.95)',
               borderRadius: isMobile ? 12 : 16,
               boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
               flex: 1,
@@ -1240,16 +1246,21 @@ export default function SettingsPage() {
         </div>
 
         {/* 预设编辑对话框 */}
-        <Modal
-          title={editingPreset ? '编辑预设' : '创建预设'}
-          open={isPresetModalVisible}
-          onOk={handlePresetSave}
-          onCancel={handlePresetCancel}
-          width={isMobile ? '90%' : 600}
-          centered
-          okText="保存"
-          cancelText="取消"
+        <ConfigProvider
+          theme={{
+            algorithm: actualTheme === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm,
+          }}
         >
+          <Modal
+            title={editingPreset ? '编辑预设' : '创建预设'}
+            open={isPresetModalVisible}
+            onOk={handlePresetSave}
+            onCancel={handlePresetCancel}
+            width={isMobile ? '90%' : 600}
+            centered
+            okText="保存"
+            cancelText="取消"
+          >
           <Form
             form={presetForm}
             layout="vertical"
@@ -1344,8 +1355,9 @@ export default function SettingsPage() {
               />
             </Form.Item>
           </Form>
-        </Modal>
+          </Modal>
+        </ConfigProvider>
       </div>
-    </>
+    </ConfigProvider>
   );
 }
