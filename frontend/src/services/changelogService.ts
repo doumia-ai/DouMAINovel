@@ -1,6 +1,7 @@
 /**
  * GitHub 提交日志获取服务
- * 用于从 GitHub API 获取项目的提交历史并转换为更新日志
+ * 通过后端 API 代理获取项目的提交历史并转换为更新日志
+ * 后端支持 GitHub Token 认证，可提升 API 限制到 5000 次/小时
  */
 
 export interface GitHubCommit {
@@ -35,9 +36,12 @@ export interface ChangelogEntry {
   scope?: string;
 }
 
-const GITHUB_API_BASE = 'https://api.github.com';
-const REPO_OWNER = 'doumia-ai';
-const REPO_NAME = 'DouMAINovel';
+// 后端 API 响应类型
+interface ChangelogResponse {
+  commits: GitHubCommit[];
+  cached: boolean;
+  cache_time: string | null;
+}
 
 /**
  * 提交类型映射表
@@ -148,25 +152,31 @@ function parseCommitType(message: string): { type: ChangelogEntry['type']; scope
 }
 
 /**
- * 获取GitHub提交历史
+ * 通过后端 API 获取 GitHub 提交历史
+ * 后端支持 GitHub Token 认证，可提升 API 限制
  */
 export async function fetchGitHubCommits(page: number = 1, perPage: number = 30): Promise<GitHubCommit[]> {
   try {
-    const url = `${GITHUB_API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/commits?author=${REPO_OWNER}&page=${page}&per_page=${perPage}`;
+    const url = `/api/changelog?page=${page}&per_page=${perPage}`;
     
     const response = await fetch(url, {
       method: 'GET',
       headers: {
-        'Accept': 'application/vnd.github.v3+json',
+        'Accept': 'application/json',
       },
-      cache: 'no-cache',
+      credentials: 'include',
     });
 
     if (!response.ok) {
-      throw new Error(`GitHub API 请求失败: ${response.status} ${response.statusText}`);
+      const errorData = await response.json().catch(() => ({}));
+      if (response.status === 429) {
+        throw new Error(errorData.detail || 'GitHub API 请求次数已达上限。请在后端配置 GITHUB_TOKEN 以提升限制。');
+      }
+      throw new Error(errorData.detail || `请求失败: ${response.status} ${response.statusText}`);
     }
 
-    return await response.json();
+    const data: ChangelogResponse = await response.json();
+    return data.commits;
   } catch (error) {
     console.error('获取 GitHub 提交历史失败:', error);
     throw error;

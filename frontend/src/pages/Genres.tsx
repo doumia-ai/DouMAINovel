@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button, Modal, Form, Input, message, Empty, Card, Tag, Space, Divider, Typography, Collapse, Spin, Row, Col } from 'antd';
 import { BookOutlined, PlusOutlined, EditOutlined, DeleteOutlined, ArrowLeftOutlined, LockOutlined } from '@ant-design/icons';
 import api from '../services/api';
+import { cardStyles, cardHoverHandlers, gridConfig } from '../components/CardStyles';
 
 const { TextArea } = Input;
 const { Title, Text, Paragraph } = Typography;
@@ -121,87 +122,123 @@ export default function Genres() {
     const renderGenreCard = (genre: Genre) => (
         <Card
             key={genre.id}
-            title={
-                <Space>
-                    <BookOutlined />
-                    {genre.name}
-                    {genre.is_builtin ? (
-                        <Tag color="blue" icon={<LockOutlined />}>内置</Tag>
-                    ) : (
-                        <Tag color="green">自定义</Tag>
-                    )}
-                </Space>
-            }
-            extra={
-                <Space>
-                    <Button
-                        size="small"
-                        icon={<EditOutlined />}
-                        onClick={() => handleOpenModal(genre)}
-                        title={genre.is_builtin ? '内置类型只能修改描述和指导配置' : '编辑'}
-                    />
-                    {!genre.is_builtin && (
-                        <Button
-                            size="small"
-                            danger
-                            icon={<DeleteOutlined />}
-                            onClick={() => handleDelete(genre.id, genre.name, genre.is_builtin)}
-                        />
-                    )}
-                </Space>
-            }
-            style={{ marginBottom: 16 }}
+            hoverable
+            variant="borderless"
+            style={cardStyles.project}
+            styles={{ body: { padding: 0, overflow: 'hidden' } }}
+            {...cardHoverHandlers}
         >
-            <Paragraph ellipsis={{ rows: 2 }}>{genre.description || '暂无描述'}</Paragraph>
-
-            {genre.keywords && genre.keywords.length > 0 && (
-                <div style={{ marginBottom: 12 }}>
-                    <Text strong>关键元素：</Text>
-                    <div style={{ marginTop: 4 }}>
-                        {genre.keywords.map((keyword, index) => (
-                            <Tag key={index} style={{ marginBottom: 4 }}>{keyword}</Tag>
-                        ))}
+            {/* 头部 */}
+            <div style={{
+                background: genre.is_builtin
+                    ? 'var(--color-bg-layout)'
+                    : 'linear-gradient(135deg, var(--color-primary) 0%, #5A9BA5 50%, var(--color-primary-hover) 100%)',
+                padding: '16px 20px',
+                position: 'relative'
+            }}>
+                <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Space>
+                            <BookOutlined style={{ fontSize: 18, color: genre.is_builtin ? 'var(--color-primary)' : '#fff' }} />
+                            <Title level={5} style={{ margin: 0, color: genre.is_builtin ? 'var(--color-text-primary)' : '#fff' }}>
+                                {genre.name}
+                            </Title>
+                        </Space>
+                        <Space size={4}>
+                            <Button
+                                type="text"
+                                size="small"
+                                icon={<EditOutlined />}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenModal(genre);
+                                }}
+                                style={{ color: genre.is_builtin ? 'var(--color-primary)' : '#fff' }}
+                                title={genre.is_builtin ? '内置类型只能修改描述和指导配置' : '编辑'}
+                            />
+                            {!genre.is_builtin && (
+                                <Button
+                                    type="text"
+                                    size="small"
+                                    danger
+                                    icon={<DeleteOutlined />}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDelete(genre.id, genre.name, genre.is_builtin);
+                                    }}
+                                    style={{ color: '#fff' }}
+                                />
+                            )}
+                        </Space>
                     </div>
-                </div>
-            )}
+                    <Space wrap>
+                        {genre.is_builtin ? (
+                            <Tag color="blue" icon={<LockOutlined />} style={{ margin: 0 }}>内置</Tag>
+                        ) : (
+                            <Tag color="green" style={{ margin: 0 }}>自定义</Tag>
+                        )}
+                    </Space>
+                </Space>
+            </div>
 
-            {genre.example_works && (
-                <div style={{ marginBottom: 12 }}>
-                    <Text strong>参考作品：</Text>
-                    <Text type="secondary" style={{ marginLeft: 8 }}>{genre.example_works}</Text>
-                </div>
-            )}
+            {/* 内容 */}
+            <div style={{ padding: '16px 20px' }}>
+                <Paragraph ellipsis={{ rows: 2 }} style={{ marginBottom: 12, minHeight: 44 }}>
+                    {genre.description || '暂无描述'}
+                </Paragraph>
 
-            <Collapse ghost size="small">
-                {genre.world_building_guide && (
-                    <Panel header="世界观构建指导" key="world">
-                        <Paragraph style={{ whiteSpace: 'pre-wrap', fontSize: 12 }}>
-                            {genre.world_building_guide}
-                        </Paragraph>
-                    </Panel>
+                {genre.keywords && genre.keywords.length > 0 && (
+                    <div style={{ marginBottom: 12 }}>
+                        <Text strong style={{ fontSize: 12 }}>关键元素：</Text>
+                        <div style={{ marginTop: 4 }}>
+                            {genre.keywords.slice(0, 5).map((keyword, index) => (
+                                <Tag key={index} style={{ marginBottom: 4, fontSize: 11 }}>{keyword}</Tag>
+                            ))}
+                            {genre.keywords.length > 5 && (
+                                <Tag style={{ marginBottom: 4, fontSize: 11 }}>+{genre.keywords.length - 5}</Tag>
+                            )}
+                        </div>
+                    </div>
                 )}
-                {genre.character_guide && (
-                    <Panel header="角色塑造指导" key="character">
-                        <Paragraph style={{ whiteSpace: 'pre-wrap', fontSize: 12 }}>
-                            {genre.character_guide}
-                        </Paragraph>
-                    </Panel>
+
+                {genre.example_works && (
+                    <div style={{ marginBottom: 12 }}>
+                        <Text strong style={{ fontSize: 12 }}>参考作品：</Text>
+                        <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>{genre.example_works}</Text>
+                    </div>
                 )}
-                {genre.plot_guide && (
-                    <Panel header="情节设计指导" key="plot">
-                        <Paragraph style={{ whiteSpace: 'pre-wrap', fontSize: 12 }}>
-                            {genre.plot_guide}
-                        </Paragraph>
-                    </Panel>
-                )}
-                {genre.writing_style_guide && (
-                    <Panel header="写作风格指导" key="style">
-                        <Paragraph style={{ whiteSpace: 'pre-wrap', fontSize: 12 }}>
-                            {genre.writing_style_guide}
-                        </Paragraph>
-                    </Panel>
-                )}
-            </Collapse>
+
+                <Collapse ghost size="small" style={{ marginTop: 8 }}>
+                    {genre.world_building_guide && (
+                        <Panel header="世界观构建指导" key="world">
+                            <Paragraph style={{ whiteSpace: 'pre-wrap', fontSize: 12 }}>
+                                {genre.world_building_guide}
+                            </Paragraph>
+                        </Panel>
+                    )}
+                    {genre.character_guide && (
+                        <Panel header="角色塑造指导" key="character">
+                            <Paragraph style={{ whiteSpace: 'pre-wrap', fontSize: 12 }}>
+                                {genre.character_guide}
+                            </Paragraph>
+                        </Panel>
+                    )}
+                    {genre.plot_guide && (
+                        <Panel header="情节设计指导" key="plot">
+                            <Paragraph style={{ whiteSpace: 'pre-wrap', fontSize: 12 }}>
+                                {genre.plot_guide}
+                            </Paragraph>
+                        </Panel>
+                    )}
+                    {genre.writing_style_guide && (
+                        <Panel header="写作风格指导" key="style">
+                            <Paragraph style={{ whiteSpace: 'pre-wrap', fontSize: 12 }}>
+                                {genre.writing_style_guide}
+                            </Paragraph>
+                        </Panel>
+                    )}
+                </Collapse>
+            </div>
         </Card>
     );
 
@@ -283,7 +320,7 @@ export default function Genres() {
                                     </Divider>
                                     <Row gutter={[16, 16]}>
                                         {builtinGenres.map(genre => (
-                                            <Col key={genre.id} xs={24} sm={24} md={12} lg={8} xl={8}>
+                                            <Col key={genre.id} {...gridConfig}>
                                                 {renderGenreCard(genre)}
                                             </Col>
                                         ))}
@@ -302,7 +339,7 @@ export default function Genres() {
                                     </Divider>
                                     <Row gutter={[16, 16]}>
                                         {customGenres.map(genre => (
-                                            <Col key={genre.id} xs={24} sm={24} md={12} lg={8} xl={8}>
+                                            <Col key={genre.id} {...gridConfig}>
                                                 {renderGenreCard(genre)}
                                             </Col>
                                         ))}
@@ -319,13 +356,9 @@ export default function Genres() {
                                         </Space>
                                     </Divider>
                                     <Empty
-                                        description="暂无自定义类型"
+                                        description="暂无自定义类型，点击右上角「新增类型」按钮创建"
                                         image={Empty.PRESENTED_IMAGE_SIMPLE}
-                                    >
-                                        <Button type="primary" onClick={() => handleOpenModal()}>
-                                            创建自定义类型
-                                        </Button>
-                                    </Empty>
+                                    />
                                 </>
                             )}
                         </>

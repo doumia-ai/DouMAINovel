@@ -892,6 +892,7 @@ const Inspiration: React.FC = () => {
                         key={optIndex}
                         hoverable={!msg.optionsDisabled}
                         size="small"
+                        variant="borderless"
                         onClick={() => !msg.optionsDisabled && handleSelectOption(option)}
                         style={{
                           cursor: msg.optionsDisabled ? 'not-allowed' : 'pointer',
@@ -901,8 +902,11 @@ const Inspiration: React.FC = () => {
                           background: msg.optionsDisabled
                             ? 'var(--color-bg-layout)'
                             : msg.isMultiSelect && selectedOptions.includes(option)
-                              ? 'var(--color-bg-spotlight)'
+                              ? 'var(--color-info-bg)'
                               : 'var(--color-bg-container)',
+                          color: msg.isMultiSelect && selectedOptions.includes(option)
+                            ? 'var(--color-primary)'
+                            : 'var(--color-text-primary)',
                           opacity: msg.optionsDisabled ? 0.6 : 1,
                           animation: 'floatIn 0.6s ease-out',
                           animationDelay: `${optIndex * 0.1}s`,
@@ -922,7 +926,7 @@ const Inspiration: React.FC = () => {
                           }
                         }}
                       >
-                        {option}
+                        <span style={{ color: 'inherit' }}>{option}</span>
                       </Card>
                     ))}
 

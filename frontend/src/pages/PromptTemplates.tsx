@@ -445,7 +445,7 @@ export default function PromptTemplates() {
                       <div style={{
                         background: template.is_system_default
                           ? 'var(--color-bg-layout)'
-                          : 'var(--color-primary)',
+                          : 'linear-gradient(135deg, var(--color-primary) 0%, #5A9BA5 50%, var(--color-primary-hover) 100%)',
                         padding: isMobile ? '16px' : '20px',
                         position: 'relative'
                       }}>
