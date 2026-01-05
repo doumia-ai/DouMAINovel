@@ -217,13 +217,13 @@ export default function Genres() {
                 display: 'flex',
                 flexDirection: 'column',
                 overflow: 'hidden',
-                background: '#f5f5f5'
+                background: 'var(--color-bg-layout)'
             }}>
                 {/* 固定头部 */}
                 <div style={{
                     padding: '16px 24px',
-                    background: '#fff',
-                    borderBottom: '1px solid #f0f0f0',
+                    background: 'var(--color-bg-container)',
+                    borderBottom: '1px solid var(--color-border)',
                     flexShrink: 0
                 }}>
                     <div style={{

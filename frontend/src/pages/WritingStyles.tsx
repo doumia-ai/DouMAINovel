@@ -169,10 +169,10 @@ export default function WritingStyles() {
         position: 'sticky',
         top: 0,
         zIndex: 10,
-        backgroundColor: '#fff',
+        backgroundColor: 'var(--color-bg-container)',
         padding: isMobile ? '12px 0' : '16px 0',
         marginBottom: isMobile ? 12 : 16,
-        borderBottom: '1px solid #f0f0f0',
+        borderBottom: '1px solid var(--color-border)',
         display: 'flex',
         flexDirection: isMobile ? 'column' : 'row',
         gap: isMobile ? 12 : 0,
@@ -222,7 +222,7 @@ export default function WritingStyles() {
                     display: 'flex',
                     flexDirection: 'column',
                     borderRadius: 12,
-                    border: style.is_default ? '2px solid #1890ff' : '1px solid #f0f0f0',
+                    border: style.is_default ? '2px solid #1890ff' : '1px solid var(--color-border)',
                   }}
                   bodyStyle={{
                     flex: 1,
@@ -294,7 +294,7 @@ export default function WritingStyles() {
                       style={{
                         fontSize: 12,
                         marginBottom: 0,
-                        backgroundColor: '#fafafa',
+                        backgroundColor: 'var(--color-bg-layout)',
                         padding: 8,
                         borderRadius: 4,
                         flex: 1,

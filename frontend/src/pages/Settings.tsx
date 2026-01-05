@@ -532,10 +532,10 @@ export default function SettingsPage() {
                 <List.Item
                   key={preset.id}
                   style={{
-                    background: isActive ? '#f0f5ff' : 'transparent',
+                    background: isActive ? 'var(--color-info-bg)' : 'var(--color-bg-container)',
                     padding: '16px',
                     marginBottom: '8px',
-                    border: isActive ? '2px solid #1890ff' : '1px solid #f0f0f0',
+                    border: isActive ? '2px solid var(--color-primary)' : `1px solid var(--color-border-secondary)`,
                     borderRadius: '8px',
                   }}
                   actions={[
@@ -585,7 +585,7 @@ export default function SettingsPage() {
                     avatar={
                       isActive && (
                         <CheckCircleOutlined
-                          style={{ fontSize: '24px', color: '#52c41a' }}
+                          style={{ fontSize: '24px', color: 'var(--color-success)' }}
                         />
                       )
                     }
@@ -598,7 +598,7 @@ export default function SettingsPage() {
                     description={
                       <Space direction="vertical" size="small" style={{ width: '100%' }}>
                         {preset.description && (
-                          <div style={{ color: '#666' }}>{preset.description}</div>
+                          <div style={{ color: 'var(--color-text-secondary)' }}>{preset.description}</div>
                         )}
                         <Space wrap>
                           <Tag color={getProviderColor(preset.config.api_provider)}>
@@ -608,7 +608,7 @@ export default function SettingsPage() {
                           <Tag>温度: {preset.config.temperature}</Tag>
                           <Tag>Tokens: {preset.config.max_tokens}</Tag>
                         </Space>
-                        <div style={{ fontSize: '12px', color: '#999' }}>
+                        <div style={{ fontSize: '12px', color: 'var(--color-text-tertiary)' }}>
                           创建于: {new Date(preset.created_at).toLocaleString()}
                         </div>
                       </Space>
@@ -632,7 +632,7 @@ export default function SettingsPage() {
       {contextHolder}
       <div style={{
         minHeight: '100vh',
-        background: 'linear-gradient(180deg, var(--color-bg-base) 0%, #EEF2F3 100%)',
+        background: 'var(--color-bg-base)',
         padding: isMobile ? '20px 16px' : '40px 24px',
         display: 'flex',
         flexDirection: 'column',
@@ -651,7 +651,7 @@ export default function SettingsPage() {
             style={{
               background: 'linear-gradient(135deg, var(--color-primary) 0%, #5A9BA5 50%, var(--color-primary-hover) 100%)',
               borderRadius: isMobile ? 16 : 24,
-              boxShadow: '0 12px 40px rgba(77, 128, 136, 0.25), 0 4px 12px rgba(0, 0, 0, 0.06)',
+              boxShadow: 'var(--shadow-primary)',
               marginBottom: isMobile ? 20 : 24,
               border: 'none',
               position: 'relative',
@@ -709,9 +709,9 @@ export default function SettingsPage() {
           <Card
             variant="borderless"
             style={{
-              background: actualTheme === 'dark' ? 'rgba(36, 36, 56, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+              background: 'var(--color-bg-container)',
               borderRadius: isMobile ? 12 : 16,
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+              boxShadow: 'var(--shadow-card)',
               flex: 1,
             }}
             styles={{
@@ -928,7 +928,7 @@ export default function SettingsPage() {
                                 <div>
                                   <div style={{ fontWeight: 500, fontSize: isMobile ? '13px' : '14px' }}>{option.data.label}</div>
                                   {option.data.description && (
-                                    <div style={{ fontSize: isMobile ? '11px' : '12px', color: '#8c8c8c', marginTop: '2px' }}>
+                                    <div style={{ fontSize: isMobile ? '11px' : '12px', color: 'var(--color-text-tertiary)', marginTop: '2px' }}>
                                       {option.data.description}
                                     </div>
                                   )}
@@ -1035,13 +1035,13 @@ export default function SettingsPage() {
                                         <div style={{
                                           fontSize: isMobile ? '12px' : '13px',
                                           padding: '8px 12px',
-                                          background: '#f6ffed',
+                                          background: 'var(--color-success-bg)',
                                           borderRadius: '4px',
-                                          border: '1px solid #b7eb8f',
+                                          border: '1px solid var(--color-success-border)',
                                           marginTop: '8px'
                                         }}>
                                           <div style={{ marginBottom: '4px', fontWeight: 500 }}>AI 响应预览:</div>
-                                          <div style={{ color: '#595959' }}>{testResult.response_preview}</div>
+                                          <div style={{ color: 'var(--color-text-secondary)' }}>{testResult.response_preview}</div>
                                         </div>
                                       )}
                                       <div style={{ color: 'var(--color-success)', fontSize: isMobile ? '12px' : '13px', marginTop: '4px' }}>
@@ -1054,10 +1054,10 @@ export default function SettingsPage() {
                                         <div style={{
                                           fontSize: isMobile ? '12px' : '13px',
                                           padding: '8px 12px',
-                                          background: '#fff2e8',
+                                          background: 'var(--color-error-bg)',
                                           borderRadius: '4px',
-                                          border: '1px solid #ffbb96',
-                                          color: '#d4380d'
+                                          border: '1px solid var(--color-error-border)',
+                                          color: 'var(--color-error)'
                                         }}>
                                           <strong>错误信息:</strong> {testResult.error}
                                         </div>
@@ -1076,7 +1076,7 @@ export default function SettingsPage() {
                                             margin: 0,
                                             paddingLeft: isMobile ? '16px' : '20px',
                                             fontSize: isMobile ? '12px' : '13px',
-                                            color: '#595959'
+                                            color: 'var(--color-text-secondary)'
                                           }}>
                                             {testResult.suggestions.map((suggestion, index) => (
                                               <li key={index} style={{ marginBottom: '4px' }}>{suggestion}</li>

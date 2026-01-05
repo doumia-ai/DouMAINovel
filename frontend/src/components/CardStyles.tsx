@@ -38,9 +38,9 @@ export const cardStyles = {
     borderRadius: 20,
     overflow: 'hidden',
     background: 'var(--color-bg-container)',
-    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04)',
+    boxShadow: 'var(--shadow-card)',
     transition: 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
-    border: '1px solid rgba(0, 0, 0, 0.04)',
+    border: '1px solid var(--color-border-secondary)',
   } as CSSProperties,
 
   // 卡片内容区域样式
@@ -79,12 +79,12 @@ export const cardHoverHandlers = {
   onMouseEnter: (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.currentTarget;
     target.style.transform = 'translateY(-10px) scale(1.01)';
-    target.style.boxShadow = '0 20px 40px rgba(77, 128, 136, 0.2), 0 8px 16px rgba(0, 0, 0, 0.08)';
+    target.style.boxShadow = 'var(--shadow-elevated)';
   },
   onMouseLeave: (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.currentTarget;
     target.style.transform = 'translateY(0) scale(1)';
-    target.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04)';
+    target.style.boxShadow = 'var(--shadow-card)';
   },
 };
 
@@ -112,17 +112,17 @@ export const characterGridConfig = {
 export const textStyles = {
   label: {
     fontSize: 12,
-    color: 'rgba(0, 0, 0, 0.45)',
+    color: 'var(--color-text-tertiary)',
   } as CSSProperties,
 
   value: {
     fontSize: 14,
-    color: 'rgba(0, 0, 0, 0.85)',
+    color: 'var(--color-text-base)',
   } as CSSProperties,
 
   description: {
     fontSize: 12,
-    color: 'rgba(0, 0, 0, 0.45)',
+    color: 'var(--color-text-tertiary)',
     lineHeight: 1.6,
   } as CSSProperties,
 };

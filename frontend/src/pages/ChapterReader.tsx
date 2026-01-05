@@ -416,9 +416,9 @@ const ChapterReader: React.FC = () => {
           <div
             style={{
               width: 400,
-              borderLeft: '1px solid #f0f0f0',
+              borderLeft: '1px solid var(--color-border)',
               overflowY: 'auto',
-              background: '#fafafa',
+              background: 'var(--color-bg-layout)',
             }}
           >
             <MemorySidebar
