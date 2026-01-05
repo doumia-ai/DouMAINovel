@@ -18,7 +18,7 @@ export interface SSEClientOptions {
   onComplete?: () => void;
   onConnectionError?: (error: Event) => void;
   onCharacterConfirmation?: (data: any) => void;  // 新增：角色确认回调
-  onOrganizationConfirmation?: (data: any) => void; // 新增：组织确认回调
+  onOrganizationConfirmation?: (data: any) => void;  // 新增：组织确认回调
 }
 
 export class SSEClient {
