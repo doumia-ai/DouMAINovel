@@ -77,7 +77,7 @@ export default function UserMenu() {
         <div style={{ padding: '8px 0' }}>
           <Text strong>{currentUser?.display_name || currentUser?.username}</Text>
           <br />
-          <Text type="secondary" style={{ fontSize: 12 }}>
+          <Text style={{ fontSize: 12, color: actualTheme === 'dark' ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.45)' }}>
             Trust Level: {currentUser?.trust_level}
             {currentUser?.is_admin && ' · 管理员'}
           </Text>
@@ -215,7 +215,7 @@ export default function UserMenu() {
               {currentUser.display_name || currentUser.username}
             </Text>
             <Text style={{
-              color: 'var(--color-text-secondary)',
+              color: actualTheme === 'dark' ? 'rgba(255,255,255,0.65)' : 'var(--color-text-secondary)',
               fontSize: 12,
               lineHeight: '18px',
             }}>

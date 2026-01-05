@@ -8,6 +8,7 @@ import {
   RocketOutlined, ArrowLeftOutlined, CheckCircleOutlined
 } from '@ant-design/icons';
 import { AIProjectGenerator, type GenerationConfig } from '../components/AIProjectGenerator';
+import { useTheme } from '../contexts/ThemeContext';
 import api from '../services/api';
 import type { WizardBasicInfo } from '../types';
 
@@ -23,6 +24,7 @@ interface Genre {
 
 export default function ProjectWizardNew() {
   const navigate = useNavigate();
+  const { actualTheme } = useTheme();
   const [searchParams] = useSearchParams();
   const [form] = Form.useForm();
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -155,9 +157,17 @@ export default function ProjectWizardNew() {
       <Title level={isMobile ? 4 : 3} style={{ marginBottom: 24 }}>
         创建新项目
       </Title>
-      <Paragraph type="secondary" style={{ marginBottom: 32 }}>
+      <Paragraph style={{ marginBottom: 32, color: actualTheme === 'dark' ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.45)' }}>
         填写基本信息后，AI将自动为您生成世界观、角色和大纲节点（大纲可在项目内手动展开为章节）
       </Paragraph>
+
+      {actualTheme === 'dark' && (
+        <style>{`
+          .ant-form-item-label > label {
+            color: rgba(255, 255, 255, 0.85) !important;
+          }
+        `}</style>
+      )}
 
       <Form
         form={form}
