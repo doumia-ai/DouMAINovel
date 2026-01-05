@@ -16,7 +16,6 @@ RUN npm install
 # 复制前端源代码
 COPY frontend/ ./
 
-
 # 关键：通过环境变量控制输出目录
 ENV VITE_OUT_DIR=dist
 
