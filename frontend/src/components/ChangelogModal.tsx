@@ -77,12 +77,8 @@ export default function ChangelogModal({ visible, onClose }: ChangelogModalProps
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '获取更新日志失败';
-      // 检查是否是 GitHub API 限制错误
-      if (errorMessage.includes('403')) {
-        setError('GitHub API 请求受限（每小时 60 次限制）。请稍后再试，或查看缓存的历史数据。');
-      } else {
-        setError(errorMessage);
-      }
+      // 错误信息已由后端 API 提供，直接显示
+      setError(errorMessage);
       
       // 如果网络请求失败，尝试使用缓存数据
       if (!append) {
@@ -346,9 +342,9 @@ export default function ChangelogModal({ visible, onClose }: ChangelogModalProps
         color: usingCache ? 'var(--color-warning)' : 'var(--color-primary)',
       }}>
         {usingCache ? (
-          <>📦 当前显示的是缓存数据。点击刷新按钮可尝试获取最新数据（受 GitHub API 限制，每小时最多 60 次请求）</>
+          <>📦 当前显示的是缓存数据。点击刷新按钮可尝试获取最新数据</>
         ) : (
-          <>💡 提示：数据来源于 GitHub 提交历史，每 24 小时自动更新一次</>
+          <>💡 提示：数据来源于 GitHub 提交历史，后端已配置 Token 认证，每 24 小时自动更新一次</>
         )}
       </div>
     </Modal >

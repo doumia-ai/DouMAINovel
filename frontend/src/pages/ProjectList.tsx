@@ -667,17 +667,24 @@ export default function ProjectList() {
             </Row>
 
             {showApiTip && projects.length === 0 && (
-              <Alert
-                message={
-                  <Space align="center" style={{ width: '100%' }}>
-                    <InfoCircleOutlined style={{ fontSize: 16, color: 'var(--color-info)' }} />
-                    <Text strong style={{ fontSize: window.innerWidth <= 768 ? 13 : 14, color: 'var(--color-text-primary)' }}>
-                      首次使用提示
-                    </Text>
-                  </Space>
-                }
-                description={
-                  <Space direction="vertical" size={8} style={{ width: '100%' }}>
+              <Card
+                variant="borderless"
+                style={{
+                  marginTop: window.innerWidth <= 768 ? 16 : 24,
+                  borderRadius: 12,
+                  background: 'var(--color-bg-container)',
+                  border: '1px solid var(--color-border-secondary)',
+                  boxShadow: 'var(--shadow-card)'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <Space direction="vertical" size={8} style={{ flex: 1 }}>
+                    <Space align="center">
+                      <InfoCircleOutlined style={{ fontSize: 16, color: 'var(--color-info)' }} />
+                      <Text strong style={{ fontSize: window.innerWidth <= 768 ? 13 : 14, color: 'var(--color-text-primary)' }}>
+                        首次使用提示
+                      </Text>
+                    </Space>
                     <Text style={{ fontSize: window.innerWidth <= 768 ? 12 : 13, color: 'var(--color-text-secondary)' }}>
                       在开始创作之前，请先配置您的AI接口。系统支持OpenAI和Anthropic两种接口。
                     </Text>
@@ -704,19 +711,15 @@ export default function ProjectList() {
                       </Button>
                     </Space>
                   </Space>
-                }
-                type="info"
-                showIcon={false}
-                closable
-                closeIcon={<CloseOutlined style={{ fontSize: 12 }} />}
-                onClose={() => setShowApiTip(false)}
-                style={{
-                  marginTop: window.innerWidth <= 768 ? 16 : 24,
-                  borderRadius: 12,
-                  background: 'var(--color-info-bg)',
-                  border: '1px solid var(--color-info-border)'
-                }}
-              />
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<CloseOutlined style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }} />}
+                    onClick={() => setShowApiTip(false)}
+                    style={{ marginLeft: 8 }}
+                  />
+                </div>
+              </Card>
             )}
 
             {projects.length > 0 && (
