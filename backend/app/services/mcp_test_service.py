@@ -175,9 +175,8 @@ class MCPTestService:
                 db=db_session
             )
             
-            # 注意: generate_text_stream 返回的是异步生成器，但在 tool_choice="required" 模式下
-            # AI服务会直接返回包含 tool_calls 的完整响应，而不是流式chunks
-            # 因此这里需要特殊处理
+            # 使用 generate_text_stream，当传入 tools 参数时会自动使用非流式模式
+            # 返回的是包含 tool_calls 的完整响应字典
             accumulated_text = ""
             tool_calls = None
             
@@ -187,14 +186,14 @@ class MCPTestService:
                 tools=openai_tools,
                 tool_choice="required"
             ):
-                # 在 function calling 模式下，chunk 可能是字典格式包含 tool_calls
+                # 在 function calling 模式下，chunk 是完整的响应字典
                 if isinstance(chunk, dict):
                     if "tool_calls" in chunk:
                         tool_calls = chunk["tool_calls"]
                     if "content" in chunk:
-                        accumulated_text += chunk.get("content", "")
+                        accumulated_text = chunk.get("content", "") or ""
                 else:
-                    accumulated_text += chunk
+                    accumulated_text += str(chunk)
             
             # 5. 检查AI是否返回工具调用
             if not tool_calls:

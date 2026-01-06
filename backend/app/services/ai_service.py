@@ -110,8 +110,32 @@ class AIService:
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
         system_prompt: Optional[str] = None,
-    ) -> AsyncGenerator[str, None]:
-        """流式生成"""
+        tools: Optional[List[Dict]] = None,
+        tool_choice: Optional[str] = None,
+    ) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
+        """
+        流式生成
+        
+        如果传入 tools 参数，会使用非流式的 generate_text 方法，
+        并将结果作为单个 chunk 返回（因为 Function Calling 通常不支持流式）
+        """
+        # 如果有 tools 参数，使用非流式方法（Function Calling 不支持流式）
+        if tools:
+            result = await self.generate_text(
+                prompt=prompt,
+                provider=provider,
+                model=model,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                system_prompt=system_prompt,
+                tools=tools,
+                tool_choice=tool_choice,
+            )
+            # 返回包含 tool_calls 的结果
+            yield result
+            return
+        
+        # 普通流式生成
         prov = self._get_provider(provider)
         async for chunk in prov.generate_stream(
             prompt=prompt,
