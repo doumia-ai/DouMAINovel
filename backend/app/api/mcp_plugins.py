@@ -158,6 +158,24 @@ async def create_plugin_simple(
     
     自动从mcpServers中提取插件名称（取第一个键）
     如果插件已存在，则更新；否则创建新插件
+    
+    支持两种 Provider 类型：
+    - provider: "mcp" (默认) - MCP 协议服务器，需要 initialize 握手
+    - provider: "http" - 普通 HTTP API，通过 OpenAPI 发现工具，无需握手
+    
+    HTTP Tool Provider 示例配置：
+    {
+      "mcpServers": {
+        "my-api": {
+          "type": "http",
+          "provider": "http",
+          "url": "https://api.example.com",
+          "headers": {},
+          "openapi_path": "/openapi.json",
+          "tool_endpoint": "/tools/{tool_name}/invoke"
+        }
+      }
+    }
     """
     try:
         # 解析配置JSON
@@ -183,6 +201,11 @@ async def create_plugin_simple(
         if server_type not in ["http", "stdio", "streamable_http", "sse"]:
             raise HTTPException(status_code=400, detail=f"不支持的服务器类型: {server_type}")
         
+        # 提取 provider_type（新增字段，默认为 "mcp" 保持向后兼容）
+        provider_type = server_config.get("provider", "mcp")
+        if provider_type not in ["mcp", "http"]:
+            raise HTTPException(status_code=400, detail=f"不支持的Provider类型: {provider_type}，支持: mcp, http")
+        
         # 检查插件名是否已存在
         result = await db.execute(
             select(MCPPlugin).where(
@@ -195,8 +218,9 @@ async def create_plugin_simple(
         # 构建插件数据
         plugin_data = {
             "plugin_name": plugin_name,
-            "display_name": plugin_name, 
+            "display_name": plugin_name,
             "plugin_type": server_type,
+            "provider_type": provider_type,  # 新增字段
             "enabled": data.enabled,
             "category": data.category,
             "sort_order": 0
@@ -208,6 +232,12 @@ async def create_plugin_simple(
             
             if not plugin_data["server_url"]:
                 raise HTTPException(status_code=400, detail=f"{server_type}类型插件必须提供url字段")
+            
+            # HTTP Tool Provider 专用字段
+            if provider_type == "http":
+                plugin_data["openapi_path"] = server_config.get("openapi_path", "/openapi.json")
+                plugin_data["tool_endpoint_template"] = server_config.get("tool_endpoint")
+                logger.info(f"配置 HTTP Tool Provider: openapi_path={plugin_data['openapi_path']}")
         
         elif server_type == "stdio":
             plugin_data["command"] = server_config.get("command")

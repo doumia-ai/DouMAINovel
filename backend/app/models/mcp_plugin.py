@@ -17,6 +17,7 @@ class MCPPlugin(Base):
     display_name = Column(String(200), nullable=False, comment="显示名称")
     description = Column(Text, comment="插件描述")
     plugin_type = Column(String(50), default="http", comment="插件类型：http/stdio")
+    provider_type = Column(String(20), default="mcp", comment="Provider类型：mcp/http（mcp=MCP协议，http=普通HTTP API）")
     
     # 连接配置
     server_url = Column(String(500), comment="服务器URL（HTTP类型）")
@@ -28,6 +29,11 @@ class MCPPlugin(Base):
     # 插件配置
     config = Column(JSON, comment="插件特定配置（JSON）")
     tools = Column(JSON, comment="提供的工具列表")
+    
+    # HTTP Tool Provider 专用字段
+    openapi_schema = Column(JSON, comment="HTTP Provider的OpenAPI schema缓存")
+    openapi_path = Column(String(200), default="/openapi.json", comment="OpenAPI schema路径")
+    tool_endpoint_template = Column(String(500), comment="工具调用URL模板，如 /tools/{tool_name}/invoke")
     
     # 状态管理
     enabled = Column(Boolean, default=True, comment="是否启用")
