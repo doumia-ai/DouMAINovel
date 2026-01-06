@@ -1,10 +1,11 @@
 """MCP插件注册表 - 管理运行时插件实例"""
 import asyncio
 import time
-from typing import Dict, Optional, Any, List
+from typing import Dict, Optional, Any, List, Union
 from dataclasses import dataclass
 from datetime import datetime
 from app.mcp.http_client import HTTPMCPClient, MCPError
+from app.mcp.http_tool_client import HTTPToolClient, HTTPToolError
 from app.mcp.config import mcp_config
 from app.models.mcp_plugin import MCPPlugin
 from app.logger import get_logger
@@ -12,15 +13,20 @@ from app.logger import get_logger
 logger = get_logger(__name__)
 
 
+# 客户端类型联合
+ClientType = Union[HTTPMCPClient, HTTPToolClient]
+
+
 @dataclass
 class SessionInfo:
     """会话信息"""
-    client: HTTPMCPClient
+    client: ClientType  # 支持 MCP 客户端和 HTTP Tool 客户端
     created_at: float
     last_access: float
     request_count: int = 0
     error_count: int = 0
     status: str = "active"  # active, degraded, error
+    provider_type: str = "mcp"  # mcp 或 http
 
 
 class MCPPluginRegistry:
@@ -237,44 +243,120 @@ class MCPPluginRegistry:
                     # 检查是否需要驱逐LRU会话
                     await self._evict_lru_session()
                 
-                # 目前只支持HTTP类型
-                if plugin.plugin_type == "http":
-                    if not plugin.server_url:
-                        logger.error(f"HTTP插件缺少server_url: {plugin.plugin_name}")
-                        return False
-                    
-                    # 为每个插件创建独立的HTTP客户端
-                    client = HTTPMCPClient(
-                        url=plugin.server_url,
-                        headers=plugin.headers or {},
-                        env=plugin.env or {},
-                        timeout=plugin.config.get('timeout', 60.0) if plugin.config else 60.0
-                    )
-                    
-                    # 创建会话信息
-                    now = time.time()
-                    session = SessionInfo(
-                        client=client,
-                        created_at=now,
-                        last_access=now,
-                        request_count=0,
-                        error_count=0,
-                        status="active"
-                    )
-                    
-                    # 存储会话
-                    async with self._sessions_lock:
-                        self._sessions[plugin_id] = session
-                    
-                    logger.info(f"✅ 加载MCP插件: {plugin_id} (独立会话)")
-                    return True
+                # 获取 provider_type，默认为 "mcp"（向后兼容）
+                provider_type = getattr(plugin, 'provider_type', None) or "mcp"
+                
+                # 根据 provider_type 分流
+                if provider_type == "http":
+                    # ========== HTTP Tool Provider（新增分支）==========
+                    # 使用普通 HTTP API，通过 OpenAPI 发现工具，无需 MCP 协议握手
+                    return await self._load_http_tool_provider(plugin, plugin_id)
                 else:
-                    logger.warning(f"暂不支持的插件类型: {plugin.plugin_type}")
-                    return False
+                    # ========== MCP Provider（原有逻辑，保持不变）==========
+                    # 使用 MCP 协议，需要 initialize 握手
+                    return await self._load_mcp_provider(plugin, plugin_id)
                     
             except Exception as e:
                 logger.error(f"加载插件失败 {plugin.plugin_name}: {e}")
                 return False
+    
+    async def _load_mcp_provider(self, plugin: MCPPlugin, plugin_id: str) -> bool:
+        """
+        加载 MCP Provider（原有逻辑，完全保持不变）
+        
+        Args:
+            plugin: 插件配置
+            plugin_id: 插件ID
+            
+        Returns:
+            是否加载成功
+        """
+        # 目前只支持HTTP类型
+        if plugin.plugin_type == "http":
+            if not plugin.server_url:
+                logger.error(f"HTTP插件缺少server_url: {plugin.plugin_name}")
+                return False
+            
+            # 为每个插件创建独立的HTTP客户端
+            client = HTTPMCPClient(
+                url=plugin.server_url,
+                headers=plugin.headers or {},
+                env=plugin.env or {},
+                timeout=plugin.config.get('timeout', 60.0) if plugin.config else 60.0
+            )
+            
+            # 创建会话信息
+            now = time.time()
+            session = SessionInfo(
+                client=client,
+                created_at=now,
+                last_access=now,
+                request_count=0,
+                error_count=0,
+                status="active",
+                provider_type="mcp"
+            )
+            
+            # 存储会话
+            async with self._sessions_lock:
+                self._sessions[plugin_id] = session
+            
+            logger.info(f"✅ 加载MCP插件: {plugin_id} (MCP Provider)")
+            return True
+        else:
+            logger.warning(f"暂不支持的插件类型: {plugin.plugin_type}")
+            return False
+    
+    async def _load_http_tool_provider(self, plugin: MCPPlugin, plugin_id: str) -> bool:
+        """
+        加载 HTTP Tool Provider（新增逻辑）
+        
+        使用普通 HTTP API，通过 OpenAPI schema 发现工具，
+        不进行 MCP 协议握手。
+        
+        Args:
+            plugin: 插件配置
+            plugin_id: 插件ID
+            
+        Returns:
+            是否加载成功
+        """
+        if not plugin.server_url:
+            logger.error(f"HTTP Tool Provider 缺少 server_url: {plugin.plugin_name}")
+            return False
+        
+        # 获取 HTTP Tool Provider 专用配置
+        openapi_path = getattr(plugin, 'openapi_path', None) or "/openapi.json"
+        tool_endpoint_template = getattr(plugin, 'tool_endpoint_template', None)
+        
+        # 创建 HTTP Tool Client（不进行 MCP 协议握手）
+        client = HTTPToolClient(
+            url=plugin.server_url,
+            headers=plugin.headers or {},
+            env=plugin.env or {},
+            timeout=plugin.config.get('timeout', 60.0) if plugin.config else 60.0,
+            openapi_path=openapi_path,
+            tool_endpoint_template=tool_endpoint_template
+        )
+        
+        # 创建会话信息
+        now = time.time()
+        session = SessionInfo(
+            client=client,
+            created_at=now,
+            last_access=now,
+            request_count=0,
+            error_count=0,
+            status="active",
+            provider_type="http"
+        )
+        
+        # 存储会话
+        async with self._sessions_lock:
+            self._sessions[plugin_id] = session
+        
+        logger.info(f"✅ 加载HTTP Tool Provider: {plugin_id} (无MCP握手)")
+        return True
     
     async def unload_plugin(self, user_id: str, plugin_name: str):
         """
@@ -316,7 +398,7 @@ class MCPPluginRegistry:
         await self.unload_plugin(plugin.user_id, plugin.plugin_name)
         return await self.load_plugin(plugin)
     
-    def get_client(self, user_id: str, plugin_name: str) -> Optional[HTTPMCPClient]:
+    def get_client(self, user_id: str, plugin_name: str) -> Optional[ClientType]:
         """
         获取插件客户端（线程安全，支持访问时间更新）
         
@@ -325,7 +407,7 @@ class MCPPluginRegistry:
             plugin_name: 插件名称
             
         Returns:
-            客户端实例或None
+            客户端实例或None（可能是 HTTPMCPClient 或 HTTPToolClient）
         """
         plugin_id = f"{user_id}:{plugin_name}"
         
@@ -352,7 +434,7 @@ class MCPPluginRegistry:
         user_id: str,
         plugin_name: str,
         plugin: MCPPlugin
-    ) -> HTTPMCPClient:
+    ) -> ClientType:
         """
         获取或重连客户端（自动处理错误状态）
         
@@ -362,7 +444,7 @@ class MCPPluginRegistry:
             plugin: 插件配置对象
             
         Returns:
-            客户端实例
+            客户端实例（可能是 HTTPMCPClient 或 HTTPToolClient）
             
         Raises:
             ValueError: 插件加载失败
