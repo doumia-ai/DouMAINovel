@@ -10,7 +10,6 @@
 
 import asyncio
 import time
-import re
 from typing import Dict, Any, List, Optional
 import httpx
 
@@ -196,12 +195,7 @@ class HTTPToolClient:
         # 构建请求
         # 分离 path 参数和 body 参数
         path_params = {}
-        query_params = {}
         body_params = {}
-        
-        # 从 inputSchema 中获取参数定义
-        input_schema = tool.get("inputSchema", {})
-        properties = input_schema.get("properties", {})
         
         for param_name, param_value in arguments.items():
             # 检查是否是 path 参数
