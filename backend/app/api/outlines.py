@@ -42,6 +42,256 @@ router = APIRouter(prefix="/outlines", tags=["大纲管理"])
 logger = get_logger(__name__)
 
 
+# ==================== 辅助函数 ====================
+
+def _build_characters_info(characters: List) -> str:
+    """
+    构建角色信息字符串
+    
+    Args:
+        characters: 角色列表
+        
+    Returns:
+        格式化的角色信息字符串
+    """
+    if not characters:
+        return ""
+    return "\n".join([
+        f"- {char.name} ({'组织' if char.is_organization else '角色'}, {char.role_type}): "
+        f"{char.personality[:100] if char.personality else '暂无描述'}"
+        for char in characters
+    ])
+
+
+def _build_chapters_brief(outlines: List[Outline], max_recent: int = 20) -> str:
+    """
+    构建章节概览字符串
+    
+    Args:
+        outlines: 大纲列表
+        max_recent: 最多显示最近多少章
+        
+    Returns:
+        格式化的章节概览字符串
+    """
+    if not outlines:
+        return ""
+    
+    if len(outlines) > max_recent:
+        recent_outlines = outlines[-max_recent:]
+    else:
+        recent_outlines = outlines
+    
+    return "\n".join([
+        f"第{o.order_index}章《{o.title}》"
+        for o in recent_outlines
+    ])
+
+
+async def _get_existing_organizations(project_id: str, db: AsyncSession) -> List[dict]:
+    """
+    获取项目的现有组织列表
+    
+    Args:
+        project_id: 项目ID
+        db: 数据库会话
+        
+    Returns:
+        组织信息字典列表
+    """
+    from app.models.relationship import Organization
+    
+    organizations_result = await db.execute(
+        select(Character, Organization)
+        .join(Organization, Character.id == Organization.character_id)
+        .where(
+            Character.project_id == project_id,
+            Character.is_organization == True
+        )
+    )
+    organizations_raw = organizations_result.all()
+    
+    existing_organizations = []
+    for char, org in organizations_raw:
+        existing_organizations.append({
+            "id": org.id,
+            "name": char.name,
+            "organization_type": char.organization_type,
+            "organization_purpose": char.organization_purpose,
+            "power_level": org.power_level,
+            "location": org.location,
+            "motto": org.motto
+        })
+    
+    return existing_organizations
+
+
+async def _collect_mcp_references(
+    user_ai_service: AIService,
+    user_id: str,
+    db: AsyncSession,
+    project: Project,
+    query_context: str,
+    enable_mcp: bool = True
+) -> str:
+    """
+    收集MCP参考资料
+    
+    Args:
+        user_ai_service: AI服务实例
+        user_id: 用户ID
+        db: 数据库会话
+        project: 项目对象
+        query_context: 查询上下文（用于构建MCP查询）
+        enable_mcp: 是否启用MCP
+        
+    Returns:
+        MCP参考资料字符串，如果未启用或失败则返回空字符串
+    """
+    if not enable_mcp or not user_id:
+        return ""
+    
+    try:
+        from app.services.mcp_tool_service import mcp_tool_service
+        
+        available_tools = await mcp_tool_service.get_user_enabled_tools(
+            user_id=user_id,
+            db_session=db
+        )
+        
+        if not available_tools:
+            logger.debug(f"用户 {user_id} 未启用MCP工具，跳过MCP增强")
+            return ""
+        
+        logger.info(f"🔍 检测到可用MCP工具，收集参考资料...")
+        
+        # 调用MCP增强的AI（非流式，限制2轮避免超时）
+        planning_result = await user_ai_service.generate_text_with_mcp(
+            prompt=query_context,
+            user_id=user_id,
+            db_session=db,
+            enable_mcp=True,
+            max_tool_rounds=2,
+            tool_choice="auto",
+            provider=None,
+            model=None
+        )
+        
+        # 提取参考资料
+        if planning_result.get("tool_calls_made", 0) > 0:
+            mcp_reference_materials = planning_result.get("content", "")
+            logger.info(f"✅ MCP工具收集参考资料：{len(mcp_reference_materials)} 字符")
+            return mcp_reference_materials
+        else:
+            logger.info(f"ℹ️ MCP未使用工具，继续")
+            return ""
+            
+    except Exception as e:
+        logger.warning(f"⚠️ MCP工具调用失败，降级为基础模式: {str(e)}")
+        return ""
+
+
+def _build_mcp_query_for_new_outline(
+    project: Project,
+    theme: str,
+    genre: str,
+    chapter_count: int,
+    narrative_perspective: str,
+    target_words: int,
+    characters_info: str
+) -> str:
+    """
+    构建新建大纲的MCP查询
+    
+    Args:
+        project: 项目对象
+        theme: 主题
+        genre: 类型
+        chapter_count: 章节数
+        narrative_perspective: 叙事视角
+        target_words: 目标字数
+        characters_info: 角色信息
+        
+    Returns:
+        MCP查询字符串
+    """
+    return f"""你正在为小说《{project.title}》设计完整大纲。
+项目信息：
+- 主题：{theme}
+- 类型：{genre}
+- 章节数：{chapter_count}
+- 叙事视角：{narrative_perspective}
+- 目标字数：{target_words}
+
+世界观设定：
+- 时间背景：{project.world_time_period or '未设定'}
+- 地理位置：{project.world_location or '未设定'}
+- 氛围基调：{project.world_atmosphere or '未设定'}
+
+角色信息：
+{characters_info or '暂无角色'}
+
+请搜索：
+1. 该类型小说的经典情节结构和套路
+2. 适合该主题的冲突设计思路
+3. 符合世界观的情节元素和场景设计灵感
+
+请有针对性地查询1-2个最关键的问题。"""
+
+
+def _build_mcp_query_for_continue_outline(
+    project: Project,
+    theme: str,
+    genre: str,
+    narrative_perspective: str,
+    plot_stage: str,
+    story_direction: str,
+    current_chapter_count: int,
+    start_chapter: int,
+    end_chapter: int,
+    latest_summary: str
+) -> str:
+    """
+    构建续写大纲的MCP查询
+    
+    Args:
+        project: 项目对象
+        theme: 主题
+        genre: 类型
+        narrative_perspective: 叙事视角
+        plot_stage: 情节阶段
+        story_direction: 故事发展方向
+        current_chapter_count: 当前章节数
+        start_chapter: 起始章节
+        end_chapter: 结束章节
+        latest_summary: 最近章节概要
+        
+    Returns:
+        MCP查询字符串
+    """
+    return f"""你正在为小说《{project.title}》续写大纲。
+当前进度：已有{current_chapter_count}章，即将续写第{start_chapter}-{end_chapter}章
+
+项目信息：
+- 主题：{theme}
+- 类型：{genre}
+- 叙事视角：{narrative_perspective}
+- 情节阶段：{plot_stage}
+- 故事发展方向：{story_direction}
+
+最近章节概要：
+{latest_summary[:200]}
+
+请搜索：
+1. 该情节阶段的经典处理手法和技巧
+2. 适合该发展方向的情节转折和冲突设计
+3. 符合类型特点的场景设计和剧情元素
+
+请有针对性地查询1-2个最关键的问题。"""
+
+
+# ==================== 路由处理函数 ====================
+
 async def verify_project_access(project_id: str, user_id: str, db: AsyncSession) -> Project:
     """
     验证用户是否有权访问指定项目
