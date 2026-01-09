@@ -10,6 +10,7 @@ import {
   Collapse,
   Typography,
   Divider,
+  theme,
 } from 'antd';
 import {
   PlusOutlined,
@@ -23,6 +24,7 @@ import type { DetectConfig, ServiceConfig } from '../../services/aigcDetectServi
 import { aigcDetectService } from '../../services/aigcDetectService';
 
 const { Text } = Typography;
+const { useToken } = theme;
 
 interface DetectConfigPanelProps {
   config: DetectConfig;
@@ -31,7 +33,7 @@ interface DetectConfigPanelProps {
 }
 
 const DEFAULT_BUILTIN_CONFIG: ServiceConfig = {
-  baseUrl: 'http://localhost:8088',
+  baseUrl: 'http://aigc-text-detector:8080',
   detectPath: '/detect/batch',
   headers: [],
 };
@@ -47,6 +49,7 @@ const DetectConfigPanel: React.FC<DetectConfigPanelProps> = ({
   onConfigChange,
   disabled = false,
 }) => {
+  const { token } = useToken();
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{
     success: boolean;
@@ -361,18 +364,43 @@ const DetectConfigPanel: React.FC<DetectConfigPanelProps> = ({
         )}
 
         <div style={{ marginTop: 16 }}>
-          <Text type="secondary">
+          <Text type="secondary" style={{ color: token.colorTextSecondary }}>
             {config.source === 'builtin' ? (
               <>
                 💡 内置检测服务通常部署为独立的 Docker 容器。
-                如果使用 docker-compose，服务名可能是 <code>detect-service</code>，
-                地址格式为 <code>http://detect-service:8088</code>
+                如果使用 docker-compose，服务名可能是 <code style={{
+                  backgroundColor: token.colorFillSecondary,
+                  padding: '2px 6px',
+                  borderRadius: 4,
+                  color: token.colorText
+                }}>aigc-text-detector</code>，
+                地址格式为 <code style={{
+                  backgroundColor: token.colorFillSecondary,
+                  padding: '2px 6px',
+                  borderRadius: 4,
+                  color: token.colorText
+                }}>http://aigc-text-detector:8080</code>
               </>
             ) : (
               <>
                 💡 自定义检测 API 需要遵循相同的接口规范：
-                POST 请求，请求体为 <code>{`{"texts": string[]}`}</code>，
-                响应包含 <code>summary</code> 和 <code>items</code> 字段。
+                POST 请求，请求体为 <code style={{
+                  backgroundColor: token.colorFillSecondary,
+                  padding: '2px 6px',
+                  borderRadius: 4,
+                  color: token.colorText
+                }}>{`{"texts": string[]}`}</code>，
+                响应包含 <code style={{
+                  backgroundColor: token.colorFillSecondary,
+                  padding: '2px 6px',
+                  borderRadius: 4,
+                  color: token.colorText
+                }}>summary</code> 和 <code style={{
+                  backgroundColor: token.colorFillSecondary,
+                  padding: '2px 6px',
+                  borderRadius: 4,
+                  color: token.colorText
+                }}>items</code> 字段。
               </>
             )}
           </Text>

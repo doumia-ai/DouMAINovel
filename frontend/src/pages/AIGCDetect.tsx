@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useContext } from 'react';
 import {
   Card,
   Input,
@@ -7,6 +7,7 @@ import {
   Typography,
   Alert,
   message,
+  theme,
 } from 'antd';
 import {
   SearchOutlined,
@@ -26,9 +27,11 @@ import {
 
 const { TextArea } = Input;
 const { Title, Text, Paragraph } = Typography;
+const { useToken } = theme;
 
 const AIGCDetect: React.FC = () => {
   const navigate = useNavigate();
+  const { token } = useToken();
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   
   // ===== 状态管理 =====
@@ -111,15 +114,15 @@ const AIGCDetect: React.FC = () => {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'var(--color-bg-base)',
+      background: token.colorBgContainer,
     }}>
       {/* 顶部标题栏 - 固定不滚动 */}
       <div style={{
         position: 'sticky',
         top: 0,
         zIndex: 100,
-        background: 'var(--color-primary)',
-        boxShadow: 'var(--shadow-header)',
+        background: token.colorPrimary,
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
       }}>
         <div style={{
           maxWidth: 1200,
@@ -163,7 +166,7 @@ const AIGCDetect: React.FC = () => {
       }}>
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
           {/* 页面说明 */}
-          <Text type="secondary">
+          <Text type="secondary" style={{ color: token.colorTextSecondary }}>
             检测文本中的 AI 生成特征，辅助写作参考。支持内置检测服务和自定义检测 API。
           </Text>
 
@@ -201,10 +204,11 @@ const AIGCDetect: React.FC = () => {
                   justifyContent: 'space-between',
                   alignItems: 'center',
                   flexWrap: 'wrap',
-                  gap: 12,
+                  gap: 16,
+                  marginTop: 12,
                 }}
               >
-                <Text type="secondary">
+                <Text type="secondary" style={{ color: token.colorTextSecondary, flex: '1 1 auto', minWidth: 200 }}>
                   {inputText.trim() ? (
                     <>
                       已输入 {inputText.length} 字符，预计拆分为{' '}
@@ -215,7 +219,7 @@ const AIGCDetect: React.FC = () => {
                   )}
                 </Text>
 
-                <Space>
+                <Space style={{ flexShrink: 0 }}>
                   <Button onClick={handleClear} disabled={loading}>
                     清空
                   </Button>
