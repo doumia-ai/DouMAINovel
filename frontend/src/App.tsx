@@ -21,6 +21,7 @@ import UserManagement from './pages/UserManagement';
 import PromptTemplates from './pages/PromptTemplates';
 import Genres from './pages/Genres';
 import Sponsor from './pages/Sponsor';
+import AIGCDetect from './pages/AIGCDetect';
 // import Polish from './pages/Polish';
 import Login from './pages/Login';
 import AuthCallback from './pages/AuthCallback';
@@ -68,6 +69,7 @@ function AppContent() {
           <Route path="/mcp-plugins" element={<ProtectedRoute><MCPPlugins /></ProtectedRoute>} />
           <Route path="/genres" element={<ProtectedRoute><Genres /></ProtectedRoute>} />
           <Route path="/user-management" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
+          <Route path="/aigc-detect" element={<ProtectedRoute><AIGCDetect /></ProtectedRoute>} />
           <Route path="/chapters/:chapterId/reader" element={<ProtectedRoute><ChapterReader /></ProtectedRoute>} />
           <Route path="/project/:projectId" element={<ProtectedRoute><ProjectDetail /></ProtectedRoute>}>
             <Route index element={<Navigate to="sponsor" replace />} />

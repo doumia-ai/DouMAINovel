@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Button, Empty, Modal, message, Spin, Row, Col, Statistic, Space, Tag, Progress, Typography, Badge, Alert, Upload, Checkbox, Divider, Switch, Dropdown, Form, Input, InputNumber } from 'antd';
-import { EditOutlined, DeleteOutlined, BookOutlined, RocketOutlined, CalendarOutlined, FileTextOutlined, TrophyOutlined, FireOutlined, SettingOutlined, InfoCircleOutlined, CloseOutlined, UploadOutlined, DownloadOutlined, ApiOutlined, MoreOutlined, BulbOutlined, LoadingOutlined, FileSearchOutlined } from '@ant-design/icons';
+import { EditOutlined, DeleteOutlined, BookOutlined, RocketOutlined, CalendarOutlined, FileTextOutlined, TrophyOutlined, FireOutlined, SettingOutlined, InfoCircleOutlined, CloseOutlined, UploadOutlined, DownloadOutlined, ApiOutlined, MoreOutlined, BulbOutlined, LoadingOutlined, FileSearchOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import { projectApi } from '../services/api';
 import { useStore } from '../store';
 import { useProjectSync } from '../store/hooks';
@@ -411,7 +411,7 @@ export default function ProjectList() {
                   <Space direction="vertical" size={8} style={{ width: '100%' }}>
                     {/* 第一行：主要创建按钮 */}
                     <Row gutter={8}>
-                      <Col span={12}>
+                      <Col span={8}>
                         <Button
                           type="primary"
                           size="middle"
@@ -425,13 +425,15 @@ export default function ProjectList() {
                             boxShadow: '0 4px 12px rgba(255, 193, 7, 0.35)',
                             color: '#fff',
                             height: 42,
-                            fontWeight: 500
+                            fontWeight: 500,
+                            padding: '0 8px',
+                            fontSize: 13
                           }}
                         >
-                          灵感模式
+                          灵感
                         </Button>
                       </Col>
-                      <Col span={12}>
+                      <Col span={8}>
                         <Button
                           type="primary"
                           size="middle"
@@ -446,10 +448,35 @@ export default function ProjectList() {
                             color: '#fff',
                             height: 42,
                             fontWeight: 500,
-                            backdropFilter: 'blur(8px)'
+                            backdropFilter: 'blur(8px)',
+                            padding: '0 8px',
+                            fontSize: 13
                           }}
                         >
-                          向导创建
+                          向导
+                        </Button>
+                      </Col>
+                      <Col span={8}>
+                        <Button
+                          type="primary"
+                          size="middle"
+                          icon={<SafetyCertificateOutlined />}
+                          onClick={() => navigate('/aigc-detect')}
+                          block
+                          style={{
+                            borderRadius: 10,
+                            background: 'rgba(255, 255, 255, 0.2)',
+                            border: '1px solid rgba(255, 255, 255, 0.4)',
+                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                            color: '#fff',
+                            height: 42,
+                            fontWeight: 500,
+                            backdropFilter: 'blur(8px)',
+                            padding: '0 8px',
+                            fontSize: 13
+                          }}
+                        >
+                          检测
                         </Button>
                       </Col>
                     </Row>
@@ -583,6 +610,25 @@ export default function ProjectList() {
                       }}
                     >
                       向导创建
+                    </Button>
+                    <Button
+                      type="primary"
+                      size="large"
+                      icon={<SafetyCertificateOutlined />}
+                      onClick={() => navigate('/aigc-detect')}
+                      style={{
+                        borderRadius: 12,
+                        background: 'rgba(255, 255, 255, 0.2)',
+                        border: '1px solid rgba(255, 255, 255, 0.4)',
+                        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.15)',
+                        color: '#fff',
+                        fontWeight: 500,
+                        height: 44,
+                        backdropFilter: 'blur(10px)',
+                        transition: 'all 0.3s ease'
+                      }}
+                    >
+                      AI检测
                     </Button>
                     <Button
                       type="default"
