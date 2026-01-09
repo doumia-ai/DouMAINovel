@@ -1,150 +1,385 @@
-import React from 'react';
-import { Card, Row, Col, Progress, Tag, Alert, Space, Typography, Empty, Spin } from 'antd';
+import React, { useState } from 'react';
+import {
+  Card,
+  Radio,
+  Input,
+  Button,
+  Space,
+  Form,
+  message,
+  Collapse,
+  Typography,
+  Divider,
+} from 'antd';
+import {
+  PlusOutlined,
+  MinusCircleOutlined,
+  ApiOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  SettingOutlined,
+} from '@ant-design/icons';
+import type { DetectConfig, ServiceConfig } from '../../services/aigcDetectService';
+import { aigcDetectService } from '../../services/aigcDetectService';
 
-const { Text, Paragraph } = Typography;
+const { Text } = Typography;
 
-interface DetectResultPanelProps {
-  result: {
-    summary: {
-      human_ratio: number;
-      suspected_ai_ratio: number;
-      ai_ratio: number;
-    };
-    items: Array<{
-      ai_probability: number;
-      human_probability: number;
-      label: 'human' | 'suspected_ai' | 'ai';
-    }>;
-  } | null;
-  paragraphs: string[];
-  loading: boolean;
+interface DetectConfigPanelProps {
+  config: DetectConfig;
+  onConfigChange: (config: DetectConfig) => void;
+  disabled?: boolean;
 }
 
-const COLOR_MAP: Record<'human' | 'suspected_ai' | 'ai', string> = {
-  human: '#52c41a',
-  suspected_ai: '#faad14',
-  ai: '#ff4d4f',
+const DEFAULT_BUILTIN_CONFIG: ServiceConfig = {
+  baseUrl: 'http://localhost:8088',
+  detectPath: '/detect/batch',
+  headers: [],
 };
 
-const LABEL_TEXT: Record<'human' | 'suspected_ai' | 'ai', string> = {
-  human: '人工特征',
-  suspected_ai: '疑似 AI',
-  ai: 'AI 特征',
+const DEFAULT_CUSTOM_CONFIG: ServiceConfig = {
+  baseUrl: '',
+  detectPath: '/detect/batch',
+  headers: [],
 };
 
-const DetectResultPanel: React.FC<DetectResultPanelProps> = ({
-  result,
-  paragraphs,
-  loading,
+const DetectConfigPanel: React.FC<DetectConfigPanelProps> = ({
+  config,
+  onConfigChange,
+  disabled = false,
 }) => {
-  if (loading) {
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
+
+  // 处理检测来源切换
+  const handleSourceChange = (source: 'builtin' | 'custom') => {
+    onConfigChange({
+      ...config,
+      source,
+    });
+    setTestResult(null);
+  };
+
+  // 处理内置服务配置变更
+  const handleBuiltinConfigChange = (
+    field: keyof ServiceConfig,
+    value: string | Array<{ key: string; value: string }>
+  ) => {
+    onConfigChange({
+      ...config,
+      builtinConfig: {
+        ...config.builtinConfig,
+        [field]: value,
+      },
+    });
+    setTestResult(null);
+  };
+
+  // 处理自定义服务配置变更
+  const handleCustomConfigChange = (
+    field: keyof ServiceConfig,
+    value: string | Array<{ key: string; value: string }>
+  ) => {
+    onConfigChange({
+      ...config,
+      customConfig: {
+        ...config.customConfig,
+        [field]: value,
+      },
+    });
+    setTestResult(null);
+  };
+
+  // 处理 Headers 变更（内置服务）
+  const handleBuiltinHeaderChange = (
+    index: number,
+    field: 'key' | 'value',
+    value: string
+  ) => {
+    const newHeaders = [...(config.builtinConfig.headers || [])];
+    newHeaders[index] = { ...newHeaders[index], [field]: value };
+    handleBuiltinConfigChange('headers', newHeaders);
+  };
+
+  // 添加 Header（内置服务）
+  const handleAddBuiltinHeader = () => {
+    handleBuiltinConfigChange('headers', [
+      ...(config.builtinConfig.headers || []),
+      { key: '', value: '' },
+    ]);
+  };
+
+  // 删除 Header（内置服务）
+  const handleRemoveBuiltinHeader = (index: number) => {
+    const newHeaders = [...(config.builtinConfig.headers || [])];
+    newHeaders.splice(index, 1);
+    handleBuiltinConfigChange('headers', newHeaders);
+  };
+
+  // 处理 Headers 变更（自定义服务）
+  const handleCustomHeaderChange = (
+    index: number,
+    field: 'key' | 'value',
+    value: string
+  ) => {
+    const newHeaders = [...(config.customConfig.headers || [])];
+    newHeaders[index] = { ...newHeaders[index], [field]: value };
+    handleCustomConfigChange('headers', newHeaders);
+  };
+
+  // 添加 Header（自定义服务）
+  const handleAddCustomHeader = () => {
+    handleCustomConfigChange('headers', [
+      ...(config.customConfig.headers || []),
+      { key: '', value: '' },
+    ]);
+  };
+
+  // 删除 Header（自定义服务）
+  const handleRemoveCustomHeader = (index: number) => {
+    const newHeaders = [...(config.customConfig.headers || [])];
+    newHeaders.splice(index, 1);
+    handleCustomConfigChange('headers', newHeaders);
+  };
+
+  // 重置为默认配置
+  const handleResetBuiltinConfig = () => {
+    onConfigChange({
+      ...config,
+      builtinConfig: { ...DEFAULT_BUILTIN_CONFIG },
+    });
+    setTestResult(null);
+    message.info('已重置为默认配置');
+  };
+
+  const handleResetCustomConfig = () => {
+    onConfigChange({
+      ...config,
+      customConfig: { ...DEFAULT_CUSTOM_CONFIG },
+    });
+    setTestResult(null);
+    message.info('已重置为默认配置');
+  };
+
+  // 测试连接
+  const handleTestConnection = async () => {
+    const activeConfig = config.source === 'builtin' ? config.builtinConfig : config.customConfig;
+    
+    if (!activeConfig.baseUrl) {
+      message.warning('请先填写 API Base URL');
+      return;
+    }
+
+    setTesting(true);
+    setTestResult(null);
+
+    try {
+      const result = await aigcDetectService.testConnection(config);
+      setTestResult(result);
+      if (result.success) {
+        message.success(result.message);
+      } else {
+        message.error(result.message);
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '测试失败';
+      setTestResult({ success: false, message: errorMessage });
+      message.error(errorMessage);
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  // 渲染服务配置表单
+  const renderServiceConfigForm = (
+    serviceConfig: ServiceConfig,
+    isBuiltin: boolean
+  ) => {
+    const handleConfigChange = isBuiltin ? handleBuiltinConfigChange : handleCustomConfigChange;
+    const handleHeaderChange = isBuiltin ? handleBuiltinHeaderChange : handleCustomHeaderChange;
+    const handleAddHeader = isBuiltin ? handleAddBuiltinHeader : handleAddCustomHeader;
+    const handleRemoveHeader = isBuiltin ? handleRemoveBuiltinHeader : handleRemoveCustomHeader;
+    const handleReset = isBuiltin ? handleResetBuiltinConfig : handleResetCustomConfig;
+
     return (
-      <Card size="small">
-        <Spin tip="正在分析文本，请稍候..." />
-      </Card>
+      <Space direction="vertical" style={{ width: '100%' }} size="middle">
+        <Form.Item
+          label="API Base URL"
+          required
+          style={{ marginBottom: 0 }}
+          tooltip={isBuiltin ? '内置检测服务的地址，通常是独立部署的 Docker 服务' : '自定义检测 API 的基础地址'}
+        >
+          <Input
+            placeholder={isBuiltin ? '例如: http://localhost:8088 或 http://detect-service:8088' : '例如: https://api.example.com'}
+            value={serviceConfig.baseUrl}
+            onChange={(e) => handleConfigChange('baseUrl', e.target.value)}
+            disabled={disabled}
+          />
+        </Form.Item>
+
+        <Form.Item
+          label="Detect Path"
+          style={{ marginBottom: 0 }}
+          tooltip="检测接口的路径"
+        >
+          <Input
+            placeholder="/detect/batch"
+            value={serviceConfig.detectPath}
+            onChange={(e) => handleConfigChange('detectPath', e.target.value)}
+            disabled={disabled}
+          />
+        </Form.Item>
+
+        <Form.Item label="Headers（可选）" style={{ marginBottom: 0 }}>
+          <Space direction="vertical" style={{ width: '100%' }}>
+            {(serviceConfig.headers || []).map((header, index) => (
+              <Space key={index} style={{ width: '100%' }}>
+                <Input
+                  placeholder="Key"
+                  value={header.key}
+                  onChange={(e) => handleHeaderChange(index, 'key', e.target.value)}
+                  style={{ width: 150 }}
+                  disabled={disabled}
+                />
+                <Input
+                  placeholder="Value"
+                  value={header.value}
+                  onChange={(e) => handleHeaderChange(index, 'value', e.target.value)}
+                  style={{ width: 200 }}
+                  disabled={disabled}
+                />
+                <Button
+                  type="text"
+                  danger
+                  icon={<MinusCircleOutlined />}
+                  onClick={() => handleRemoveHeader(index)}
+                  disabled={disabled}
+                />
+              </Space>
+            ))}
+            <Button
+              type="dashed"
+              onClick={handleAddHeader}
+              icon={<PlusOutlined />}
+              style={{ width: '100%' }}
+              disabled={disabled}
+            >
+              添加 Header
+            </Button>
+          </Space>
+        </Form.Item>
+
+        <Divider style={{ margin: '12px 0' }} />
+
+        <Form.Item style={{ marginBottom: 0 }}>
+          <Space>
+            <Button
+              type="primary"
+              onClick={handleTestConnection}
+              loading={testing}
+              disabled={disabled}
+            >
+              测试连接
+            </Button>
+            <Button onClick={handleReset} disabled={disabled}>
+              重置为默认
+            </Button>
+            {testResult && (
+              <Text type={testResult.success ? 'success' : 'danger'}>
+                {testResult.success ? (
+                  <CheckCircleOutlined />
+                ) : (
+                  <CloseCircleOutlined />
+                )}{' '}
+                {testResult.message}
+              </Text>
+            )}
+          </Space>
+        </Form.Item>
+      </Space>
     );
-  }
-
-  if (!result) {
-    return (
-      <Card size="small">
-        <Empty description="暂无检测结果，请输入文本并开始检测" />
-      </Card>
-    );
-  }
-
-  const { human_ratio, suspected_ai_ratio, ai_ratio } = result.summary;
-
-  // 结果解读文案（对应截图语义）
-  const overallTip =
-    ai_ratio >= 0.6
-      ? '检测结果显示 AI 特征较明显，建议人工润色后再使用。'
-      : ai_ratio >= 0.3
-      ? '检测到部分 AI 特征，可适当调整表达方式以增强自然度。'
-      : '整体更接近人工写作风格，AI 特征较低。';
+  };
 
   return (
-    <Space direction="vertical" size="large" style={{ width: '100%' }}>
-      {/* 总览区 */}
-      <Card title="检测结果总览" size="small">
-        <Row gutter={24} justify="center">
-          <Col>
-            <Progress
-              type="circle"
-              percent={Math.round(human_ratio * 100)}
-              strokeColor={COLOR_MAP.human}
-              format={(p) => (
-                <>
-                  <div style={{ fontSize: 22, fontWeight: 600 }}>{p}%</div>
-                  <div style={{ fontSize: 12, color: '#666' }}>人工特征</div>
-                </>
-              )}
-            />
-          </Col>
-          <Col>
-            <Progress
-              type="circle"
-              percent={Math.round(suspected_ai_ratio * 100)}
-              strokeColor={COLOR_MAP.suspected_ai}
-              format={(p) => (
-                <>
-                  <div style={{ fontSize: 22, fontWeight: 600 }}>{p}%</div>
-                  <div style={{ fontSize: 12, color: '#666' }}>疑似 AI</div>
-                </>
-              )}
-            />
-          </Col>
-          <Col>
-            <Progress
-              type="circle"
-              percent={Math.round(ai_ratio * 100)}
-              strokeColor={COLOR_MAP.ai}
-              format={(p) => (
-                <>
-                  <div style={{ fontSize: 22, fontWeight: 600 }}>{p}%</div>
-                  <div style={{ fontSize: 12, color: '#666' }}>AI 特征</div>
-                </>
-              )}
-            />
-          </Col>
-        </Row>
+    <Card
+      title={
+        <Space>
+          <ApiOutlined />
+          <span>检测来源与配置</span>
+        </Space>
+      }
+      size="small"
+    >
+      <Form layout="vertical">
+        <Form.Item label="检测来源">
+          <Radio.Group
+            value={config.source}
+            onChange={(e) => handleSourceChange(e.target.value)}
+            disabled={disabled}
+          >
+            <Radio value="builtin">内置检测服务</Radio>
+            <Radio value="custom">自定义检测 API</Radio>
+          </Radio.Group>
+        </Form.Item>
+
+        {config.source === 'builtin' && (
+          <Collapse
+            defaultActiveKey={['builtin-config']}
+            items={[
+              {
+                key: 'builtin-config',
+                label: (
+                  <Space>
+                    <SettingOutlined />
+                    <span>内置服务配置</span>
+                  </Space>
+                ),
+                children: renderServiceConfigForm(config.builtinConfig, true),
+              },
+            ]}
+          />
+        )}
+
+        {config.source === 'custom' && (
+          <Collapse
+            defaultActiveKey={['custom-config']}
+            items={[
+              {
+                key: 'custom-config',
+                label: (
+                  <Space>
+                    <SettingOutlined />
+                    <span>自定义 API 配置</span>
+                  </Space>
+                ),
+                children: renderServiceConfigForm(config.customConfig, false),
+              },
+            ]}
+          />
+        )}
 
         <div style={{ marginTop: 16 }}>
-          <Alert type="info" showIcon message={overallTip} />
+          <Text type="secondary">
+            {config.source === 'builtin' ? (
+              <>
+                💡 内置检测服务通常部署为独立的 Docker 容器。
+                如果使用 docker-compose，服务名可能是 <code>detect-service</code>，
+                地址格式为 <code>http://detect-service:8088</code>
+              </>
+            ) : (
+              <>
+                💡 自定义检测 API 需要遵循相同的接口规范：
+                POST 请求，请求体为 <code>{`{"texts": string[]}`}</code>，
+                响应包含 <code>summary</code> 和 <code>items</code> 字段。
+              </>
+            )}
+          </Text>
         </div>
-      </Card>
-
-      {/* 段落级结果 */}
-      <Card title="段落级检测结果" size="small">
-        <Space direction="vertical" style={{ width: '100%' }} size="middle">
-          {result.items.map((item, index) => (
-            <Card
-              key={index}
-              size="small"
-              style={{
-                borderLeft: `4px solid ${COLOR_MAP[item.label]}`,
-              }}
-            >
-              <Space direction="vertical" style={{ width: '100%' }} size="small">
-                <Space>
-                  <Tag color={COLOR_MAP[item.label]}>
-                    {LABEL_TEXT[item.label]}
-                  </Tag>
-                  <Text type="secondary">
-                    AI 概率 {Math.round(item.ai_probability * 100)}%
-                  </Text>
-                </Space>
-
-                <Paragraph style={{ marginBottom: 0 }}>
-                  {paragraphs[index]}
-                </Paragraph>
-              </Space>
-            </Card>
-          ))}
-        </Space>
-      </Card>
-    </Space>
+      </Form>
+    </Card>
   );
 };
 
-export default DetectResultPanel;
+export default DetectConfigPanel;
