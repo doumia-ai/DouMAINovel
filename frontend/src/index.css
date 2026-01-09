@@ -522,3 +522,70 @@ body {
 :root.theme-dark .modern-sider .ant-menu-item:not(.ant-menu-item-selected):hover .anticon {
   color: var(--color-primary-hover) !important;
 }
+/* ====================================================
+   强制局部深色模式 (Force Local Dark Mode)
+   添加到 index.css 末尾
+   ==================================================== */
+.aigc-force-dark {
+  /* 强制重写 CSS 变量为深色模式的值 (从 :root.theme-dark 复制而来) */
+  --color-primary: #5A9BA5;
+  --color-primary-hover: #6DB3BD;
+  --color-primary-active: #4A8A94;
+
+  --color-success: #73D13D;
+  --color-warning: #FFC53D;
+  --color-error: #FF7875;
+  --color-info: #40A9FF;
+
+  --color-success-bg: rgba(115, 209, 61, 0.1);
+  --color-success-border: rgba(115, 209, 61, 0.3);
+  --color-warning-bg: rgba(255, 197, 61, 0.1);
+  --color-warning-border: rgba(255, 197, 61, 0.3);
+  --color-error-bg: rgba(255, 120, 117, 0.1);
+  --color-error-border: rgba(255, 120, 117, 0.3);
+  --color-info-bg: rgba(64, 169, 255, 0.1);
+  --color-info-border: rgba(64, 169, 255, 0.3);
+
+  --color-bg-base: #1a1a2e;
+  --color-bg-container: #242438; /* 关键：卡片背景 */
+  --color-bg-layout: #16162a;
+  --color-bg-spotlight: #5A9BA5;
+  --color-bg-mask: rgba(0, 0, 0, 0.65);
+
+  --color-text-base: #E8E8E8;
+  --color-text-primary: #E8E8E8;
+  --color-text-secondary: #A8A8A8;
+  --color-text-tertiary: #787878;
+  --color-text-quaternary: #585858;
+
+  --color-border: #3D3D5C;
+  --color-border-secondary: #2D2D4A;
+
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-elevated: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-primary: 0 4px 16px rgba(90, 155, 165, 0.3);
+  --shadow-header: 0 2px 8px rgba(0, 0, 0, 0.3);
+
+  color-scheme: dark;
+  color: var(--color-text-base);
+  background-color: var(--color-bg-base);
+}
+
+/* 强制覆盖 Ant Design 卡片背景，以防万一 */
+.aigc-force-dark .ant-card {
+  background-color: var(--color-bg-container) !important;
+  border-color: var(--color-border) !important;
+}
+
+.aigc-force-dark .ant-card-head {
+  border-bottom-color: var(--color-border-secondary) !important;
+  color: var(--color-text-base) !important;
+}
+
+/* 强制输入框深色 */
+.aigc-force-dark .ant-input,
+.aigc-force-dark textarea.ant-input {
+  background-color: #161626 !important;
+  color: #fff !important;
+  border-color: var(--color-border) !important;
+}
