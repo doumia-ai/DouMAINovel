@@ -109,6 +109,9 @@ class Settings(BaseSettings):
     # GitHub API 配置
     GITHUB_TOKEN: Optional[str] = None  # GitHub Personal Access Token，可将 API 限制从 60 次/小时提升到 5000 次/小时
     
+    # AIGC 检测服务配置
+    aigc_detect_url: str = "http://aigc-text-detector:8080"  # AIGC 检测服务地址（Docker 网络内部地址）
+    
     class Config:
         env_file = ".env"
         case_sensitive = False

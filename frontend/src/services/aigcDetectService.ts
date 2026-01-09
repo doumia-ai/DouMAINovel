@@ -38,10 +38,10 @@ export interface DetectConfig {
 // 默认配置
 // =======================
 
+// 内置服务使用后端代理，解决远程访问时 localhost 指向用户本地电脑的问题
 const DEFAULT_BUILTIN_CONFIG: ServiceConfig = {
-  baseUrl:
-    import.meta.env.VITE_AIGC_DETECT_BASE_URL || 'http://localhost:8088',
-  detectPath: '/detect/batch',
+  baseUrl: '',  // 空字符串表示使用当前域名（通过后端代理）
+  detectPath: '/api/aigc-detect/batch',  // 后端代理 API 路径
   headers: [],
 };
 

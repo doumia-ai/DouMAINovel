@@ -1,6 +1,5 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
-  Layout,
   Card,
   Input,
   Button,
@@ -8,15 +7,14 @@ import {
   Typography,
   Alert,
   message,
-  Breadcrumb,
 } from 'antd';
 import {
   SearchOutlined,
-  HomeOutlined,
+  ArrowLeftOutlined,
   SafetyCertificateOutlined,
   WarningOutlined,
 } from '@ant-design/icons';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { DetectConfigPanel, DetectResultPanel } from '../components/AIGCDetect';
 import {
   aigcDetectService,
@@ -26,17 +24,28 @@ import {
   type DetectResponse,
 } from '../services/aigcDetectService';
 
-const { Content } = Layout;
 const { TextArea } = Input;
 const { Title, Text, Paragraph } = Typography;
 
 const AIGCDetect: React.FC = () => {
+  const navigate = useNavigate();
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  
   // ===== 状态管理 =====
   const [config, setConfig] = useState<DetectConfig>(() => loadDetectConfig());
   const [inputText, setInputText] = useState<string>('');
   const [paragraphs, setParagraphs] = useState<string[]>([]);
   const [result, setResult] = useState<DetectResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+
+  // 响应式处理
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // ===== 配置变更（保存到本地）=====
   const handleConfigChange = useCallback((newConfig: DetectConfig) => {
@@ -100,48 +109,64 @@ const AIGCDetect: React.FC = () => {
   };
 
   return (
-    <Layout style={{ minHeight: '100vh', background: 'transparent' }}>
-      <Content
-        style={{
-          padding: '24px',
+    <div style={{
+      minHeight: '100vh',
+      background: 'var(--color-bg-base)',
+    }}>
+      {/* 顶部标题栏 - 固定不滚动 */}
+      <div style={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 100,
+        background: 'var(--color-primary)',
+        boxShadow: 'var(--shadow-header)',
+      }}>
+        <div style={{
           maxWidth: 1200,
           margin: '0 auto',
-          width: '100%',
-        }}
-      >
-        {/* 面包屑导航 */}
-        <Breadcrumb
-          style={{ marginBottom: 16 }}
-          items={[
-            {
-              title: (
-                <Link to="/">
-                  <HomeOutlined /> 首页
-                </Link>
-              ),
-            },
-            {
-              title: (
-                <>
-                  <SafetyCertificateOutlined /> AI 生成文本检测
-                </>
-              ),
-            },
-          ]}
-        />
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: isMobile ? '12px 16px' : '16px 24px',
+        }}>
+          <Button
+            icon={<ArrowLeftOutlined />}
+            onClick={() => navigate('/')}
+            size={isMobile ? 'middle' : 'large'}
+            style={{
+              background: 'rgba(255,255,255,0.2)',
+              borderColor: 'rgba(255,255,255,0.3)',
+              color: '#fff',
+            }}
+          >
+            {isMobile ? '返回' : '返回首页'}
+          </Button>
 
-        {/* 页面标题 */}
-        <div style={{ marginBottom: 24 }}>
-          <Title level={3} style={{ marginBottom: 8 }}>
+          <Title level={isMobile ? 4 : 2} style={{
+            margin: 0,
+            color: '#fff',
+            textShadow: '0 2px 4px rgba(0,0,0,0.1)',
+          }}>
             <SafetyCertificateOutlined style={{ marginRight: 8 }} />
-            AI 生成文本检测工具
+            AI 检测工具
           </Title>
+
+          <div style={{ width: isMobile ? 60 : 120 }}></div>
+        </div>
+      </div>
+
+      {/* 内容区域 */}
+      <div style={{
+        maxWidth: 1200,
+        margin: '0 auto',
+        padding: isMobile ? '16px 12px' : '24px 24px',
+      }}>
+        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+          {/* 页面说明 */}
           <Text type="secondary">
             检测文本中的 AI 生成特征，辅助写作参考。支持内置检测服务和自定义检测 API。
           </Text>
-        </div>
 
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
           {/* 检测配置区 */}
           <DetectConfigPanel
             config={config}
@@ -175,6 +200,8 @@ const AIGCDetect: React.FC = () => {
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: 12,
                 }}
               >
                 <Text type="secondary">
@@ -230,8 +257,8 @@ const AIGCDetect: React.FC = () => {
             }
           />
         </Space>
-      </Content>
-    </Layout>
+      </div>
+    </div>
   );
 };
 
