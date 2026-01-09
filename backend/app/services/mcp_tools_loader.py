@@ -166,10 +166,14 @@ class MCPToolsLoader:
         
         for plugin in plugins:
             try:
+                # 获取provider_type，默认为"mcp"
+                provider_type = plugin.provider_type or "mcp"
+                
                 # 确定插件类型
                 plugin_type = plugin.plugin_type
-                if plugin_type == "http":
-                    plugin_type = "streamable_http"  # 默认使用streamable_http
+                # 只有当provider_type是"mcp"时，才将http转换为streamable_http
+                if plugin_type == "http" and provider_type == "mcp":
+                    plugin_type = "streamable_http"
                 
                 # 确保插件已注册到MCP客户端
                 await mcp_client.ensure_registered(
@@ -177,7 +181,10 @@ class MCPToolsLoader:
                     plugin_name=plugin.plugin_name,
                     url=plugin.server_url,
                     plugin_type=plugin_type,
-                    headers=plugin.headers
+                    provider_type=provider_type,
+                    headers=plugin.headers,
+                    openapi_path=plugin.openapi_path or "/openapi.json",
+                    tool_endpoint_template=plugin.tool_endpoint_template
                 )
                 
                 # 获取工具列表

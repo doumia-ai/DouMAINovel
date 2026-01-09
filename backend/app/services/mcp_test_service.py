@@ -27,8 +27,8 @@ class MCPTestService:
     """MCP插件测试服务（使用统一门面重构）"""
     
     async def _ensure_plugin_registered(
-        self, 
-        plugin: MCPPlugin, 
+        self,
+        plugin: MCPPlugin,
         user_id: str
     ) -> bool:
         """
@@ -42,12 +42,24 @@ class MCPTestService:
             是否成功
         """
         if plugin.plugin_type in ("http", "streamable_http", "sse") and plugin.server_url:
+            # 获取provider_type，默认为"mcp"
+            provider_type = plugin.provider_type or "mcp"
+            
+            # 确定插件类型
+            plugin_type = plugin.plugin_type
+            # 只有当provider_type是"mcp"时，才将http转换为streamable_http
+            if plugin_type == "http" and provider_type == "mcp":
+                plugin_type = "streamable_http"
+            
             return await mcp_client.ensure_registered(
                 user_id=user_id,
                 plugin_name=plugin.plugin_name,
                 url=plugin.server_url,
-                plugin_type=plugin.plugin_type,
-                headers=plugin.headers
+                plugin_type=plugin_type,
+                provider_type=provider_type,
+                headers=plugin.headers,
+                openapi_path=plugin.openapi_path or "/openapi.json",
+                tool_endpoint_template=plugin.tool_endpoint_template
             )
         return False
     

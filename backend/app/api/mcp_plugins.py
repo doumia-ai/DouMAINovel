@@ -48,13 +48,19 @@ async def _register_plugin_to_facade(plugin: MCPPlugin, user_id: str) -> bool:
         是否注册成功
     """
     if plugin.plugin_type in ["http", "streamable_http", "sse"] and plugin.server_url:
+        # 获取provider_type，默认为"mcp"
+        provider_type = plugin.provider_type or "mcp"
+        
         return await mcp_client.register(MCPPluginConfig(
             user_id=user_id,
             plugin_name=plugin.plugin_name,
             url=plugin.server_url,
             plugin_type=plugin.plugin_type,
+            provider_type=provider_type,
             headers=plugin.headers,
-            timeout=plugin.config.get('timeout', 60.0) if plugin.config else 60.0
+            timeout=plugin.config.get('timeout', 60.0) if plugin.config else 60.0,
+            openapi_path=plugin.openapi_path or "/openapi.json",
+            tool_endpoint_template=plugin.tool_endpoint_template
         ))
     else:
         logger.warning(f"暂不支持的插件类型: {plugin.plugin_type}")
@@ -436,9 +442,12 @@ async def toggle_plugin(
     # 保存插件信息用于后续MCP操作
     plugin_name = plugin.plugin_name
     plugin_type = plugin.plugin_type
+    provider_type = plugin.provider_type or "mcp"
     server_url = plugin.server_url
     headers = plugin.headers
     config = plugin.config
+    openapi_path = plugin.openapi_path or "/openapi.json"
+    tool_endpoint_template = plugin.tool_endpoint_template
     
     # 先更新数据库状态
     plugin.enabled = enabled
@@ -458,8 +467,11 @@ async def toggle_plugin(
                     plugin_name=plugin_name,
                     url=server_url,
                     plugin_type=plugin_type,
+                    provider_type=provider_type,
                     headers=headers,
-                    timeout=config.get('timeout', 60.0) if config else 60.0
+                    timeout=config.get('timeout', 60.0) if config else 60.0,
+                    openapi_path=openapi_path,
+                    tool_endpoint_template=tool_endpoint_template
                 ))
             else:
                 success = False
@@ -564,12 +576,24 @@ async def _ensure_plugin_registered(
     try:
         # 使用ensure_registered方法，它会检查是否已注册
         if plugin.plugin_type in ["http", "streamable_http", "sse"] and plugin.server_url:
+            # 获取provider_type，默认为"mcp"
+            provider_type = plugin.provider_type or "mcp"
+            
+            # 确定插件类型
+            plugin_type = plugin.plugin_type
+            # 只有当provider_type是"mcp"时，才将http转换为streamable_http
+            if plugin_type == "http" and provider_type == "mcp":
+                plugin_type = "streamable_http"
+            
             return await mcp_client.ensure_registered(
                 user_id=user_id,
                 plugin_name=plugin.plugin_name,
                 url=plugin.server_url,
-                plugin_type=plugin.plugin_type,
-                headers=plugin.headers
+                plugin_type=plugin_type,
+                provider_type=provider_type,
+                headers=plugin.headers,
+                openapi_path=plugin.openapi_path or "/openapi.json",
+                tool_endpoint_template=plugin.tool_endpoint_template
             )
         return False
     except ValueError as e:
