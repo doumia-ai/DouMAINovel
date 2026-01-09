@@ -1,0 +1,65 @@
+name: Sync upstream main
+
+on:
+  schedule:
+    - cron: "0 3 * * *"   # 每天 UTC 03:00（北京时间 11:00）
+  workflow_dispatch:
+
+permissions:
+  contents: write   # 明确允许推送代码
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout fork main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Add upstream and fetch
+        run: |
+          git remote add upstream https://github.com/xiamuceer-j/MuMuAINovel.git || true
+          git fetch upstream
+
+      - name: Backup fork-specific files
+        run: |
+          # 备份 fork 独有的 workflow 文件
+          mkdir -p /tmp/fork-backup/.github/workflows
+          cp -r .github/workflows/* /tmp/fork-backup/.github/workflows/ 2>/dev/null || true
+          echo "Backed up workflow files:"
+          ls -la /tmp/fork-backup/.github/workflows/ 2>/dev/null || echo "No files to backup"
+
+      - name: Reset main to upstream/main
+        run: |
+          git reset --hard upstream/main
+
+      - name: Restore fork-specific files
+        run: |
+          # 确保 .github/workflows 目录存在
+          mkdir -p .github/workflows
+          # 恢复备份的 workflow 文件（覆盖上游同名文件）
+          cp -r /tmp/fork-backup/.github/workflows/* .github/workflows/ 2>/dev/null || true
+          echo "Restored workflow files:"
+          ls -la .github/workflows/ 2>/dev/null || echo "No files restored"
+
+      - name: Commit restored files if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: restore fork-specific workflow files after upstream sync"
+          fi
+
+      - name: Push to origin main safely
+        run: |
+          git push origin main --force-with-lease
+
+      - name: Show synced commit
+        run: |
+          git --no-pager log -1 --oneline
