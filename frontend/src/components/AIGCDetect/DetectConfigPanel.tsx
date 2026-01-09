@@ -209,7 +209,7 @@ const DetectConfigPanel: React.FC<DetectConfigPanelProps> = ({
     return (
       <Space direction="vertical" style={{ width: '100%' }} size="middle">
         <Form.Item
-          label="API Base URL"
+          label="接口地址"
           required
           style={{ marginBottom: 0 }}
           tooltip={isBuiltin ? '内置检测服务的地址，通常是独立部署的 Docker 服务' : '自定义检测 API 的基础地址'}
@@ -223,7 +223,7 @@ const DetectConfigPanel: React.FC<DetectConfigPanelProps> = ({
         </Form.Item>
 
         <Form.Item
-          label="Detect Path"
+          label="检测路径"
           style={{ marginBottom: 0 }}
           tooltip="检测接口的路径"
         >
@@ -235,19 +235,19 @@ const DetectConfigPanel: React.FC<DetectConfigPanelProps> = ({
           />
         </Form.Item>
 
-        <Form.Item label="Headers（可选）" style={{ marginBottom: 0 }}>
+        <Form.Item label="请求头（可选）" style={{ marginBottom: 0 }}>
           <Space direction="vertical" style={{ width: '100%' }}>
             {(serviceConfig.headers || []).map((header, index) => (
               <Space key={index} style={{ width: '100%' }}>
                 <Input
-                  placeholder="Key"
+                  placeholder="键"
                   value={header.key}
                   onChange={(e) => handleHeaderChange(index, 'key', e.target.value)}
                   style={{ width: 150 }}
                   disabled={disabled}
                 />
                 <Input
-                  placeholder="Value"
+                  placeholder="值"
                   value={header.value}
                   onChange={(e) => handleHeaderChange(index, 'value', e.target.value)}
                   style={{ width: 200 }}
@@ -269,7 +269,7 @@ const DetectConfigPanel: React.FC<DetectConfigPanelProps> = ({
               style={{ width: '100%' }}
               disabled={disabled}
             >
-              添加 Header
+              添加请求头
             </Button>
           </Space>
         </Form.Item>
@@ -322,21 +322,21 @@ const DetectConfigPanel: React.FC<DetectConfigPanelProps> = ({
             onChange={(e) => handleSourceChange(e.target.value)}
             disabled={disabled}
           >
-            <Radio value="builtin">内置检测服务</Radio>
-            <Radio value="custom">自定义检测 API</Radio>
+            <Radio value="builtin">内置</Radio>
+            <Radio value="custom">自定义 API</Radio>
           </Radio.Group>
         </Form.Item>
 
         {config.source === 'builtin' && (
           <Collapse
-            defaultActiveKey={['builtin-config']}
+            defaultActiveKey={[]}
             items={[
               {
                 key: 'builtin-config',
                 label: (
                   <Space>
                     <SettingOutlined />
-                    <span>内置服务配置</span>
+                    <span>内置配置</span>
                   </Space>
                 ),
                 children: renderServiceConfigForm(config.builtinConfig, true),
@@ -347,7 +347,7 @@ const DetectConfigPanel: React.FC<DetectConfigPanelProps> = ({
 
         {config.source === 'custom' && (
           <Collapse
-            defaultActiveKey={['custom-config']}
+            defaultActiveKey={[]}
             items={[
               {
                 key: 'custom-config',
@@ -363,48 +363,30 @@ const DetectConfigPanel: React.FC<DetectConfigPanelProps> = ({
           />
         )}
 
-        <div style={{ marginTop: 16 }}>
-          <Text type="secondary" style={{ color: token.colorTextSecondary }}>
-            {config.source === 'builtin' ? (
-              <>
-                💡 内置检测服务通常部署为独立的 Docker 容器。
-                如果使用 docker-compose，服务名可能是 <code style={{
-                  backgroundColor: token.colorFillSecondary,
-                  padding: '2px 6px',
-                  borderRadius: 4,
-                  color: token.colorText
-                }}>aigc-text-detector</code>，
-                地址格式为 <code style={{
-                  backgroundColor: token.colorFillSecondary,
-                  padding: '2px 6px',
-                  borderRadius: 4,
-                  color: token.colorText
-                }}>http://aigc-text-detector:8080</code>
-              </>
-            ) : (
-              <>
-                💡 自定义检测 API 需要遵循相同的接口规范：
-                POST 请求，请求体为 <code style={{
-                  backgroundColor: token.colorFillSecondary,
-                  padding: '2px 6px',
-                  borderRadius: 4,
-                  color: token.colorText
-                }}>{`{"texts": string[]}`}</code>，
-                响应包含 <code style={{
-                  backgroundColor: token.colorFillSecondary,
-                  padding: '2px 6px',
-                  borderRadius: 4,
-                  color: token.colorText
-                }}>summary</code> 和 <code style={{
-                  backgroundColor: token.colorFillSecondary,
-                  padding: '2px 6px',
-                  borderRadius: 4,
-                  color: token.colorText
-                }}>items</code> 字段。
-              </>
-            )}
-          </Text>
-        </div>
+        {config.source === 'custom' && (
+          <div style={{ marginTop: 16 }}>
+            <Text type="secondary" style={{ color: token.colorTextSecondary }}>
+              💡 自定义 API 需要遵循相同的接口规范：
+              POST 请求，请求体为 <code style={{
+                backgroundColor: token.colorFillSecondary,
+                padding: '2px 6px',
+                borderRadius: 4,
+                color: token.colorText
+              }}>{`{"texts": string[]}`}</code>，
+              响应包含 <code style={{
+                backgroundColor: token.colorFillSecondary,
+                padding: '2px 6px',
+                borderRadius: 4,
+                color: token.colorText
+              }}>summary</code> 和 <code style={{
+                backgroundColor: token.colorFillSecondary,
+                padding: '2px 6px',
+                borderRadius: 4,
+                color: token.colorText
+              }}>items</code> 字段。
+            </Text>
+          </div>
+        )}
       </Form>
     </Card>
   );

@@ -9,6 +9,7 @@ import {
   Col,
   Empty,
   Space,
+  theme,
 } from 'antd';
 import {
   CheckCircleOutlined,
@@ -19,6 +20,7 @@ import {
 import type { DetectResponse } from '../../services/aigcDetectService';
 
 const { Text, Paragraph } = Typography;
+const { useToken } = theme;
 
 interface DetectResultPanelProps {
   result: DetectResponse | null;
@@ -47,18 +49,34 @@ const labelIconMap: Record<string, React.ReactNode> = {
   ai: <RobotOutlined />,
 };
 
-// 边框颜色映射
-const borderColorMap: Record<string, string> = {
-  human: '#52c41a',
-  suspected_ai: '#faad14',
-  ai: '#ff4d4f',
+// 边框颜色映射（深色主题下使用更亮的颜色）
+const getBorderColor = (label: string, isDark: boolean): string => {
+  const lightColors: Record<string, string> = {
+    human: '#52c41a',
+    suspected_ai: '#faad14',
+    ai: '#ff4d4f',
+  };
+  const darkColors: Record<string, string> = {
+    human: '#73d13d',
+    suspected_ai: '#ffc53d',
+    ai: '#ff7875',
+  };
+  return isDark ? (darkColors[label] || lightColors[label]) : (lightColors[label] || '#d9d9d9');
 };
 
-// 背景颜色映射（浅色）
-const bgColorMap: Record<string, string> = {
-  human: 'rgba(82, 196, 26, 0.1)',
-  suspected_ai: 'rgba(250, 173, 20, 0.1)',
-  ai: 'rgba(255, 77, 79, 0.1)',
+// 背景颜色映射（深色主题下提高透明度）
+const getBgColor = (label: string, isDark: boolean): string => {
+  const lightColors: Record<string, string> = {
+    human: 'rgba(82, 196, 26, 0.1)',
+    suspected_ai: 'rgba(250, 173, 20, 0.1)',
+    ai: 'rgba(255, 77, 79, 0.1)',
+  };
+  const darkColors: Record<string, string> = {
+    human: 'rgba(115, 209, 61, 0.18)',
+    suspected_ai: 'rgba(255, 197, 61, 0.18)',
+    ai: 'rgba(255, 120, 117, 0.18)',
+  };
+  return isDark ? (darkColors[label] || lightColors[label]) : (lightColors[label] || 'transparent');
 };
 
 const DetectResultPanel: React.FC<DetectResultPanelProps> = ({
@@ -66,6 +84,17 @@ const DetectResultPanel: React.FC<DetectResultPanelProps> = ({
   paragraphs,
   loading = false,
 }) => {
+  const { token } = useToken();
+  // 检测是否为深色主题（通过背景色判断）
+  const isDark = token.colorBgContainer === '#242438';
+
+  // 根据主题获取 Progress 百分比文字颜色
+  const getProgressTextColor = (type: 'human' | 'suspected_ai' | 'ai'): string => {
+    const lightColors = { human: '#52c41a', suspected_ai: '#faad14', ai: '#ff4d4f' };
+    const darkColors = { human: '#73d13d', suspected_ai: '#ffc53d', ai: '#ff7875' };
+    return isDark ? darkColors[type] : lightColors[type];
+  };
+
   if (!result && !loading) {
     return (
       <Card
@@ -103,9 +132,9 @@ const DetectResultPanel: React.FC<DetectResultPanelProps> = ({
                   <Progress
                     type="circle"
                     percent={Math.round(result.summary.human_ratio * 100)}
-                    strokeColor="#52c41a"
+                    strokeColor={getProgressTextColor('human')}
                     format={(percent) => (
-                      <span style={{ color: '#52c41a' }}>
+                      <span style={{ color: getProgressTextColor('human') }}>
                         {percent}%
                       </span>
                     )}
@@ -123,9 +152,9 @@ const DetectResultPanel: React.FC<DetectResultPanelProps> = ({
                   <Progress
                     type="circle"
                     percent={Math.round(result.summary.suspected_ai_ratio * 100)}
-                    strokeColor="#faad14"
+                    strokeColor={getProgressTextColor('suspected_ai')}
                     format={(percent) => (
-                      <span style={{ color: '#faad14' }}>
+                      <span style={{ color: getProgressTextColor('suspected_ai') }}>
                         {percent}%
                       </span>
                     )}
@@ -143,9 +172,9 @@ const DetectResultPanel: React.FC<DetectResultPanelProps> = ({
                   <Progress
                     type="circle"
                     percent={Math.round(result.summary.ai_ratio * 100)}
-                    strokeColor="#ff4d4f"
+                    strokeColor={getProgressTextColor('ai')}
                     format={(percent) => (
-                      <span style={{ color: '#ff4d4f' }}>
+                      <span style={{ color: getProgressTextColor('ai') }}>
                         {percent}%
                       </span>
                     )}
@@ -172,8 +201,8 @@ const DetectResultPanel: React.FC<DetectResultPanelProps> = ({
               renderItem={(item) => (
                 <List.Item
                   style={{
-                    borderLeft: `4px solid ${borderColorMap[item.label]}`,
-                    backgroundColor: bgColorMap[item.label],
+                    borderLeft: `4px solid ${getBorderColor(item.label, isDark)}`,
+                    backgroundColor: getBgColor(item.label, isDark),
                     marginBottom: 8,
                     padding: '12px 16px',
                     borderRadius: '0 4px 4px 0',

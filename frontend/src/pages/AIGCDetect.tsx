@@ -165,11 +165,6 @@ const AIGCDetect: React.FC = () => {
         padding: isMobile ? '16px 12px' : '24px 24px',
       }}>
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
-          {/* 页面说明 */}
-          <Text type="secondary" style={{ color: token.colorTextSecondary }}>
-            检测文本中的 AI 生成特征，辅助写作参考。支持内置检测服务和自定义检测 API。
-          </Text>
-
           {/* 检测配置区 */}
           <DetectConfigPanel
             config={config}
@@ -251,7 +246,7 @@ const AIGCDetect: React.FC = () => {
             showIcon
             message="免责声明"
             description={
-              <Paragraph style={{ marginBottom: 0 }}>
+              <Paragraph style={{ marginBottom: 0, textAlign: 'center' }}>
                 本检测结果仅用于写作辅助参考，不作为任何审核或处罚依据。
                 <br />
                 AI 检测技术存在一定误差，检测结果可能受文本风格、长度、主题等因素影响。
@@ -259,6 +254,7 @@ const AIGCDetect: React.FC = () => {
                 请勿将本工具用于学术诚信审查、内容审核或任何可能对他人产生不利影响的场景。
               </Paragraph>
             }
+            style={{ textAlign: 'center' }}
           />
         </Space>
       </div>
