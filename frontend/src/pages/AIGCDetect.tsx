@@ -16,7 +16,12 @@ import {
   WarningOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { DetectConfigPanel, DetectResultPanel } from '../components/AIGCDetect';
+
+// 👇 关键修改：直接引用具体文件，避免 index.ts 导出问题
+import DetectConfigPanel from '../components/AIGCDetect/DetectConfigPanel';
+import DetectResultPanel from '../components/AIGCDetect/DetectResultPanel';
+
+// 👇 关键修改：确保 service 路径正确
 import {
   aigcDetectService,
   loadDetectConfig,
@@ -31,7 +36,6 @@ const { useToken } = theme;
 
 const AIGCDetect: React.FC = () => {
   const navigate = useNavigate();
-  // 1. 获取全局 Token，自动感知是浅色还是深色模式
   const { token } = useToken();
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
@@ -42,7 +46,6 @@ const AIGCDetect: React.FC = () => {
   const [result, setResult] = useState<DetectResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
 
-  // 响应式处理
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth <= 768);
@@ -51,19 +54,16 @@ const AIGCDetect: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // ===== 配置变更 =====
   const handleConfigChange = useCallback((newConfig: DetectConfig) => {
     setConfig(newConfig);
     saveDetectConfig(newConfig);
   }, []);
 
-  // ===== 段落拆分 =====
   const previewParagraphs = useMemo(
     () => aigcDetectService.splitTextToParagraphs(inputText),
     [inputText]
   );
 
-  // ===== 执行检测 =====
   const handleDetect = async () => {
     if (!inputText.trim()) {
       message.warning('请输入待检测的文本');
@@ -107,15 +107,13 @@ const AIGCDetect: React.FC = () => {
   };
 
   return (
-    // 2. 移除 ConfigProvider，直接使用 div，背景色跟随全局 token
     <div
       style={{
         minHeight: '100vh',
-        background: token.colorBgLayout, // 浅色模式下是浅灰，深色模式下是深蓝
+        background: token.colorBgLayout,
         transition: 'background 0.3s',
       }}
     >
-      {/* 顶部标题栏 - 保持主色调背景，文字固定白色 */}
       <div style={{
         position: 'sticky',
         top: 0,
@@ -158,7 +156,6 @@ const AIGCDetect: React.FC = () => {
         </div>
       </div>
 
-      {/* 内容区域 */}
       <div style={{
         maxWidth: 1200,
         margin: '0 auto',
@@ -166,14 +163,12 @@ const AIGCDetect: React.FC = () => {
       }}>
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
           
-          {/* 配置面板 */}
           <DetectConfigPanel
             config={config}
             onConfigChange={handleConfigChange}
             disabled={loading}
           />
 
-          {/* 文本输入区 - Card 会自动跟随全局主题变白或变黑 */}
           <Card
             title={
               <Space>
@@ -182,6 +177,10 @@ const AIGCDetect: React.FC = () => {
               </Space>
             }
             size="small"
+            style={{ 
+              background: token.colorBgContainer,
+              borderColor: token.colorBorderSecondary,
+            }}
           >
             <Space direction="vertical" style={{ width: '100%' }} size="middle">
               <TextArea
@@ -191,7 +190,12 @@ const AIGCDetect: React.FC = () => {
                 rows={10}
                 showCount
                 maxLength={50000}
-                style={{ resize: 'vertical' }}
+                style={{ 
+                  resize: 'vertical',
+                  background: token.colorBgContainer,
+                  borderColor: token.colorBorder,
+                  color: token.colorText 
+                }}
               />
 
               <div style={{
@@ -202,8 +206,7 @@ const AIGCDetect: React.FC = () => {
                 gap: 16,
                 marginTop: 12,
               }}>
-                {/* 使用 secondary 颜色，在浅色模式下是灰色，深色模式下是浅灰，自动适配 */}
-                <Text type="secondary">
+                <Text type="secondary" style={{ color: token.colorTextSecondary }}>
                   {inputText.trim() 
                     ? `已输入 ${inputText.length} 字符，预计拆分为 ${previewParagraphs.length} 个段落`
                     : '支持粘贴长文本，系统将自动按空行拆分段落'

@@ -1,265 +1,404 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Card,
+  Radio,
   Input,
   Button,
   Space,
-  Typography,
-  Alert,
+  Form,
   message,
+  Collapse,
+  Typography,
+  Divider,
   theme,
 } from 'antd';
 import {
-  SearchOutlined,
-  ArrowLeftOutlined,
-  SafetyCertificateOutlined,
-  WarningOutlined,
+  PlusOutlined,
+  MinusCircleOutlined,
+  ApiOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  SettingOutlined,
 } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
-import { DetectConfigPanel, DetectResultPanel } from '../components/AIGCDetect';
-import {
-  aigcDetectService,
-  loadDetectConfig,
-  saveDetectConfig,
-  type DetectConfig,
-  type DetectResponse,
-} from '../services/aigcDetectService';
+// 👇 关键修改：确保路径指向 services 目录
+import type { DetectConfig, ServiceConfig } from '../../services/aigcDetectService';
+import { aigcDetectService } from '../../services/aigcDetectService';
 
-const { TextArea } = Input;
-const { Title, Text, Paragraph } = Typography;
+const { Text } = Typography;
 const { useToken } = theme;
 
-const AIGCDetect: React.FC = () => {
-  const navigate = useNavigate();
-  // 获取全局 Token
+interface DetectConfigPanelProps {
+  config: DetectConfig;
+  onConfigChange: (config: DetectConfig) => void;
+  disabled?: boolean;
+}
+
+const DEFAULT_BUILTIN_CONFIG: ServiceConfig = {
+  baseUrl: 'http://aigc-text-detector:8080',
+  detectPath: '/detect/batch',
+  headers: [],
+};
+
+const DEFAULT_CUSTOM_CONFIG: ServiceConfig = {
+  baseUrl: '',
+  detectPath: '/detect/batch',
+  headers: [],
+};
+
+const DetectConfigPanel: React.FC<DetectConfigPanelProps> = ({
+  config,
+  onConfigChange,
+  disabled = false,
+}) => {
   const { token } = useToken();
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
 
-  // ===== 状态管理 =====
-  const [config, setConfig] = useState<DetectConfig>(() => loadDetectConfig());
-  const [inputText, setInputText] = useState<string>('');
-  const [paragraphs, setParagraphs] = useState<string[]>([]);
-  const [result, setResult] = useState<DetectResponse | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
+  // 处理检测来源切换
+  const handleSourceChange = (source: 'builtin' | 'custom') => {
+    onConfigChange({
+      ...config,
+      source,
+    });
+    setTestResult(null);
+  };
 
-  // 响应式处理
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768);
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  // 处理内置服务配置变更
+  const handleBuiltinConfigChange = (
+    field: keyof ServiceConfig,
+    value: string | Array<{ key: string; value: string }>
+  ) => {
+    onConfigChange({
+      ...config,
+      builtinConfig: {
+        ...config.builtinConfig,
+        [field]: value,
+      },
+    });
+    setTestResult(null);
+  };
 
-  // ===== 配置变更 =====
-  const handleConfigChange = useCallback((newConfig: DetectConfig) => {
-    setConfig(newConfig);
-    saveDetectConfig(newConfig);
-  }, []);
+  // 处理自定义服务配置变更
+  const handleCustomConfigChange = (
+    field: keyof ServiceConfig,
+    value: string | Array<{ key: string; value: string }>
+  ) => {
+    onConfigChange({
+      ...config,
+      customConfig: {
+        ...config.customConfig,
+        [field]: value,
+      },
+    });
+    setTestResult(null);
+  };
 
-  // ===== 段落拆分 =====
-  const previewParagraphs = useMemo(
-    () => aigcDetectService.splitTextToParagraphs(inputText),
-    [inputText]
-  );
+  // 处理 Headers 变更（内置服务）
+  const handleBuiltinHeaderChange = (
+    index: number,
+    field: 'key' | 'value',
+    value: string
+  ) => {
+    const newHeaders = [...(config.builtinConfig.headers || [])];
+    newHeaders[index] = { ...newHeaders[index], [field]: value };
+    handleBuiltinConfigChange('headers', newHeaders);
+  };
 
-  // ===== 执行检测 =====
-  const handleDetect = async () => {
-    if (!inputText.trim()) {
-      message.warning('请输入待检测的文本');
+  // 添加 Header（内置服务）
+  const handleAddBuiltinHeader = () => {
+    handleBuiltinConfigChange('headers', [
+      ...(config.builtinConfig.headers || []),
+      { key: '', value: '' },
+    ]);
+  };
+
+  // 删除 Header（内置服务）
+  const handleRemoveBuiltinHeader = (index: number) => {
+    const newHeaders = [...(config.builtinConfig.headers || [])];
+    newHeaders.splice(index, 1);
+    handleBuiltinConfigChange('headers', newHeaders);
+  };
+
+  // 处理 Headers 变更（自定义服务）
+  const handleCustomHeaderChange = (
+    index: number,
+    field: 'key' | 'value',
+    value: string
+  ) => {
+    const newHeaders = [...(config.customConfig.headers || [])];
+    newHeaders[index] = { ...newHeaders[index], [field]: value };
+    handleCustomConfigChange('headers', newHeaders);
+  };
+
+  // 添加 Header（自定义服务）
+  const handleAddCustomHeader = () => {
+    handleCustomConfigChange('headers', [
+      ...(config.customConfig.headers || []),
+      { key: '', value: '' },
+    ]);
+  };
+
+  // 删除 Header（自定义服务）
+  const handleRemoveCustomHeader = (index: number) => {
+    const newHeaders = [...(config.customConfig.headers || [])];
+    newHeaders.splice(index, 1);
+    handleCustomConfigChange('headers', newHeaders);
+  };
+
+  // 重置为默认配置
+  const handleResetBuiltinConfig = () => {
+    onConfigChange({
+      ...config,
+      builtinConfig: { ...DEFAULT_BUILTIN_CONFIG },
+    });
+    setTestResult(null);
+    message.info('已重置为默认配置');
+  };
+
+  const handleResetCustomConfig = () => {
+    onConfigChange({
+      ...config,
+      customConfig: { ...DEFAULT_CUSTOM_CONFIG },
+    });
+    setTestResult(null);
+    message.info('已重置为默认配置');
+  };
+
+  // 测试连接
+  const handleTestConnection = async () => {
+    const activeConfig = config.source === 'builtin' ? config.builtinConfig : config.customConfig;
+    
+    if (!activeConfig.baseUrl) {
+      message.warning('请先填写 API Base URL');
       return;
     }
 
-    if (previewParagraphs.length === 0) {
-      message.warning('未检测到有效段落，请检查输入文本');
-      return;
-    }
-
-    setParagraphs(previewParagraphs);
-    setLoading(true);
-    setResult(null);
+    setTesting(true);
+    setTestResult(null);
 
     try {
-      const detectResult = await aigcDetectService.detectTexts(
-        previewParagraphs,
-        config
-      );
-
-      if (detectResult.items.length !== previewParagraphs.length) {
-        message.error('检测结果与段落数量不匹配');
-        return;
+      const result = await aigcDetectService.testConnection(config);
+      setTestResult(result);
+      if (result.success) {
+        message.success(result.message);
+      } else {
+        message.error(result.message);
       }
-
-      setResult(detectResult);
-      message.success(`检测完成，共分析 ${previewParagraphs.length} 个段落`);
-    } catch (error: any) {
-      console.error('检测失败:', error);
-      message.error(error?.message || '检测失败');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '测试失败';
+      setTestResult({ success: false, message: errorMessage });
+      message.error(errorMessage);
     } finally {
-      setLoading(false);
+      setTesting(false);
     }
   };
 
-  const handleClear = () => {
-    setInputText('');
-    setParagraphs([]);
-    setResult(null);
+  // 渲染服务配置表单
+  const renderServiceConfigForm = (
+    serviceConfig: ServiceConfig,
+    isBuiltin: boolean
+  ) => {
+    const handleConfigChange = isBuiltin ? handleBuiltinConfigChange : handleCustomConfigChange;
+    const handleHeaderChange = isBuiltin ? handleBuiltinHeaderChange : handleCustomHeaderChange;
+    const handleAddHeader = isBuiltin ? handleAddBuiltinHeader : handleAddCustomHeader;
+    const handleRemoveHeader = isBuiltin ? handleRemoveBuiltinHeader : handleRemoveCustomHeader;
+    const handleReset = isBuiltin ? handleResetBuiltinConfig : handleResetCustomConfig;
+
+    return (
+      <Space direction="vertical" style={{ width: '100%' }} size="middle">
+        <Form.Item
+          label="接口地址"
+          required
+          style={{ marginBottom: 0 }}
+          tooltip={isBuiltin ? '内置检测服务的地址，通常是独立部署的 Docker 服务' : '自定义检测 API 的基础地址'}
+        >
+          <Input
+            placeholder={isBuiltin ? '例如: http://localhost:8088 或 http://detect-service:8088' : '例如: https://api.example.com'}
+            value={serviceConfig.baseUrl}
+            onChange={(e) => handleConfigChange('baseUrl', e.target.value)}
+            disabled={disabled}
+            style={{ background: token.colorBgContainer, borderColor: token.colorBorder }}
+          />
+        </Form.Item>
+
+        <Form.Item
+          label="检测路径"
+          style={{ marginBottom: 0 }}
+          tooltip="检测接口的路径"
+        >
+          <Input
+            placeholder="/detect/batch"
+            value={serviceConfig.detectPath}
+            onChange={(e) => handleConfigChange('detectPath', e.target.value)}
+            disabled={disabled}
+            style={{ background: token.colorBgContainer, borderColor: token.colorBorder }}
+          />
+        </Form.Item>
+
+        <Form.Item label="请求头（可选）" style={{ marginBottom: 0 }}>
+          <Space direction="vertical" style={{ width: '100%' }}>
+            {(serviceConfig.headers || []).map((header, index) => (
+              <Space key={index} style={{ width: '100%' }}>
+                <Input
+                  placeholder="键"
+                  value={header.key}
+                  onChange={(e) => handleHeaderChange(index, 'key', e.target.value)}
+                  style={{ width: 150, background: token.colorBgContainer, borderColor: token.colorBorder }}
+                  disabled={disabled}
+                />
+                <Input
+                  placeholder="值"
+                  value={header.value}
+                  onChange={(e) => handleHeaderChange(index, 'value', e.target.value)}
+                  style={{ width: 200, background: token.colorBgContainer, borderColor: token.colorBorder }}
+                  disabled={disabled}
+                />
+                <Button
+                  type="text"
+                  danger
+                  icon={<MinusCircleOutlined />}
+                  onClick={() => handleRemoveHeader(index)}
+                  disabled={disabled}
+                />
+              </Space>
+            ))}
+            <Button
+              type="dashed"
+              onClick={handleAddHeader}
+              icon={<PlusOutlined />}
+              style={{ width: '100%' }}
+              disabled={disabled}
+            >
+              添加请求头
+            </Button>
+          </Space>
+        </Form.Item>
+
+        <Divider style={{ margin: '12px 0' }} />
+
+        <Form.Item style={{ marginBottom: 0 }}>
+          <Space>
+            <Button
+              type="primary"
+              onClick={handleTestConnection}
+              loading={testing}
+              disabled={disabled}
+            >
+              测试连接
+            </Button>
+            <Button onClick={handleReset} disabled={disabled}>
+              重置为默认
+            </Button>
+            {testResult && (
+              <Text type={testResult.success ? 'success' : 'danger'}>
+                {testResult.success ? (
+                  <CheckCircleOutlined />
+                ) : (
+                  <CloseCircleOutlined />
+                )}{' '}
+                {testResult.message}
+              </Text>
+            )}
+          </Space>
+        </Form.Item>
+      </Space>
+    );
   };
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        background: token.colorBgLayout, // 确保大背景跟随主题
-        transition: 'background 0.3s',
+    <Card
+      title={
+        <Space>
+          <ApiOutlined />
+          <span>检测来源与配置</span>
+        </Space>
+      }
+      size="small"
+      style={{ 
+        background: token.colorBgContainer,
+        borderColor: token.colorBorderSecondary,
       }}
     >
-      {/* 顶部标题栏 */}
-      <div style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 100,
-        background: token.colorPrimary,
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
-        transition: 'background 0.3s',
-      }}>
-        <div style={{
-          maxWidth: 1200,
-          margin: '0 auto',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: isMobile ? '12px 16px' : '16px 24px',
-        }}>
-          <Button
-            icon={<ArrowLeftOutlined />}
-            onClick={() => navigate('/')}
-            size={isMobile ? 'middle' : 'large'}
-            style={{
-              background: 'rgba(255,255,255,0.2)',
-              borderColor: 'rgba(255,255,255,0.3)',
-              color: '#fff',
-            }}
+      <Form layout="vertical">
+        <Form.Item label="检测来源">
+          <Radio.Group
+            value={config.source}
+            onChange={(e) => handleSourceChange(e.target.value)}
+            disabled={disabled}
           >
-            {isMobile ? '返回' : '返回首页'}
-          </Button>
+            <Radio value="builtin">内置</Radio>
+            <Radio value="custom">自定义 API</Radio>
+          </Radio.Group>
+        </Form.Item>
 
-          <Title level={isMobile ? 4 : 2} style={{
-            margin: 0,
-            color: '#fff',
-            textShadow: '0 2px 4px rgba(0,0,0,0.1)',
-          }}>
-            <SafetyCertificateOutlined style={{ marginRight: 8 }} />
-            AI 检测工具
-          </Title>
-
-          <div style={{ width: isMobile ? 60 : 120 }}></div>
-        </div>
-      </div>
-
-      {/* 内容区域 */}
-      <div style={{
-        maxWidth: 1200,
-        margin: '0 auto',
-        padding: isMobile ? '16px 12px' : '24px 24px',
-      }}>
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
-          
-          {/* 配置面板 (已在上一条回复中修复) */}
-          <DetectConfigPanel
-            config={config}
-            onConfigChange={handleConfigChange}
-            disabled={loading}
+        {config.source === 'builtin' && (
+          <Collapse
+            defaultActiveKey={[]}
+            style={{ background: 'transparent' }}
+            items={[
+              {
+                key: 'builtin-config',
+                label: (
+                  <Space>
+                    <SettingOutlined />
+                    <span>内置配置</span>
+                  </Space>
+                ),
+                children: renderServiceConfigForm(config.builtinConfig, true),
+              },
+            ]}
           />
+        )}
 
-          {/* 文本输入区 - 修复此处 */}
-          <Card
-            title={
-              <Space>
-                <SearchOutlined />
-                <span>文本输入与检测</span>
-              </Space>
-            }
-            size="small"
-            // 关键修复：显式指定背景色
-            style={{ 
-              background: token.colorBgContainer,
-              borderColor: token.colorBorderSecondary,
-            }}
-          >
-            <Space direction="vertical" style={{ width: '100%' }} size="middle">
-              <TextArea
-                placeholder="请在此粘贴或输入待检测的文本内容（小说章节、文章等）..."
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                rows={10}
-                showCount
-                maxLength={50000}
-                // 关键修复：显式指定输入框背景色，防止变白
-                style={{ 
-                  resize: 'vertical',
-                  background: token.colorBgContainer,
-                  borderColor: token.colorBorder,
-                  color: token.colorText 
-                }}
-              />
-
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: 16,
-                marginTop: 12,
-              }}>
-                <Text type="secondary" style={{ color: token.colorTextSecondary }}>
-                  {inputText.trim() 
-                    ? `已输入 ${inputText.length} 字符，预计拆分为 ${previewParagraphs.length} 个段落`
-                    : '支持粘贴长文本，系统将自动按空行拆分段落'
-                  }
-                </Text>
-
-                <Space>
-                  <Button onClick={handleClear} disabled={loading}>
-                    清空
-                  </Button>
-                  <Button
-                    type="primary"
-                    icon={<SearchOutlined />}
-                    onClick={handleDetect}
-                    loading={loading}
-                    disabled={!inputText.trim()}
-                  >
-                    开始检测
-                  </Button>
-                </Space>
-              </div>
-            </Space>
-          </Card>
-
-          {/* 检测结果区 - 这是一个独立组件 */}
-          <DetectResultPanel
-            result={result}
-            paragraphs={paragraphs}
-            loading={loading}
+        {config.source === 'custom' && (
+          <Collapse
+            defaultActiveKey={[]}
+            style={{ background: 'transparent' }}
+            items={[
+              {
+                key: 'custom-config',
+                label: (
+                  <Space>
+                    <SettingOutlined />
+                    <span>自定义 API 配置</span>
+                  </Space>
+                ),
+                children: renderServiceConfigForm(config.customConfig, false),
+              },
+            ]}
           />
+        )}
 
-          <Alert
-            type="warning"
-            icon={<WarningOutlined />}
-            showIcon
-            message="免责声明"
-            description={
-              <Paragraph style={{ marginBottom: 0, textAlign: 'center' }}>
-                本检测结果仅用于写作辅助参考，不作为任何审核或处罚依据。
-              </Paragraph>
-            }
-            style={{ textAlign: 'center' }}
-          />
-        </Space>
-      </div>
-    </div>
+        {config.source === 'custom' && (
+          <div style={{ marginTop: 16 }}>
+            <Text type="secondary" style={{ color: token.colorTextSecondary }}>
+              💡 自定义 API 需要遵循相同的接口规范：
+              POST 请求，请求体为 <code style={{
+                backgroundColor: token.colorFillSecondary,
+                padding: '2px 6px',
+                borderRadius: 4,
+                color: token.colorText
+              }}>{`{"texts": string[]}`}</code>，
+              响应包含 <code style={{
+                backgroundColor: token.colorFillSecondary,
+                padding: '2px 6px',
+                borderRadius: 4,
+                color: token.colorText
+              }}>summary</code> 和 <code style={{
+                backgroundColor: token.colorFillSecondary,
+                padding: '2px 6px',
+                borderRadius: 4,
+                color: token.colorText
+              }}>items</code> 字段。
+            </Text>
+          </div>
+        )}
+      </Form>
+    </Card>
   );
 };
 
-export default AIGCDetect;
+export default DetectConfigPanel;

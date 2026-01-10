@@ -85,8 +85,8 @@ const DetectResultPanel: React.FC<DetectResultPanelProps> = ({
   loading = false,
 }) => {
   const { token } = useToken();
-  // 检测是否为深色主题（通过背景色判断）
-  // 这里可以优化判断逻辑，或者直接依赖 isDark 变量来切换特定颜色
+  
+  // 简单判断是否深色模式（用于图表颜色微调）
   const isDark = token.colorBgContainer === '#242438' || token.colorBgBase === '#1a1a2e';
 
   // 根据主题获取 Progress 百分比文字颜色
@@ -96,8 +96,8 @@ const DetectResultPanel: React.FC<DetectResultPanelProps> = ({
     return isDark ? darkColors[type] : lightColors[type];
   };
 
-  // 定义卡片的通用深色样式
-  const cardStyle = {
+  // 定义卡片的通用样式（强制应用 Token 颜色）
+  const commonCardStyle = {
     background: token.colorBgContainer,
     borderColor: token.colorBorderSecondary,
   };
@@ -112,8 +112,7 @@ const DetectResultPanel: React.FC<DetectResultPanelProps> = ({
           </Space>
         }
         size="small"
-        // 修复1: 显式指定 Empty 状态下的背景色
-        style={cardStyle}
+        style={commonCardStyle} // 修复 Empty 状态的背景
       >
         <Empty description="暂无检测结果，请输入文本并点击「开始检测」" />
       </Card>
@@ -130,8 +129,7 @@ const DetectResultPanel: React.FC<DetectResultPanelProps> = ({
       }
       size="small"
       loading={loading}
-      // 修复2: 显式指定最外层 Card 背景色
-      style={cardStyle}
+      style={commonCardStyle} // 修复最外层背景
     >
       {result && (
         <Space direction="vertical" style={{ width: '100%' }} size="large">
@@ -140,9 +138,8 @@ const DetectResultPanel: React.FC<DetectResultPanelProps> = ({
             type="inner" 
             title="结果总览" 
             size="small"
-            // 修复3: 显式指定内部 Card 背景色
-            style={{ ...cardStyle, background: 'transparent' }} // inner card 背景透明以融入外层，或者设为 token.colorBgContainer
-            headStyle={{ color: token.colorText }} // 确保标题颜色正确
+            style={{ ...commonCardStyle, background: 'transparent' }} // 内部卡片背景透明或跟随
+            headStyle={{ color: token.colorText, borderBottomColor: token.colorBorderSecondary }}
           >
             <Row gutter={[24, 16]} justify="center">
               <Col xs={24} sm={8}>
@@ -213,9 +210,8 @@ const DetectResultPanel: React.FC<DetectResultPanelProps> = ({
             type="inner" 
             title="段落级检测结果" 
             size="small"
-            // 修复4: 显式指定内部 Card 背景色
-            style={{ ...cardStyle, background: 'transparent' }}
-            headStyle={{ color: token.colorText }}
+            style={{ ...commonCardStyle, background: 'transparent' }}
+            headStyle={{ color: token.colorText, borderBottomColor: token.colorBorderSecondary }}
           >
             <List
               dataSource={result.items.map((item, index) => ({
@@ -231,8 +227,7 @@ const DetectResultPanel: React.FC<DetectResultPanelProps> = ({
                     marginBottom: 8,
                     padding: '12px 16px',
                     borderRadius: '0 4px 4px 0',
-                    // 修复5: 确保列表项文字颜色正确
-                    color: token.colorText, 
+                    color: token.colorText, // 确保列表项文字颜色正确
                   }}
                 >
                   <div style={{ width: '100%' }}>
