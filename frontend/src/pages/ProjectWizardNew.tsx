@@ -166,6 +166,10 @@ export default function ProjectWizardNew() {
           .ant-form-item-label > label {
             color: rgba(255, 255, 255, 0.85) !important;
           }
+          /* 修复 Radio 文字在深色模式下的颜色 */
+          .ant-radio-wrapper {
+             color: rgba(255, 255, 255, 0.85) !important;
+          }
         `}</style>
       )}
 
@@ -244,15 +248,17 @@ export default function ProjectWizardNew() {
           rules={[{ required: true, message: '请选择大纲章节模式' }]}
           tooltip="创建后不可更改，请根据创作习惯选择"
         >
-          <Radio.Group size="large">
+          <Radio.Group size="large" style={{ width: '100%' }}>
             <Row gutter={16}>
-              <Col xs={24} sm={12}>
+              <Col xs={24} sm={12} style={{ marginBottom: isMobile ? 16 : 0 }}>
                 <Card
                   hoverable
                   style={{
                     borderColor: form.getFieldValue('outline_mode') === 'one-to-one' ? 'var(--color-primary)' : 'var(--color-border)',
                     borderWidth: 2,
                     height: '100%',
+                    // 修复1: 显式指定背景色，跟随 CSS 变量，解决深色模式下变白的问题
+                    background: 'var(--color-bg-container)', 
                   }}
                   onClick={() => form.setFieldValue('outline_mode', 'one-to-one')}
                 >
@@ -262,10 +268,11 @@ export default function ProjectWizardNew() {
                         <CheckCircleOutlined style={{ marginRight: 8, color: 'var(--color-success)' }} />
                         传统模式 (1→1)
                       </div>
-                      <div style={{ fontSize: 12, color: '#666' }}>
+                      {/* 修复2: 文字颜色根据主题动态变化 */}
+                      <div style={{ fontSize: 12, color: actualTheme === 'dark' ? 'rgba(255,255,255,0.65)' : '#666' }}>
                         一个大纲对应一个章节，简单直接
                       </div>
-                      <div style={{ fontSize: 11, color: '#999' }}>
+                      <div style={{ fontSize: 11, color: actualTheme === 'dark' ? 'rgba(255,255,255,0.45)' : '#999' }}>
                         💡 适合：简单剧情、快速创作、短篇小说
                       </div>
                     </Space>
@@ -280,6 +287,8 @@ export default function ProjectWizardNew() {
                     borderColor: form.getFieldValue('outline_mode') === 'one-to-many' ? 'var(--color-primary)' : 'var(--color-border)',
                     borderWidth: 2,
                     height: '100%',
+                    // 修复1: 显式指定背景色
+                    background: 'var(--color-bg-container)',
                   }}
                   onClick={() => form.setFieldValue('outline_mode', 'one-to-many')}
                 >
@@ -289,10 +298,11 @@ export default function ProjectWizardNew() {
                         <CheckCircleOutlined style={{ marginRight: 8, color: 'var(--color-success)' }} />
                         细化模式 (1→N) 推荐
                       </div>
-                      <div style={{ fontSize: 12, color: '#666' }}>
+                      {/* 修复2: 文字颜色根据主题动态变化 */}
+                      <div style={{ fontSize: 12, color: actualTheme === 'dark' ? 'rgba(255,255,255,0.65)' : '#666' }}>
                         一个大纲可展开为多个章节，灵活控制
                       </div>
-                      <div style={{ fontSize: 11, color: '#999' }}>
+                      <div style={{ fontSize: 11, color: actualTheme === 'dark' ? 'rgba(255,255,255,0.45)' : '#999' }}>
                         💡 适合：复杂剧情、长篇创作、需要细化控制
                       </div>
                     </Space>
