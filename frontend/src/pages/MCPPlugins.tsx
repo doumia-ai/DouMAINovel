@@ -41,8 +41,9 @@ const { TextArea } = Input;
 
 export default function MCPPluginsPage() {
   const navigate = useNavigate();
-  // 2. 获取当前主题的动态 Token (这是修复深色模式的关键)
+  // 2. 获取当前主题的 Token（核心修复）
   const { token } = theme.useToken();
+  
   const isMobile = window.innerWidth <= 768;
   const [form] = Form.useForm();
   const [modal, contextHolder] = Modal.useModal();
@@ -133,7 +134,15 @@ export default function MCPPluginsPage() {
 
   const handleCreate = () => {
     if (modelSupportStatus !== 'supported') {
-      showCheckConfirm();
+      modal.confirm({
+        title: '模型能力检查',
+        centered: true,
+        icon: <WarningOutlined />,
+        content: '为了确保 MCP 插件正常工作，您当前使用的 AI 模型必须支持 Function Calling（工具调用）能力。请先进行模型支持检测。',
+        okText: '去检测',
+        cancelText: '取消',
+        onOk: handleCheckFunctionCalling,
+      });
       return;
     }
     setEditingPlugin(null);
@@ -152,18 +161,6 @@ export default function MCPPluginsPage() {
 }`
     });
     setModalVisible(true);
-  };
-
-  const showCheckConfirm = () => {
-    modal.confirm({
-      title: '模型能力检查',
-      centered: true,
-      icon: <WarningOutlined />,
-      content: '为了确保 MCP 插件正常工作，您当前使用的 AI 模型必须支持 Function Calling（工具调用）能力。请先进行模型支持检测。',
-      okText: '去检测',
-      cancelText: '取消',
-      onOk: handleCheckFunctionCalling,
-    });
   };
 
   const handleEdit = (plugin: MCPPlugin) => {
@@ -463,7 +460,7 @@ export default function MCPPluginsPage() {
       {contextHolder}
       <div style={{
         minHeight: '100vh',
-        // 3. 修复背景色：使用 token 替代硬编码颜色，完美适配深色模式
+        // 3. 修复页面大背景：移除硬编码的 #EEF2F3，改用 token
         background: `linear-gradient(180deg, ${token.colorBgBase} 0%, ${token.colorBgLayout} 100%)`,
         padding: isMobile ? '20px 16px' : '40px 24px',
         display: 'flex',
@@ -477,11 +474,11 @@ export default function MCPPluginsPage() {
           display: 'flex',
           flexDirection: 'column',
         }}>
-          {/* 顶部导航卡片 - 使用 token 处理渐变或保持原样(主色在暗黑模式通常也适用) */}
+          {/* 顶部导航卡片 */}
           <Card
             variant="borderless"
             style={{
-              background: `linear-gradient(135deg, ${token.colorPrimary} 0%, #5A9BA5 50%, ${token.colorPrimaryActive} 100%)`,
+              background: `linear-gradient(135deg, ${token.colorPrimary} 0%, #5A9BA5 50%, ${token.colorPrimaryActive || token.colorPrimary} 100%)`,
               borderRadius: isMobile ? 16 : 24,
               boxShadow: '0 12px 40px rgba(77, 128, 136, 0.25), 0 4px 12px rgba(0, 0, 0, 0.06)',
               marginBottom: isMobile ? 20 : 24,
@@ -490,6 +487,7 @@ export default function MCPPluginsPage() {
               overflow: 'hidden'
             }}
           >
+            {/* 装饰性背景保持不变，因为它们是透明度层 */}
             <div style={{ position: 'absolute', top: -60, right: -60, width: 200, height: 200, borderRadius: '50%', background: 'rgba(255, 255, 255, 0.08)', pointerEvents: 'none' }} />
             <div style={{ position: 'absolute', bottom: -40, left: '30%', width: 120, height: 120, borderRadius: '50%', background: 'rgba(255, 255, 255, 0.05)', pointerEvents: 'none' }} />
 
@@ -520,13 +518,13 @@ export default function MCPPluginsPage() {
             </Row>
 
             <div style={{ marginTop: isMobile ? 16 : 24, display: 'flex', gap: 16, flexDirection: isMobile ? 'column' : 'row' }}>
-              {/* 4. 修复信息卡片：使用 token.colorBgContainer 和 token.colorBorderSecondary */}
+              {/* 4. 修复信息卡片：显式指定背景色为 Token，移除硬编码的白色 */}
               <Card
                 variant="borderless"
                 style={{
                   flex: 1,
                   borderRadius: 12,
-                  background: token.colorBgContainer,
+                  background: token.colorBgContainer, // 自动适配深/浅
                   border: `1px solid ${token.colorBorderSecondary}`,
                   boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)'
                 }}
@@ -536,7 +534,6 @@ export default function MCPPluginsPage() {
                   <Space align="start">
                     <div style={{
                       width: 40, height: 40, borderRadius: '50%',
-                      // 5. 使用 token 处理状态颜色
                       background: modelSupportStatus === 'supported' ? token.colorSuccessBg : modelSupportStatus === 'unsupported' ? token.colorErrorBg : token.colorInfoBg,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       border: `1px solid ${modelSupportStatus === 'supported' ? token.colorSuccessBorder : modelSupportStatus === 'unsupported' ? token.colorErrorBorder : token.colorInfoBorder}`
@@ -567,7 +564,7 @@ export default function MCPPluginsPage() {
                 style={{
                   flex: 1,
                   borderRadius: 12,
-                  background: token.colorBgContainer,
+                  background: token.colorBgContainer, // 自动适配深/浅
                   border: `1px solid ${token.colorBorderSecondary}`,
                   boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)'
                 }}
@@ -604,14 +601,14 @@ export default function MCPPluginsPage() {
               ) : (
                 <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                   {plugins.map((plugin) => (
-                    // 6. 插件卡片：确保背景色和文字颜色适配
+                    // 5. 修复插件列表卡片：显式指定背景色和边框
                     <Card
                       key={plugin.id}
                       size="small"
                       style={{
                         borderRadius: 8,
                         border: `1px solid ${token.colorBorderSecondary}`,
-                        background: token.colorBgContainer,
+                        background: token.colorBgContainer, 
                       }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
@@ -633,7 +630,7 @@ export default function MCPPluginsPage() {
                               </Paragraph>
                             )}
                             
-                            {/* 7. 修复深色模式下 URL 文字不可见的问题 */}
+                            {/* 6. 修复 URL 文字颜色 */}
                             {(['http', 'streamable_http', 'sse'].includes(plugin.plugin_type || '')) && plugin.server_url && (
                               <div style={{ fontSize: isMobile ? '11px' : '12px' }}>
                                 <Text type="secondary" code style={{ color: token.colorTextSecondary }}>
@@ -675,7 +672,8 @@ export default function MCPPluginsPage() {
             </Spin>
           </div>
         </div>
-        {/* Modals 代码省略，因未涉及颜色硬编码修改，保持原逻辑即可，AntD Modal 会自动适配 Theme */}
+        
+        {/* Modals 保持不变，Antd 会自动处理其样式 */}
         <Modal
           title={editingPlugin ? '编辑插件' : '添加插件'}
           open={modalVisible}
