@@ -86,13 +86,20 @@ const DetectResultPanel: React.FC<DetectResultPanelProps> = ({
 }) => {
   const { token } = useToken();
   // 检测是否为深色主题（通过背景色判断）
-  const isDark = token.colorBgContainer === '#242438';
+  // 这里可以优化判断逻辑，或者直接依赖 isDark 变量来切换特定颜色
+  const isDark = token.colorBgContainer === '#242438' || token.colorBgBase === '#1a1a2e';
 
   // 根据主题获取 Progress 百分比文字颜色
   const getProgressTextColor = (type: 'human' | 'suspected_ai' | 'ai'): string => {
     const lightColors = { human: '#52c41a', suspected_ai: '#faad14', ai: '#ff4d4f' };
     const darkColors = { human: '#73d13d', suspected_ai: '#ffc53d', ai: '#ff7875' };
     return isDark ? darkColors[type] : lightColors[type];
+  };
+
+  // 定义卡片的通用深色样式
+  const cardStyle = {
+    background: token.colorBgContainer,
+    borderColor: token.colorBorderSecondary,
   };
 
   if (!result && !loading) {
@@ -105,6 +112,8 @@ const DetectResultPanel: React.FC<DetectResultPanelProps> = ({
           </Space>
         }
         size="small"
+        // 修复1: 显式指定 Empty 状态下的背景色
+        style={cardStyle}
       >
         <Empty description="暂无检测结果，请输入文本并点击「开始检测」" />
       </Card>
@@ -121,11 +130,20 @@ const DetectResultPanel: React.FC<DetectResultPanelProps> = ({
       }
       size="small"
       loading={loading}
+      // 修复2: 显式指定最外层 Card 背景色
+      style={cardStyle}
     >
       {result && (
         <Space direction="vertical" style={{ width: '100%' }} size="large">
           {/* 结果总览 */}
-          <Card type="inner" title="结果总览" size="small">
+          <Card 
+            type="inner" 
+            title="结果总览" 
+            size="small"
+            // 修复3: 显式指定内部 Card 背景色
+            style={{ ...cardStyle, background: 'transparent' }} // inner card 背景透明以融入外层，或者设为 token.colorBgContainer
+            headStyle={{ color: token.colorText }} // 确保标题颜色正确
+          >
             <Row gutter={[24, 16]} justify="center">
               <Col xs={24} sm={8}>
                 <div style={{ textAlign: 'center' }}>
@@ -191,7 +209,14 @@ const DetectResultPanel: React.FC<DetectResultPanelProps> = ({
           </Card>
 
           {/* 段落级检测结果 */}
-          <Card type="inner" title="段落级检测结果" size="small">
+          <Card 
+            type="inner" 
+            title="段落级检测结果" 
+            size="small"
+            // 修复4: 显式指定内部 Card 背景色
+            style={{ ...cardStyle, background: 'transparent' }}
+            headStyle={{ color: token.colorText }}
+          >
             <List
               dataSource={result.items.map((item, index) => ({
                 ...item,
@@ -206,6 +231,8 @@ const DetectResultPanel: React.FC<DetectResultPanelProps> = ({
                     marginBottom: 8,
                     padding: '12px 16px',
                     borderRadius: '0 4px 4px 0',
+                    // 修复5: 确保列表项文字颜色正确
+                    color: token.colorText, 
                   }}
                 >
                   <div style={{ width: '100%' }}>
@@ -217,7 +244,7 @@ const DetectResultPanel: React.FC<DetectResultPanelProps> = ({
                         marginBottom: 8,
                       }}
                     >
-                      <Text strong>段落 {item.index}</Text>
+                      <Text strong style={{ color: token.colorText }}>段落 {item.index}</Text>
                       <Space>
                         <Tag
                           color={labelColorMap[item.label]}
@@ -225,14 +252,14 @@ const DetectResultPanel: React.FC<DetectResultPanelProps> = ({
                         >
                           {labelTextMap[item.label]}
                         </Tag>
-                        <Text type="secondary" style={{ fontSize: 12 }}>
+                        <Text type="secondary" style={{ fontSize: 12, color: token.colorTextSecondary }}>
                           AI 概率: {Math.round(item.ai_probability * 100)}%
                         </Text>
                       </Space>
                     </div>
                     <Paragraph
                       ellipsis={{ rows: 3, expandable: true, symbol: '展开' }}
-                      style={{ marginBottom: 0 }}
+                      style={{ marginBottom: 0, color: token.colorTextSecondary }}
                     >
                       {item.text}
                     </Paragraph>
