@@ -219,6 +219,8 @@ const DetectConfigPanel: React.FC<DetectConfigPanelProps> = ({
             value={serviceConfig.baseUrl}
             onChange={(e) => handleConfigChange('baseUrl', e.target.value)}
             disabled={disabled}
+            // 强制背景色，防止变成白色
+            style={{ background: token.colorBgContainer, borderColor: token.colorBorder }}
           />
         </Form.Item>
 
@@ -232,6 +234,7 @@ const DetectConfigPanel: React.FC<DetectConfigPanelProps> = ({
             value={serviceConfig.detectPath}
             onChange={(e) => handleConfigChange('detectPath', e.target.value)}
             disabled={disabled}
+            style={{ background: token.colorBgContainer, borderColor: token.colorBorder }}
           />
         </Form.Item>
 
@@ -243,14 +246,14 @@ const DetectConfigPanel: React.FC<DetectConfigPanelProps> = ({
                   placeholder="键"
                   value={header.key}
                   onChange={(e) => handleHeaderChange(index, 'key', e.target.value)}
-                  style={{ width: 150 }}
+                  style={{ width: 150, background: token.colorBgContainer, borderColor: token.colorBorder }}
                   disabled={disabled}
                 />
                 <Input
                   placeholder="值"
                   value={header.value}
                   onChange={(e) => handleHeaderChange(index, 'value', e.target.value)}
-                  style={{ width: 200 }}
+                  style={{ width: 200, background: token.colorBgContainer, borderColor: token.colorBorder }}
                   disabled={disabled}
                 />
                 <Button
@@ -314,6 +317,11 @@ const DetectConfigPanel: React.FC<DetectConfigPanelProps> = ({
         </Space>
       }
       size="small"
+      // 关键修复：显式指定背景色和边框颜色为 Token 值
+      style={{ 
+        background: token.colorBgContainer,
+        borderColor: token.colorBorderSecondary,
+      }}
     >
       <Form layout="vertical">
         <Form.Item label="检测来源">
@@ -330,6 +338,7 @@ const DetectConfigPanel: React.FC<DetectConfigPanelProps> = ({
         {config.source === 'builtin' && (
           <Collapse
             defaultActiveKey={[]}
+            style={{ background: 'transparent' }} // 确保 Collapse 背景透明
             items={[
               {
                 key: 'builtin-config',
@@ -348,6 +357,7 @@ const DetectConfigPanel: React.FC<DetectConfigPanelProps> = ({
         {config.source === 'custom' && (
           <Collapse
             defaultActiveKey={[]}
+            style={{ background: 'transparent' }}
             items={[
               {
                 key: 'custom-config',
