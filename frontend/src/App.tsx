@@ -40,6 +40,7 @@ function AppContent() {
         algorithm: actualTheme === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm,
         token: {
           colorPrimary: actualTheme === 'dark' ? '#5A9BA5' : '#4D8088',
+          colorBgBase: actualTheme === 'dark' ? '#1a1a2e' : '#F8F6F1',
           colorBgContainer: actualTheme === 'dark' ? '#242438' : '#FFFFFF',
           colorBgElevated: actualTheme === 'dark' ? '#2D2D4A' : '#FFFFFF',
           colorBgLayout: actualTheme === 'dark' ? '#1a1a2e' : '#F8F6F1',
