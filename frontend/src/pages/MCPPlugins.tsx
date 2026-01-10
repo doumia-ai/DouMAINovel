@@ -17,6 +17,7 @@ import {
   Alert,
   Row,
   Col,
+  theme, // 1. 引入 theme
 } from 'antd';
 import {
   PlusOutlined,
@@ -40,6 +41,8 @@ const { TextArea } = Input;
 
 export default function MCPPluginsPage() {
   const navigate = useNavigate();
+  // 2. 获取当前主题的 Token（自动适配深色/浅色）
+  const { token } = theme.useToken();
   const isMobile = window.innerWidth <= 768;
   const [form] = Form.useForm();
   const [modal, contextHolder] = Modal.useModal();
@@ -56,7 +59,6 @@ export default function MCPPluginsPage() {
     const initPage = async () => {
       setLoading(true);
       try {
-        // 1. 并行获取插件列表和当前设置
         const [pluginsData, settings] = await Promise.all([
           mcpPluginApi.getPlugins(),
           settingsApi.getSettings()
@@ -64,7 +66,6 @@ export default function MCPPluginsPage() {
         
         setPlugins(pluginsData);
 
-        // 2. 检查配置一致性
         const verifiedConfigStr = localStorage.getItem('mcp_verified_config');
         if (verifiedConfigStr) {
           try {
@@ -75,25 +76,20 @@ export default function MCPPluginsPage() {
               model: settings.llm_model
             };
 
-            // 比较关键配置是否发生变更
             const isConfigChanged =
               verifiedConfig.provider !== currentConfig.provider ||
               verifiedConfig.baseUrl !== currentConfig.baseUrl ||
               verifiedConfig.model !== currentConfig.model;
 
             if (isConfigChanged) {
-              // 配置已变更
               setModelSupportStatus('unknown');
               
-              // 检查是否有正在运行的插件
               const activePlugins = pluginsData.filter(p => p.enabled);
               if (activePlugins.length > 0) {
-                // 自动禁用所有插件
                 message.loading({ content: '检测到模型配置变更，正在为了安全自动禁用插件...', key: 'auto_disable' });
                 
                 await Promise.all(activePlugins.map(p => mcpPluginApi.togglePlugin(p.id, false)));
                 
-                // 重新加载插件列表状态
                 const updatedPlugins = await mcpPluginApi.getPlugins();
                 setPlugins(updatedPlugins);
                 
@@ -106,14 +102,11 @@ export default function MCPPluginsPage() {
                   okText: '知道了',
                 });
               } else {
-                // 没有运行中的插件，仅提示
                 message.info('检测到模型配置已变更，请重新检测模型能力');
               }
               
-              // 清除旧的验证状态
               localStorage.removeItem('mcp_verified_config');
             } else {
-              // 配置未变更，恢复验证状态（根据缓存的状态恢复）
               const cachedStatus = verifiedConfig.status || 'supported';
               setModelSupportStatus(cachedStatus as 'unknown' | 'supported' | 'unsupported');
             }
@@ -176,7 +169,6 @@ export default function MCPPluginsPage() {
   const handleEdit = (plugin: MCPPlugin) => {
     setEditingPlugin(plugin);
 
-    // 重构为标准MCP配置格式
     const mcpConfig: Record<string, Record<string, Record<string, unknown>>> = {
       mcpServers: {
         [plugin.plugin_name]: {
@@ -239,7 +231,6 @@ export default function MCPPluginsPage() {
     try {
       const result = await mcpPluginApi.testPlugin(pluginId);
 
-      // 测试完成后，无论成功失败都刷新插件列表以更新状态
       await loadPlugins();
 
       if (result.success) {
@@ -262,11 +253,11 @@ export default function MCPPluginsPage() {
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 16 }}>
-                <div style={{ padding: 12, background: 'var(--color-bg-layout)', borderRadius: 8 }}>
+                <div style={{ padding: 12, background: token.colorBgLayout, borderRadius: 8 }}>
                   <Text type="secondary" style={{ fontSize: 12 }}>可用工具数</Text>
                   <div><Text strong style={{ fontSize: 20 }}>{result.tools_count || 0}</Text></div>
                 </div>
-                <div style={{ padding: 12, background: 'var(--color-bg-layout)', borderRadius: 8 }}>
+                <div style={{ padding: 12, background: token.colorBgLayout, borderRadius: 8 }}>
                   <Text type="secondary" style={{ fontSize: 12 }}>总响应时间</Text>
                   <div><Text strong style={{ fontSize: 20 }}>{result.response_time_ms?.toFixed(0) || 0}ms</Text></div>
                 </div>
@@ -283,7 +274,7 @@ export default function MCPPluginsPage() {
               {paramsStr && (
                 <div style={{ marginBottom: 12 }}>
                   <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>📝 调用参数</Text>
-                  <pre style={{ margin: 0, padding: 8, background: 'var(--color-bg-layout)', borderRadius: 4, fontSize: 12, overflow: 'auto', maxHeight: 100 }}>
+                  <pre style={{ margin: 0, padding: 8, background: token.colorBgLayout, borderRadius: 4, fontSize: 12, overflow: 'auto', maxHeight: 100 }}>
                     {(() => { try { return JSON.stringify(JSON.parse(paramsStr), null, 2); } catch { return paramsStr; } })()}
                   </pre>
                 </div>
@@ -292,7 +283,7 @@ export default function MCPPluginsPage() {
               {resultStr && (
                 <div style={{ marginBottom: 12 }}>
                   <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>📊 返回结果预览</Text>
-                  <pre style={{ margin: 0, padding: 8, background: 'var(--color-bg-layout)', borderRadius: 4, fontSize: 11, overflow: 'auto', maxHeight: 150, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                  <pre style={{ margin: 0, padding: 8, background: token.colorBgLayout, borderRadius: 4, fontSize: 11, overflow: 'auto', maxHeight: 150, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                     {resultStr}
                   </pre>
                 </div>
@@ -376,7 +367,6 @@ export default function MCPPluginsPage() {
   };
 
   const handleCheckFunctionCalling = async () => {
-    // 从设置中获取当前配置
     setCheckingFunctionCalling(true);
     try {
       const settings = await settingsApi.getSettings();
@@ -393,7 +383,6 @@ export default function MCPPluginsPage() {
         llm_model: settings.llm_model,
       });
 
-      // 无论成功失败，都缓存当前测试的配置和状态
       const configToCache = {
         provider: settings.api_provider,
         baseUrl: settings.api_base_url,
@@ -419,11 +408,11 @@ export default function MCPPluginsPage() {
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 16 }}>
-                <div style={{ padding: 12, background: 'var(--color-bg-layout)', borderRadius: 8 }}>
+                <div style={{ padding: 12, background: token.colorBgLayout, borderRadius: 8 }}>
                   <Text type="secondary" style={{ fontSize: 12 }}>API 提供商</Text>
                   <div><Text strong style={{ fontSize: 16 }}>{result.provider}</Text></div>
                 </div>
-                <div style={{ padding: 12, background: 'var(--color-bg-layout)', borderRadius: 8 }}>
+                <div style={{ padding: 12, background: token.colorBgLayout, borderRadius: 8 }}>
                   <Text type="secondary" style={{ fontSize: 12 }}>响应时间</Text>
                   <div><Text strong style={{ fontSize: 16 }}>{result.response_time_ms?.toFixed(0) || 0}ms</Text></div>
                 </div>
@@ -440,7 +429,7 @@ export default function MCPPluginsPage() {
               {result.details && (
                 <div style={{ marginBottom: 12 }}>
                   <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>📊 检测详情</Text>
-                  <div style={{ padding: 8, background: 'var(--color-bg-layout)', borderRadius: 4, fontSize: 12 }}>
+                  <div style={{ padding: 8, background: token.colorBgLayout, borderRadius: 4, fontSize: 12 }}>
                     <div>✓ 工具调用数量: {result.details.tool_call_count || 0}</div>
                     <div>✓ 测试工具: {result.details.test_tool || 'N/A'}</div>
                     <div>✓ 响应类型: {result.details.response_type || 'N/A'}</div>
@@ -451,7 +440,7 @@ export default function MCPPluginsPage() {
               {result.tool_calls && result.tool_calls.length > 0 && (
                 <div style={{ marginBottom: 12 }}>
                   <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>🔨 工具调用示例</Text>
-                  <pre style={{ margin: 0, padding: 8, background: 'var(--color-bg-layout)', borderRadius: 4, fontSize: 11, overflow: 'auto', maxHeight: 150 }}>
+                  <pre style={{ margin: 0, padding: 8, background: token.colorBgLayout, borderRadius: 4, fontSize: 11, overflow: 'auto', maxHeight: 150 }}>
                     {JSON.stringify(result.tool_calls[0], null, 2)}
                   </pre>
                 </div>
@@ -504,7 +493,7 @@ export default function MCPPluginsPage() {
               {result.response_preview && (
                 <div style={{ marginBottom: 12 }}>
                   <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>📝 模型返回内容（前200字符）</Text>
-                  <pre style={{ margin: 0, padding: 8, background: 'var(--color-bg-layout)', borderRadius: 4, fontSize: 11, overflow: 'auto', maxHeight: 100, whiteSpace: 'pre-wrap' }}>
+                  <pre style={{ margin: 0, padding: 8, background: token.colorBgLayout, borderRadius: 4, fontSize: 11, overflow: 'auto', maxHeight: 100, whiteSpace: 'pre-wrap' }}>
                     {result.response_preview}
                   </pre>
                 </div>
@@ -541,7 +530,6 @@ export default function MCPPluginsPage() {
   const handleSubmit = async (values: { config_json: string; enabled: boolean; category?: string }) => {
     setLoading(true);
     try {
-      // 验证JSON格式
       try {
         JSON.parse(values.config_json);
       } catch {
@@ -556,7 +544,6 @@ export default function MCPPluginsPage() {
         category: values.category || 'general',
       };
 
-      // 统一使用简化API，后端会自动判断是创建还是更新
       await mcpPluginApi.createPluginSimple(data);
       message.success(editingPlugin ? '插件已更新' : '插件已创建');
 
@@ -593,7 +580,8 @@ export default function MCPPluginsPage() {
       {contextHolder}
       <div style={{
         minHeight: '100vh',
-        background: 'linear-gradient(180deg, var(--color-bg-base) 0%, #EEF2F3 100%)',
+        // 3. 使用 token 替代硬编码的颜色，实现深色模式适配
+        background: `linear-gradient(180deg, ${token.colorBgBase} 0%, ${token.colorBgLayout} 100%)`,
         padding: isMobile ? '20px 16px' : '40px 24px',
         display: 'flex',
         flexDirection: 'column',
@@ -688,9 +676,10 @@ export default function MCPPluginsPage() {
                 style={{
                   flex: 1,
                   borderRadius: 12,
-                  background: 'rgba(255, 255, 255, 0.9)',
-                  border: '1px solid rgba(255, 255, 255, 0.6)',
-                  backdropFilter: 'blur(10px)',
+                  // 4. 使用 token 替代硬编码的白色半透明背景
+                  background: token.colorBgContainer,
+                  border: `1px solid ${token.colorBorderSecondary}`,
+                  // backdropFilter: 'blur(10px)', // 如果不是玻璃拟态，去掉这个在深色模式下更干净
                   boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)'
                 }}
                 bodyStyle={{ padding: 20 }}
@@ -712,7 +701,7 @@ export default function MCPPluginsPage() {
                       )}
                     </div>
                     <div>
-                      <Text strong style={{ fontSize: 16, display: 'block', color: 'var(--color-text-primary)' }}>模型能力检查</Text>
+                      <Text strong style={{ fontSize: 16, display: 'block', color: token.colorText }}>模型能力检查</Text>
                       <Text type="secondary" style={{ fontSize: 13 }}>
                         {modelSupportStatus === 'supported'
                           ? '当前模型支持 Function Calling，可正常使用 MCP 插件'
@@ -739,9 +728,9 @@ export default function MCPPluginsPage() {
                 style={{
                   flex: 1,
                   borderRadius: 12,
-                  background: 'rgba(230, 247, 255, 0.6)',
-                  border: '1px solid rgba(145, 213, 255, 0.6)',
-                  backdropFilter: 'blur(10px)',
+                  // 5. 适配右侧信息卡片的背景色
+                  background: token.colorBgContainer, // 或者使用 token.colorFillQuaternary 稍微区分
+                  border: `1px solid ${token.colorBorderSecondary}`,
                   boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)'
                 }}
                 bodyStyle={{ padding: 20 }}
@@ -749,8 +738,8 @@ export default function MCPPluginsPage() {
                 <Space align="start">
                   <InfoCircleOutlined style={{ fontSize: 20, color: 'var(--color-primary)', marginTop: 4 }} />
                   <div>
-                    <Text strong style={{ fontSize: 16, display: 'block', color: 'var(--color-text-primary)', marginBottom: 4 }}>什么是 MCP 插件？</Text>
-                    <Text style={{ fontSize: 13, display: 'block', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
+                    <Text strong style={{ fontSize: 16, display: 'block', color: token.colorText, marginBottom: 4 }}>什么是 MCP 插件？</Text>
+                    <Text style={{ fontSize: 13, display: 'block', color: token.colorTextSecondary, lineHeight: 1.6 }}>
                       MCP (Model Context Protocol) 协议允许 AI 调用外部工具获取数据。通过添加插件，AI 可以访问搜索引擎、数据库、API 等服务，大幅增强创作能力。
                     </Text>
                   </div>
@@ -761,7 +750,6 @@ export default function MCPPluginsPage() {
 
           {/* 主内容区 */}
           <div style={{ flex: 1 }}>
-            {/* 模型能力未验证时的警告提示 */}
             {modelSupportStatus !== 'supported' && plugins.length > 0 && (
               <Alert
                 message={
@@ -801,7 +789,9 @@ export default function MCPPluginsPage() {
                       size="small"
                       style={{
                         borderRadius: 8,
-                        border: '1px solid #f0f0f0',
+                        // 6. 替换插件列表卡片的边框颜色
+                        border: `1px solid ${token.colorBorderSecondary}`,
+                        background: token.colorBgContainer, // 确保背景色也是动态的
                       }}
                     >
                       <div
@@ -816,7 +806,7 @@ export default function MCPPluginsPage() {
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <Space direction="vertical" size="small" style={{ width: '100%' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                              <Text strong style={{ fontSize: isMobile ? '14px' : '16px' }}>
+                              <Text strong style={{ fontSize: isMobile ? '14px' : '16px', color: token.colorText }}>
                                 {plugin.display_name || plugin.plugin_name}
                               </Text>
                               {getStatusTag(plugin)}
@@ -1069,7 +1059,7 @@ export default function MCPPluginsPage() {
                               margin: 0,
                               fontSize: isMobile ? '12px' : '13px',
                               padding: '8px 12px',
-                              background: 'var(--color-bg-layout)',
+                              background: token.colorBgLayout, // 确保工具详情内的背景也适配
                               borderRadius: 4,
                               borderLeft: '3px solid var(--color-info)'
                             }}
@@ -1087,7 +1077,7 @@ export default function MCPPluginsPage() {
                             style={{
                               margin: 0,
                               padding: isMobile ? '8px' : '12px',
-                              background: 'var(--color-bg-layout)',
+                              background: token.colorBgLayout,
                               borderRadius: 4,
                               fontSize: isMobile ? '11px' : '12px',
                               overflow: 'auto',
