@@ -6,7 +6,7 @@ import { projectApi } from '../services/api';
 import { useStore } from '../store';
 import { useProjectSync } from '../store/hooks';
 import type { ReactNode } from 'react';
-import { cardStyles, cardHoverHandlers, gridConfig, headerButtonStyles } from '../components/CardStyles';
+import { cardStyles, cardHoverHandlers, gridConfig, headerButtonStyles, switchStyles } from '../components/CardStyles';
 import UserMenu from '../components/UserMenu';
 import ChangelogFloatingButton from '../components/ChangelogFloatingButton';
 import { useResponsive } from '../hooks/useResponsive';
@@ -1102,10 +1102,10 @@ export default function ProjectList() {
                     checked={exportOptions.includeWritingStyles}
                     onChange={(checked) => setExportOptions(prev => ({ ...prev, includeWritingStyles: checked }))}
                     style={{
+                      display: 'inline-block',
                       flexShrink: 0,
-                      height: isMobile ? 16 : 22,
-                      minHeight: isMobile ? 16 : 22,
-                      lineHeight: isMobile ? '16px' : '22px'
+                      minWidth: isMobile ? '28px' : '44px',
+                      minHeight: isMobile ? '16px' : '22px'
                     }}
                   />
                   <Text style={{ fontSize: isMobile ? 13 : 14 }}>包含写作风格</Text>
@@ -1120,10 +1120,10 @@ export default function ProjectList() {
                     checked={exportOptions.includeGenerationHistory}
                     onChange={(checked) => setExportOptions(prev => ({ ...prev, includeGenerationHistory: checked }))}
                     style={{
+                      display: 'inline-block',
                       flexShrink: 0,
-                      height: isMobile ? 16 : 22,
-                      minHeight: isMobile ? 16 : 22,
-                      lineHeight: isMobile ? '16px' : '22px'
+                      minWidth: isMobile ? '28px' : '44px',
+                      minHeight: isMobile ? '16px' : '22px'
                     }}
                   />
                   <Text style={{ fontSize: isMobile ? 13 : 14 }}>包含生成历史</Text>

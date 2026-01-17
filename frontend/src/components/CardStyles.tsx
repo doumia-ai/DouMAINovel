@@ -185,3 +185,50 @@ export const semanticColors = {
   primary: 'var(--color-primary)',      // 替换 #722ed1 或其他主色
   purple: 'var(--color-primary)',       // #722ed1 映射到主色
 };
+
+// Switch 组件容器样式
+export const switchContainerStyles = {
+  // 标准容器样式
+  standard: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    flexShrink: 0,
+    minWidth: '44px',
+  } as CSSProperties,
+
+  // 带间距的容器样式
+  withMargin: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    flexShrink: 0,
+    minWidth: '44px',
+    marginLeft: 8,
+  } as CSSProperties,
+};
+
+// Switch 组件直接样式
+export const switchStyles = {
+  // 防止压缩的基础样式
+  base: {
+    display: 'inline-block',  // 确保尺寸稳定
+    flexShrink: 0,
+    minWidth: '44px',
+    minHeight: '22px',
+  } as CSSProperties,
+  
+  // 小尺寸 Switch 样式
+  small: {
+    display: 'inline-block',
+    flexShrink: 0,
+    minWidth: '28px',
+    minHeight: '16px',
+  } as CSSProperties,
+  
+  // 默认尺寸 Switch 样式
+  default: {
+    display: 'inline-block',
+    flexShrink: 0,
+    minWidth: '44px',
+    minHeight: '22px',
+  } as CSSProperties,
+};

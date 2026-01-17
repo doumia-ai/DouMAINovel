@@ -657,7 +657,12 @@ export default function MCPPluginsPage() {
                             onChange={(checked) => handleToggle(plugin, checked)}
                             disabled={modelSupportStatus !== 'supported'}
                             size={isMobile ? 'small' : 'default'}
-                            style={{ flexShrink: 0 }}
+                            style={{ 
+                              display: 'inline-block',
+                              flexShrink: 0, 
+                              minWidth: isMobile ? '28px' : '44px',
+                              minHeight: isMobile ? '16px' : '22px'
+                            }}
                           />
                           <Button icon={<ThunderboltOutlined />} onClick={() => handleTest(plugin.id)} loading={testingPluginId === plugin.id} disabled={modelSupportStatus !== 'supported'} size={isMobile ? 'small' : 'middle'} />
                           <Button icon={<ToolOutlined />} onClick={() => handleViewTools(plugin.id)} disabled={modelSupportStatus !== 'supported' || !plugin.enabled || plugin.status !== 'active'} size={isMobile ? 'small' : 'middle'} />

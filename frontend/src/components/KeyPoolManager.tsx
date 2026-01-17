@@ -587,7 +587,14 @@ export default function KeyPoolManager({ isMobile }: KeyPoolManagerProps) {
           </Form.Item>
 
           <Form.Item name="enabled" label="启用轮询" valuePropName="checked">
-            <Switch checkedChildren="启用" unCheckedChildren="禁用" />
+            <Switch 
+              checkedChildren="启用" 
+              unCheckedChildren="禁用"
+              style={{
+                flexShrink: 0,
+                minWidth: '44px'
+              }}
+            />
           </Form.Item>
         </Form>
       </Modal>

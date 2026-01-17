@@ -694,3 +694,65 @@ body {
     display: none !important;
   }
 }
+
+
+/* ====================================================
+   Switch 组件移动端修复 (Switch Component Mobile Fix)
+   修复移动端或小窗口下 Switch 显示异常的问题
+   ==================================================== */
+
+/* 确保 Switch 组件不被压缩 */
+.ant-switch {
+  flex-shrink: 0 !important;
+  display: inline-block !important;
+}
+
+/* 确保 Switch 内部的滑块（handle）正确显示 */
+.ant-switch-handle {
+  position: absolute !important;
+  top: 2px !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+/* 小尺寸 Switch */
+.ant-switch-small {
+  min-width: 28px !important;
+  min-height: 16px !important;
+  line-height: 16px !important;
+}
+
+.ant-switch-small .ant-switch-handle {
+  width: 12px !important;
+  height: 12px !important;
+  top: 2px !important;
+  left: 2px !important;
+}
+
+.ant-switch-small.ant-switch-checked .ant-switch-handle {
+  left: calc(100% - 14px) !important;
+}
+
+/* 默认尺寸 Switch */
+.ant-switch {
+  min-width: 44px !important;
+  min-height: 22px !important;
+  line-height: 22px !important;
+}
+
+.ant-switch .ant-switch-handle {
+  width: 18px !important;
+  height: 18px !important;
+  top: 2px !important;
+  left: 2px !important;
+}
+
+.ant-switch-checked .ant-switch-handle {
+  left: calc(100% - 20px) !important;
+}
+
+/* 确保 Switch 内部内容正确对齐 */
+.ant-switch-inner {
+  display: block !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}

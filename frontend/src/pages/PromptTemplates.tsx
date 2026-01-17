@@ -29,7 +29,7 @@ import {
   InfoCircleOutlined
 } from '@ant-design/icons';
 import axios from 'axios';
-import { cardStyles, cardHoverHandlers, gridConfig } from '../components/CardStyles';
+import { cardStyles, cardHoverHandlers, gridConfig, switchStyles } from '../components/CardStyles';
 import { useTheme } from '../contexts/ThemeContext';
 
 const { TextArea } = Input;
@@ -463,7 +463,13 @@ export default function PromptTemplates() {
                                   checked={template.is_active}
                                   onChange={(checked) => handleToggleActive(template, checked)}
                                   size={isMobile ? 'small' : 'default'}
-                                  style={{ marginLeft: 8 }}
+                                  style={{ 
+                                    display: 'inline-block',
+                                    flexShrink: 0,
+                                    minWidth: isMobile ? '28px' : '44px',
+                                    minHeight: isMobile ? '16px' : '22px',
+                                    marginLeft: 8
+                                  }}
                                 />
                               )}
                             </div>

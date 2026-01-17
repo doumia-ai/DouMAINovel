@@ -39,6 +39,8 @@ export default function Genres() {
     const [form] = Form.useForm();
     const [modal, contextHolder] = Modal.useModal();
 
+    const isMobile = window.innerWidth <= 768;
+
     useEffect(() => {
         fetchGenres();
     }, []);
@@ -250,119 +252,169 @@ export default function Genres() {
         <>
             {contextHolder}
             <div style={{
-                height: '100vh',
+                minHeight: '100vh',
+                background: 'linear-gradient(180deg, var(--color-bg-base) 0%, var(--color-bg-layout) 100%)',
+                padding: isMobile ? '20px 16px' : '40px 24px',
                 display: 'flex',
                 flexDirection: 'column',
-                overflow: 'hidden',
-                background: 'var(--color-bg-layout)'
             }}>
-                {/* 固定头部 */}
                 <div style={{
-                    padding: '16px 24px',
-                    background: 'var(--color-bg-container)',
-                    borderBottom: '1px solid var(--color-border)',
-                    flexShrink: 0
-                }}>
-                    <div style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        flexWrap: 'wrap',
-                        gap: '12px'
-                    }}>
-                        <Space>
-                            <Button
-                                icon={<ArrowLeftOutlined />}
-                                onClick={() => navigate('/projects')}
-                            >
-                                返回
-                            </Button>
-                            <Title level={3} style={{ margin: 0 }}>
-                                <BookOutlined style={{ marginRight: 8 }} />
-                                小说类型管理
-                            </Title>
-                        </Space>
-                        <Button
-                            type="primary"
-                            icon={<PlusOutlined />}
-                            onClick={() => handleOpenModal()}
-                        >
-                            新增类型
-                        </Button>
-                    </div>
-                    <Text type="secondary" style={{ marginTop: 8, display: 'block' }}>
-                        管理小说类型及其AI生成指导配置。内置类型提供了常见小说类型的专业指导，您也可以创建自定义类型。
-                    </Text>
-                </div>
-
-                {/* 可滚动的内容区域 */}
-                <div style={{
+                    maxWidth: 1400,
+                    margin: '0 auto',
+                    width: '100%',
                     flex: 1,
-                    overflow: 'auto',
-                    padding: '16px 24px'
+                    display: 'flex',
+                    flexDirection: 'column',
                 }}>
-                    {loading ? (
-                        <div style={{ textAlign: 'center', padding: 50 }}>
-                            <Spin size="large" />
-                        </div>
-                    ) : genres.length === 0 ? (
-                        <Empty description="暂无类型数据" />
-                    ) : (
-                        <>
-                            {/* 内置类型 */}
-                            {builtinGenres.length > 0 && (
-                                <>
-                                    <Divider orientation="left">
-                                        <Space>
-                                            <LockOutlined />
-                                            内置类型 ({builtinGenres.length})
-                                        </Space>
-                                    </Divider>
-                                    <Row gutter={[16, 16]}>
-                                        {builtinGenres.map(genre => (
-                                            <Col key={genre.id} {...gridConfig}>
-                                                {renderGenreCard(genre)}
-                                            </Col>
-                                        ))}
-                                    </Row>
-                                </>
-                            )}
+                    {/* 顶部导航卡片 */}
+                    <Card
+                        variant="borderless"
+                        style={{
+                            background: 'linear-gradient(135deg, var(--color-primary) 0%, #5A9BA5 50%, var(--color-primary-hover) 100%)',
+                            borderRadius: isMobile ? 16 : 24,
+                            boxShadow: '0 12px 40px rgba(77, 128, 136, 0.25), 0 4px 12px rgba(0, 0, 0, 0.06)',
+                            marginBottom: isMobile ? 20 : 24,
+                            border: 'none',
+                            position: 'relative',
+                            overflow: 'hidden'
+                        }}
+                    >
+                        {/* 装饰性背景元素 */}
+                        <div style={{ position: 'absolute', top: -60, right: -60, width: 200, height: 200, borderRadius: '50%', background: 'rgba(255, 255, 255, 0.08)', pointerEvents: 'none' }} />
+                        <div style={{ position: 'absolute', bottom: -40, left: '30%', width: 120, height: 120, borderRadius: '50%', background: 'rgba(255, 255, 255, 0.05)', pointerEvents: 'none' }} />
+                        <div style={{ position: 'absolute', top: '50%', right: '15%', width: 80, height: 80, borderRadius: '50%', background: 'rgba(255, 255, 255, 0.06)', pointerEvents: 'none' }} />
 
-                            {/* 自定义类型 */}
-                            {customGenres.length > 0 && (
-                                <>
-                                    <Divider orientation="left">
-                                        <Space>
-                                            <PlusOutlined />
-                                            自定义类型 ({customGenres.length})
-                                        </Space>
-                                    </Divider>
-                                    <Row gutter={[16, 16]}>
-                                        {customGenres.map(genre => (
-                                            <Col key={genre.id} {...gridConfig}>
-                                                {renderGenreCard(genre)}
-                                            </Col>
-                                        ))}
-                                    </Row>
-                                </>
-                            )}
+                        <Row align="middle" justify="space-between" gutter={[16, 16]} style={{ position: 'relative', zIndex: 1 }}>
+                            <Col xs={24} sm={12} md={14}>
+                                <Space direction="vertical" size={4}>
+                                    <Title level={isMobile ? 3 : 2} style={{ margin: 0, color: '#fff', textShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+                                        <BookOutlined style={{ color: 'rgba(255,255,255,0.9)', marginRight: 8 }} />
+                                        小说类型管理
+                                    </Title>
+                                    <Text style={{ fontSize: isMobile ? 12 : 14, color: 'rgba(255,255,255,0.85)', marginLeft: isMobile ? 40 : 48 }}>
+                                        管理小说类型及其AI生成指导配置
+                                    </Text>
+                                </Space>
+                            </Col>
+                            <Col xs={24} sm={12} md={10}>
+                                <Space wrap style={{ justifyContent: isMobile ? 'flex-start' : 'flex-end', width: '100%' }}>
+                                    <Button
+                                        icon={<ArrowLeftOutlined />}
+                                        onClick={() => navigate('/projects')}
+                                        style={{
+                                            borderRadius: 12,
+                                            background: 'rgba(255, 255, 255, 0.15)',
+                                            border: '1px solid rgba(255, 255, 255, 0.3)',
+                                            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                                            color: '#fff',
+                                            backdropFilter: 'blur(10px)',
+                                            transition: 'all 0.3s ease'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)';
+                                            e.currentTarget.style.transform = 'translateY(-1px)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                                            e.currentTarget.style.transform = 'none';
+                                        }}
+                                    >
+                                        返回首页
+                                    </Button>
+                                    <Button
+                                        type="primary"
+                                        icon={<PlusOutlined />}
+                                        onClick={() => handleOpenModal()}
+                                        style={{
+                                            borderRadius: 12,
+                                            background: 'rgba(255, 255, 255, 0.15)',
+                                            border: '1px solid rgba(255, 255, 255, 0.3)',
+                                            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                                            color: '#fff',
+                                            backdropFilter: 'blur(10px)',
+                                            transition: 'all 0.3s ease'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)';
+                                            e.currentTarget.style.transform = 'translateY(-1px)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                                            e.currentTarget.style.transform = 'none';
+                                        }}
+                                    >
+                                        新增类型
+                                    </Button>
+                                </Space>
+                            </Col>
+                        </Row>
+                    </Card>
 
-                            {customGenres.length === 0 && builtinGenres.length > 0 && (
-                                <>
-                                    <Divider orientation="left">
-                                        <Space>
-                                            <PlusOutlined />
-                                            自定义类型
-                                        </Space>
-                                    </Divider>
-                                    <Empty
-                                        description="暂无自定义类型，点击右上角「新增类型」按钮创建"
-                                        image={Empty.PRESENTED_IMAGE_SIMPLE}
-                                    />
-                                </>
-                            )}
-                        </>
-                    )}
+                    {/* 可滚动的内容区域 */}
+                    <div style={{ flex: 1 }}>
+                        {loading ? (
+                            <div style={{ textAlign: 'center', padding: 50 }}>
+                                <Spin size="large" />
+                            </div>
+                        ) : genres.length === 0 ? (
+                            <Empty description="暂无类型数据" />
+                        ) : (
+                            <>
+                                {/* 内置类型 */}
+                                {builtinGenres.length > 0 && (
+                                    <>
+                                        <Divider orientation="left">
+                                            <Space>
+                                                <LockOutlined />
+                                                内置类型 ({builtinGenres.length})
+                                            </Space>
+                                        </Divider>
+                                        <Row gutter={[16, 16]}>
+                                            {builtinGenres.map(genre => (
+                                                <Col key={genre.id} {...gridConfig}>
+                                                    {renderGenreCard(genre)}
+                                                </Col>
+                                            ))}
+                                        </Row>
+                                    </>
+                                )}
+
+                                {/* 自定义类型 */}
+                                {customGenres.length > 0 && (
+                                    <>
+                                        <Divider orientation="left">
+                                            <Space>
+                                                <PlusOutlined />
+                                                自定义类型 ({customGenres.length})
+                                            </Space>
+                                        </Divider>
+                                        <Row gutter={[16, 16]}>
+                                            {customGenres.map(genre => (
+                                                <Col key={genre.id} {...gridConfig}>
+                                                    {renderGenreCard(genre)}
+                                                </Col>
+                                            ))}
+                                        </Row>
+                                    </>
+                                )}
+
+                                {customGenres.length === 0 && builtinGenres.length > 0 && (
+                                    <>
+                                        <Divider orientation="left">
+                                            <Space>
+                                                <PlusOutlined />
+                                                自定义类型
+                                            </Space>
+                                        </Divider>
+                                        <Empty
+                                            description="暂无自定义类型，点击右上角「新增类型」按钮创建"
+                                            image={Empty.PRESENTED_IMAGE_SIMPLE}
+                                        />
+                                    </>
+                                )}
+                            </>
+                        )}
+                    </div>
                 </div>
 
                 {/* 创建/编辑对话框 */}

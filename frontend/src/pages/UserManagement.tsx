@@ -671,9 +671,7 @@ export default function UserManagement() {
               size={isMobile ? 'small' : 'default'}
               style={{
                 flexShrink: 0,
-                height: isMobile ? 16 : 22,
-                minHeight: isMobile ? 16 : 22,
-                lineHeight: isMobile ? '16px' : '22px'
+                minWidth: '44px'
               }}
             />
           </Form.Item>
@@ -733,9 +731,7 @@ export default function UserManagement() {
               size={isMobile ? 'small' : 'default'}
               style={{
                 flexShrink: 0,
-                height: isMobile ? 16 : 22,
-                minHeight: isMobile ? 16 : 22,
-                lineHeight: isMobile ? '16px' : '22px'
+                minWidth: '44px'
               }}
             />
           </Form.Item>
