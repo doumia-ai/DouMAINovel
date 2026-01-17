@@ -6,7 +6,7 @@ import { projectApi } from '../services/api';
 import { useStore } from '../store';
 import { useProjectSync } from '../store/hooks';
 import type { ReactNode } from 'react';
-import { cardStyles, cardHoverHandlers, gridConfig, headerButtonStyles, switchStyles } from '../components/CardStyles';
+import { cardStyles, cardHoverHandlers, gridConfig, headerButtonStyles } from '../components/CardStyles';
 import UserMenu from '../components/UserMenu';
 import ChangelogFloatingButton from '../components/ChangelogFloatingButton';
 import { useResponsive } from '../hooks/useResponsive';

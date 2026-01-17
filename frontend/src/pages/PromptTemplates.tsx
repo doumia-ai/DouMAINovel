@@ -29,7 +29,7 @@ import {
   InfoCircleOutlined
 } from '@ant-design/icons';
 import axios from 'axios';
-import { cardStyles, cardHoverHandlers, gridConfig, switchStyles } from '../components/CardStyles';
+import { cardStyles, cardHoverHandlers, gridConfig } from '../components/CardStyles';
 import { useTheme } from '../contexts/ThemeContext';
 
 const { TextArea } = Input;
