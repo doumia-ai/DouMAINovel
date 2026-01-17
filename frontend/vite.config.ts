@@ -14,11 +14,6 @@ const outDir = process.env.VITE_OUT_DIR || '../backend/static'
 
 export default defineConfig({
   plugins: [react()],
-  test: {
-    globals: true,
-    environment: 'jsdom',
-    setupFiles: ['./src/test/setup.ts'],
-  },
   define: {
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(packageJson.version),
     'import.meta.env.VITE_BUILD_TIME': JSON.stringify(
