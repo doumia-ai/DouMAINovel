@@ -1,0 +1,696 @@
+:root {
+  /* --- 中国风配色方案 (Chinese Style Palette) --- */
+
+  /* 主色调：天青 (Cerulean / Azure) - 类似汝窑 */
+  --color-primary: #4D8088;
+  --color-primary-hover: #5F9EA8;
+  --color-primary-active: #3A666C;
+
+  /* 辅助色 */
+  --color-success: #52C41A;
+  --color-warning: #FAAD14;
+  --color-error: #FF4D4F;
+  --color-info: #1890FF;
+
+  /* 功能色背景/边框 */
+  --color-primary-bg: #E6F4F6;
+  --color-primary-border: #91C9D1;
+  --color-success-bg: #F6FFED;
+  --color-success-border: #B7EB8F;
+  --color-warning-bg: #FFFBE6;
+  --color-warning-border: #FFE58F;
+  --color-error-bg: #FFF2F0;
+  --color-error-border: #FFCCC7;
+  --color-info-bg: #E6F7FF;
+  --color-info-border: #91D5FF;
+
+  /* 背景色 */
+  --color-bg-base: #F8F6F1;
+  /* 米汤色 (Rice Soup / Cream) - 用于页面背景 */
+  --color-bg-container: #FFFFFF;
+  /* 纯白 - 用于卡片/容器 */
+  --color-bg-layout: #F0F2F5;
+  --color-bg-spotlight: #3A666C;
+  --color-bg-mask: rgba(0, 0, 0, 0.45);
+
+  /* 文本色 */
+  --color-text-base: #2B2B2B;
+  /* 墨色 (Ink) */
+  --color-text-primary: #2B2B2B;
+  --color-text-secondary: #595959;
+  /* 此时 (Secondary Text) */
+  --color-text-tertiary: #8C8C8C;
+  --color-text-quaternary: #BFBFBF;
+
+  /* 边框色 */
+  --color-border: #D9D9D9;
+  --color-border-secondary: #F0F0F0;
+
+  /* 阴影 */
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-elevated: 0 8px 24px rgba(77, 128, 136, 0.15);
+  /* 带一点主色调的阴影 */
+  --shadow-primary: 0 4px 16px rgba(77, 128, 136, 0.25);
+  --shadow-header: 0 2px 8px rgba(0, 0, 0, 0.05);
+
+  font-family: "PingFang SC", "Microsoft YaHei", "Heiti SC", Inter, system-ui, sans-serif;
+  line-height: 1.5715;
+  font-weight: 400;
+
+  color-scheme: light;
+  color: var(--color-text-base);
+  background-color: var(--color-bg-base);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* 移动端视口适配 */
+  -webkit-text-size-adjust: 100%;
+}
+
+/* ===== 深色模式 (Dark Mode) ===== */
+:root.theme-dark {
+  /* 主色调：深色模式下稍微提亮 */
+  --color-primary: #5A9BA5;
+  --color-primary-hover: #6DB3BD;
+  --color-primary-active: #4A8A94;
+
+  /* 辅助色 - 深色模式下调整 */
+  --color-success: #73D13D;
+  --color-warning: #FFC53D;
+  --color-error: #FF7875;
+  --color-info: #40A9FF;
+
+  /* 功能色背景/边框 - 深色模式 */
+  --color-primary-bg: rgba(90, 155, 165, 0.15);
+  --color-primary-border: rgba(90, 155, 165, 0.35);
+  --color-success-bg: rgba(115, 209, 61, 0.1);
+  --color-success-border: rgba(115, 209, 61, 0.3);
+  --color-warning-bg: rgba(255, 197, 61, 0.1);
+  --color-warning-border: rgba(255, 197, 61, 0.3);
+  --color-error-bg: rgba(255, 120, 117, 0.1);
+  --color-error-border: rgba(255, 120, 117, 0.3);
+  --color-info-bg: rgba(64, 169, 255, 0.1);
+  --color-info-border: rgba(64, 169, 255, 0.3);
+
+  /* 背景色 - 深色模式 */
+  --color-bg-base: #1a1a2e;
+  --color-bg-container: #242438;
+  --color-bg-layout: #16162a;
+  --color-bg-spotlight: #5A9BA5;
+  --color-bg-mask: rgba(0, 0, 0, 0.65);
+
+  /* 文本色 - 深色模式 */
+  --color-text-base: #E8E8E8;
+  --color-text-primary: #E8E8E8;
+  --color-text-secondary: #A8A8A8;
+  --color-text-tertiary: #787878;
+  --color-text-quaternary: #585858;
+
+  /* 边框色 - 深色模式 */
+  --color-border: #3D3D5C;
+  --color-border-secondary: #2D2D4A;
+
+  /* 阴影 - 深色模式 */
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-elevated: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-primary: 0 4px 16px rgba(90, 155, 165, 0.3);
+  --shadow-header: 0 2px 8px rgba(0, 0, 0, 0.3);
+
+  color-scheme: dark;
+  color: var(--color-text-base);
+  background-color: var(--color-bg-base);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  /* 禁止移动端双击缩放 */
+  touch-action: manipulation;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* 自定义滚动条样式 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-layout);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-text-quaternary);
+  border-radius: 4px;
+  transition: background 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-tertiary);
+}
+
+/* Firefox 滚动条样式 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-text-quaternary) var(--color-bg-layout);
+}
+
+/* 移动端响应式样式 */
+@media (max-width: 768px) {
+  :root {
+    font-size: 14px;
+  }
+
+  /* 移动端隐藏滚动条 */
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  /* 移动端优化触摸区域 */
+  button,
+  a,
+  [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+@media (max-width: 576px) {
+  :root {
+    font-size: 13px;
+  }
+}
+
+/* 移动端安全区域适配 (iPhone X+) */
+@supports (padding: max(0px)) {
+  body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* 移动端禁止长按选择 */
+@media (max-width: 768px) {
+  img,
+  button {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  /* 修复移动端表格分页器对齐问题 */
+  .ant-pagination-simple {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .ant-pagination-simple .ant-pagination-simple-pager,
+  .ant-pagination-simple .ant-pagination-prev,
+  .ant-pagination-simple .ant-pagination-next {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .ant-pagination-simple .ant-pagination-simple-pager {
+    margin: 0 8px;
+  }
+
+  .ant-pagination-simple .ant-pagination-simple-pager input {
+    margin: 0 4px;
+  }
+}
+
+.ant-tabs-dropdown {
+  z-index: 2000 !important;
+}
+
+/* ===== 现代化侧边栏样式 (Modern Sidebar Styles) ===== */
+
+/* 侧边栏容器 - 毛玻璃效果 */
+.modern-sider {
+  background: linear-gradient(180deg,
+      rgba(255, 255, 255, 0.95) 0%,
+      rgba(248, 246, 241, 0.98) 100%) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-right: 1px solid rgba(77, 128, 136, 0.12);
+  box-shadow:
+    4px 0 24px rgba(77, 128, 136, 0.08),
+    1px 0 0 rgba(255, 255, 255, 0.8) inset;
+}
+
+/* 侧边栏菜单整体样式 */
+.modern-sider .ant-menu {
+  background: transparent !important;
+  border-right: none !important;
+}
+
+/* 菜单项基础样式 */
+.modern-sider .ant-menu-item {
+  margin: 6px 12px !important;
+  padding: 0 16px !important;
+  border-radius: 12px !important;
+  height: 48px !important;
+  line-height: 48px !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 折叠状态下的菜单项 */
+.modern-sider.ant-layout-sider-collapsed .ant-menu-item {
+  margin: 6px 8px !important;
+  padding: 0 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 菜单项悬停效果 - 仅未选中项 */
+.modern-sider .ant-menu-item:not(.ant-menu-item-selected):hover {
+  background: linear-gradient(135deg,
+      rgba(77, 128, 136, 0.15) 0%,
+      rgba(95, 158, 168, 0.22) 100%) !important;
+  transform: translateX(6px);
+  box-shadow:
+    0 2px 8px rgba(77, 128, 136, 0.15),
+    inset 0 0 0 1px rgba(77, 128, 136, 0.2);
+}
+
+/* 折叠状态悬停效果 - 仅未选中项 */
+.modern-sider.ant-layout-sider-collapsed .ant-menu-item:not(.ant-menu-item-selected):hover {
+  transform: translateX(0) scale(1.08);
+  box-shadow:
+    0 4px 12px rgba(77, 128, 136, 0.2),
+    inset 0 0 0 1px rgba(77, 128, 136, 0.25);
+}
+
+/* 菜单项选中状态 - 增强版 */
+.modern-sider .ant-menu-item-selected {
+  background: linear-gradient(135deg,
+      var(--color-primary) 0%,
+      #5A9BA5 50%,
+      var(--color-primary-hover) 100%) !important;
+  box-shadow:
+    0 6px 20px rgba(77, 128, 136, 0.45),
+    0 3px 8px rgba(77, 128, 136, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* 选中项悬停 - 微发光效果 */
+.modern-sider .ant-menu-item-selected:hover {
+  transform: translateX(0) !important;
+  box-shadow:
+    0 8px 24px rgba(77, 128, 136, 0.5),
+    0 4px 10px rgba(77, 128, 136, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  filter: brightness(1.05);
+}
+
+.modern-sider.ant-layout-sider-collapsed .ant-menu-item-selected:hover {
+  transform: scale(1.05) !important;
+}
+
+/* 选中状态文字和图标颜色 */
+.modern-sider .ant-menu-item-selected,
+.modern-sider .ant-menu-item-selected a,
+.modern-sider .ant-menu-item-selected .anticon {
+  color: #fff !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+/* 未选中状态颜色 */
+.modern-sider .ant-menu-item:not(.ant-menu-item-selected),
+.modern-sider .ant-menu-item:not(.ant-menu-item-selected) a {
+  color: var(--color-text-secondary) !important;
+}
+
+.modern-sider .ant-menu-item:not(.ant-menu-item-selected) .anticon {
+  color: var(--color-primary) !important;
+}
+
+/* 菜单项悬停时文字和图标颜色 */
+.modern-sider .ant-menu-item:not(.ant-menu-item-selected):hover,
+.modern-sider .ant-menu-item:not(.ant-menu-item-selected):hover a,
+.modern-sider .ant-menu-item:not(.ant-menu-item-selected):hover .anticon {
+  color: var(--color-primary-active) !important;
+  font-weight: 600;
+}
+
+/* 图标样式优化 */
+.modern-sider .ant-menu-item .anticon {
+  font-size: 18px !important;
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+.modern-sider.ant-layout-sider-collapsed .ant-menu-item .anticon {
+  font-size: 22px !important;
+}
+
+/* 悬停时图标微动效 */
+.modern-sider .ant-menu-item:not(.ant-menu-item-selected):hover .anticon {
+  transform: scale(1.15);
+}
+
+/* 折叠状态下图标去边距并隐藏文字容器，确保居中 */
+.modern-sider.ant-layout-sider-collapsed .ant-menu-item .anticon {
+  margin-right: 0 !important;
+  font-size: 22px !important;
+}
+
+.modern-sider.ant-layout-sider-collapsed .ant-menu-item .ant-menu-title-content {
+  display: none !important;
+}
+
+/* 选中项左侧指示条 */
+.modern-sider .ant-menu-item-selected::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 0 4px 4px 0;
+  opacity: 0;
+}
+
+/* 折叠状态隐藏指示条 */
+.modern-sider.ant-layout-sider-collapsed .ant-menu-item-selected::before {
+  display: none;
+}
+
+/* 链接文字样式 */
+.modern-sider .ant-menu-item a {
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  transition: all 0.3s ease;
+}
+
+/* 侧边栏顶部装饰线 */
+.modern-sider::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg,
+      var(--color-primary) 0%,
+      var(--color-primary-hover) 50%,
+      var(--color-primary) 100%);
+  opacity: 0.8;
+}
+
+/* 侧边栏底部渐变遮罩 */
+.modern-sider::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: linear-gradient(to top,
+      rgba(248, 246, 241, 0.95) 0%,
+      transparent 100%);
+  pointer-events: none;
+}
+
+/* 菜单项波纹效果 */
+.modern-sider .ant-menu-item::after {
+  display: none !important;
+}
+
+/* 菜单标题样式 (如果有分组) */
+.modern-sider .ant-menu-item-group-title {
+  color: var(--color-text-tertiary) !important;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 16px 24px 8px !important;
+}
+
+/* Tooltip 样式优化 (折叠状态) */
+.ant-tooltip .ant-tooltip-inner {
+  background: linear-gradient(135deg,
+      var(--color-primary) 0%,
+      var(--color-primary-hover) 100%);
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(77, 128, 136, 0.3);
+}
+
+/* ===== 深色模式侧边栏样式 (Dark Mode Sidebar) ===== */
+:root.theme-dark .modern-sider {
+  background: linear-gradient(180deg,
+      rgba(36, 36, 56, 0.95) 0%,
+      rgba(26, 26, 46, 0.98) 100%) !important;
+  border-right: 1px solid rgba(90, 155, 165, 0.15);
+  box-shadow:
+    4px 0 24px rgba(0, 0, 0, 0.3),
+    1px 0 0 rgba(90, 155, 165, 0.1) inset;
+}
+
+/* 深色模式下菜单项悬停效果 */
+:root.theme-dark .modern-sider .ant-menu-item:not(.ant-menu-item-selected):hover {
+  background: linear-gradient(135deg,
+      rgba(90, 155, 165, 0.2) 0%,
+      rgba(109, 179, 189, 0.28) 100%) !important;
+  box-shadow:
+    0 2px 8px rgba(90, 155, 165, 0.2),
+    inset 0 0 0 1px rgba(90, 155, 165, 0.25);
+}
+
+/* 深色模式下选中项样式 */
+:root.theme-dark .modern-sider .ant-menu-item-selected {
+  background: linear-gradient(135deg,
+      var(--color-primary) 0%,
+      #6DB3BD 50%,
+      var(--color-primary-hover) 100%) !important;
+  box-shadow:
+    0 6px 20px rgba(90, 155, 165, 0.5),
+    0 3px 8px rgba(90, 155, 165, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* 深色模式下侧边栏底部渐变遮罩 */
+:root.theme-dark .modern-sider::after {
+  background: linear-gradient(to top,
+      rgba(26, 26, 46, 0.95) 0%,
+      transparent 100%);
+}
+
+/* 深色模式下未选中菜单项颜色 */
+:root.theme-dark .modern-sider .ant-menu-item:not(.ant-menu-item-selected),
+:root.theme-dark .modern-sider .ant-menu-item:not(.ant-menu-item-selected) a {
+  color: var(--color-text-secondary) !important;
+}
+
+:root.theme-dark .modern-sider .ant-menu-item:not(.ant-menu-item-selected) .anticon {
+  color: var(--color-primary) !important;
+}
+
+/* 深色模式下悬停时文字颜色 */
+:root.theme-dark .modern-sider .ant-menu-item:not(.ant-menu-item-selected):hover,
+:root.theme-dark .modern-sider .ant-menu-item:not(.ant-menu-item-selected):hover a,
+:root.theme-dark .modern-sider .ant-menu-item:not(.ant-menu-item-selected):hover .anticon {
+  color: var(--color-primary-hover) !important;
+}
+
+/* ====================================================
+   强制局部深色模式 (Force Local Dark Mode)
+   添加到 index.css 末尾
+   ==================================================== */
+.aigc-force-dark {
+  /* --- 1. 重新定义 CSS 变量为深色系 --- */
+  --color-primary: #5A9BA5;
+  --color-primary-hover: #6DB3BD;
+  --color-primary-active: #4A8A94;
+  
+  --color-bg-base: #1a1a2e;
+  --color-bg-container: #242438;
+  --color-bg-layout: #16162a;
+  
+  --color-text-base: #E8E8E8;      /* 浅灰白 */
+  --color-text-secondary: #A8A8A8; /* 浅灰 */
+  --color-text-tertiary: #787878;
+  --color-text-quaternary: #585858;
+
+  --color-border: #3D3D5C;
+  --color-border-secondary: #2D2D4A;
+  
+  /* 阴影调整 */
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.3);
+
+  /* 核心配置 */
+  color-scheme: dark;
+  color: var(--color-text-base);
+  background-color: var(--color-bg-base);
+}
+
+/* ====================================================
+   深色模式 Ant Design 组件样式覆盖 (优化合并版)
+   ==================================================== */
+
+/* 1. 统一背景色覆盖: Container 背景 */
+:root.theme-dark .ant-card,
+:root.theme-dark .ant-card-head,
+:root.theme-dark .ant-card-actions,
+:root.theme-dark .ant-modal-content,
+:root.theme-dark .ant-modal-header,
+:root.theme-dark .ant-modal-footer,
+:root.theme-dark .ant-input,
+:root.theme-dark .ant-input-affix-wrapper,
+:root.theme-dark .ant-input-textarea textarea,
+:root.theme-dark .ant-select-selector,
+:root.theme-dark .ant-select-dropdown,
+:root.theme-dark .ant-table,
+:root.theme-dark .ant-collapse,
+:root.theme-dark .ant-collapse-header,
+:root.theme-dark .ant-collapse-content,
+:root.theme-dark .ant-tabs-nav {
+  background: var(--color-bg-container) !important;
+}
+
+/* 2. 统一背景色覆盖: Layout/Active 背景 */
+:root.theme-dark .ant-select-item-option-active,
+:root.theme-dark .ant-table-thead > tr > th,
+:root.theme-dark .ant-table-tbody > tr:hover > td {
+  background: var(--color-bg-layout) !important;
+}
+
+/* 3. 统一边框颜色覆盖 */
+:root.theme-dark .ant-card,
+:root.theme-dark .ant-card-bordered,
+:root.theme-dark .ant-card-head,
+:root.theme-dark .ant-card-actions,
+:root.theme-dark .ant-card-actions > li,
+:root.theme-dark .ant-modal-header,
+:root.theme-dark .ant-modal-footer,
+:root.theme-dark .ant-input,
+:root.theme-dark .ant-input-affix-wrapper,
+:root.theme-dark .ant-input-textarea textarea,
+:root.theme-dark .ant-select-selector,
+:root.theme-dark .ant-table-thead > tr > th,
+:root.theme-dark .ant-divider,
+:root.theme-dark .ant-collapse,
+:root.theme-dark .ant-collapse-item,
+:root.theme-dark .ant-collapse-content {
+  border-color: var(--color-border) !important;
+  border-bottom-color: var(--color-border) !important; /* 确保覆盖 bottom */
+  border-top-color: var(--color-border) !important;    /* 确保覆盖 top */
+}
+
+/* 单独处理边框: Table body (使用 secondary) */
+:root.theme-dark .ant-table-tbody > tr > td {
+  border-bottom-color: var(--color-border-secondary) !important;
+  background: transparent !important; /* 防止表格行背景遮挡 */
+}
+:root.theme-dark .ant-list-item {
+  border-bottom-color: var(--color-border-secondary) !important;
+}
+
+/* 4. 统一文本颜色覆盖: Base Text */
+:root.theme-dark .ant-card-head,
+:root.theme-dark .ant-card-head-title,
+:root.theme-dark .ant-modal-content,
+:root.theme-dark .ant-modal-title,
+:root.theme-dark .ant-input,
+:root.theme-dark .ant-input-affix-wrapper,
+:root.theme-dark .ant-input-textarea textarea,
+:root.theme-dark .ant-select-selector,
+:root.theme-dark .ant-select-item,
+:root.theme-dark .ant-table,
+:root.theme-dark .ant-table-thead > tr > th,
+:root.theme-dark .ant-collapse-header,
+:root.theme-dark .ant-collapse-content,
+:root.theme-dark .ant-typography,
+:root.theme-dark .ant-statistic-content,
+:root.theme-dark .ant-statistic-content-value,
+:root.theme-dark .ant-progress-text,
+:root.theme-dark .ant-list-item-meta-title,
+:root.theme-dark .ant-list-item-meta-description {
+  color: var(--color-text-base) !important;
+}
+
+/* 5. 统一文本颜色覆盖: Secondary/Tertiary Text */
+:root.theme-dark .ant-input::placeholder,
+:root.theme-dark .ant-input-affix-wrapper input::placeholder {
+  color: var(--color-text-tertiary) !important;
+}
+
+:root.theme-dark .ant-tabs-tab,
+:root.theme-dark .ant-typography.ant-typography-secondary,
+:root.theme-dark .ant-typography-secondary,
+:root.theme-dark span.ant-typography-secondary,
+:root.theme-dark .ant-typography span[class*="secondary"],
+:root.theme-dark p.ant-typography-secondary,
+:root.theme-dark .ant-statistic-title,
+:root.theme-dark [class*="ant-typography"][class*="secondary"] {
+  color: var(--color-text-secondary) !important;
+}
+
+/* 6. Card Actions 图标特殊处理 */
+:root.theme-dark .ant-card-actions > li > span,
+:root.theme-dark .ant-card-actions > li .anticon {
+  color: #C8C8C8 !important;
+}
+
+:root.theme-dark .ant-card-actions > li > span:hover,
+:root.theme-dark .ant-card-actions > li:hover .anticon {
+  color: var(--color-primary-hover) !important;
+}
+
+/* 7. 交互状态 (Hover/Focus/Active) */
+:root.theme-dark .ant-input:hover,
+:root.theme-dark .ant-input-affix-wrapper:hover {
+  border-color: var(--color-primary) !important;
+}
+
+:root.theme-dark .ant-input:focus,
+:root.theme-dark .ant-input-affix-wrapper:focus,
+:root.theme-dark .ant-input-affix-wrapper-focused {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 2px rgba(90, 155, 165, 0.2) !important;
+}
+
+:root.theme-dark .ant-select-item-option-selected {
+  background: var(--color-primary-bg) !important;
+}
+
+:root.theme-dark .ant-tabs-tab-active {
+  color: var(--color-primary) !important;
+}
+
+:root.theme-dark .ant-tabs-ink-bar {
+  background: var(--color-primary) !important;
+}
+
+/* ===== 用户菜单响应式样式 (User Menu Responsive) ===== */
+/* 在小屏幕上隐藏用户名和角色信息，只显示头像 */
+@media (max-width: 768px) {
+  .user-menu-text {
+    display: none !important;
+  }
+}

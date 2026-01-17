@@ -1,0 +1,453 @@
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import {
+  Form, Input, InputNumber, Select, Button, Card,
+  Row, Col, Typography, Space, message, Radio, Spin
+} from 'antd';
+import {
+  RocketOutlined, ArrowLeftOutlined, CheckCircleOutlined
+} from '@ant-design/icons';
+import { AIProjectGenerator, type GenerationConfig } from '../components/AIProjectGenerator';
+import { useTheme } from '../contexts/ThemeContext';
+import api from '../services/api';
+import type { WizardBasicInfo } from '../types';
+
+const { TextArea } = Input;
+const { Title, Paragraph } = Typography;
+
+interface Genre {
+  id: string;
+  name: string;
+  is_builtin: boolean;
+  description?: string;
+}
+
+export default function ProjectWizardNew() {
+  const navigate = useNavigate();
+  const { actualTheme } = useTheme();
+  const [searchParams] = useSearchParams();
+  const [form] = Form.useForm();
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  // 状态管理
+  const [currentStep, setCurrentStep] = useState<'form' | 'generating'>('form');
+  const [generationConfig, setGenerationConfig] = useState<GenerationConfig | null>(null);
+  const [resumeProjectId, setResumeProjectId] = useState<string | null>(null);
+  const [genres, setGenres] = useState<Genre[]>([]);
+  const [genresLoading, setGenresLoading] = useState(true);
+  const [, setGenresLoadError] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // 加载类型列表
+  useEffect(() => {
+    const fetchGenres = async () => {
+      try {
+        setGenresLoading(true);
+        setGenresLoadError(false);
+        const response: { genres: Genre[]; total: number } = await api.get('/genres');
+        setGenres(response.genres || []);
+      } catch (error) {
+        console.error('获取类型列表失败:', error);
+        setGenresLoadError(true);
+        message.warning('类型列表加载失败，使用默认类型');
+        // 如果获取失败，使用默认类型作为降级方案
+        setGenres([
+          { id: '1', name: '玄幻', is_builtin: true },
+          { id: '2', name: '都市', is_builtin: true },
+          { id: '3', name: '历史', is_builtin: true },
+          { id: '4', name: '科幻', is_builtin: true },
+          { id: '5', name: '武侠', is_builtin: true },
+          { id: '6', name: '仙侠', is_builtin: true },
+          { id: '7', name: '奇幻', is_builtin: true },
+          { id: '8', name: '悬疑', is_builtin: true },
+          { id: '9', name: '言情', is_builtin: true },
+          { id: '10', name: '修仙', is_builtin: true },
+        ]);
+      } finally {
+        setGenresLoading(false);
+      }
+    };
+    fetchGenres();
+  }, []);
+
+  // 检查URL参数,如果有project_id则恢复生成
+  useEffect(() => {
+    const projectId = searchParams.get('project_id');
+    if (projectId) {
+      setResumeProjectId(projectId);
+      handleResumeGeneration(projectId);
+    }
+  }, [searchParams]);
+
+  // 恢复未完成项目的生成
+  const handleResumeGeneration = async (projectId: string) => {
+    try {
+      const response = await fetch(`/api/projects/${projectId}`, {
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        throw new Error('获取项目信息失败');
+      }
+      const project = await response.json();
+
+      // 将 genre 字符串转换为数组（后端存储为"类型1、类型2"格式）
+      const genreArray = project.genre
+        ? project.genre.split('、').map((g: string) => g.trim()).filter((g: string) => g)
+        : [];
+
+      const config: GenerationConfig = {
+        title: project.title,
+        description: project.description || '',
+        theme: project.theme || '',
+        genre: genreArray,
+        narrative_perspective: project.narrative_perspective || '第三人称',
+        target_words: project.target_words || 100000,
+        chapter_count: 3,
+        character_count: project.character_count || 5,
+      };
+
+      setGenerationConfig(config);
+      setCurrentStep('generating');
+    } catch (error) {
+      console.error('恢复生成失败:', error);
+      message.error('恢复生成失败,请重试');
+      navigate('/');
+    }
+  };
+
+  // 开始生成流程
+  const handleAutoGenerate = async (values: WizardBasicInfo) => {
+    const config: GenerationConfig = {
+      title: values.title,
+      description: values.description,
+      theme: values.theme,
+      genre: values.genre,
+      narrative_perspective: values.narrative_perspective,
+      target_words: values.target_words || 100000,
+      chapter_count: 3, // 默认生成3章大纲
+      character_count: values.character_count || 5,
+      outline_mode: values.outline_mode || 'one-to-many', // 添加大纲模式
+    };
+
+    setGenerationConfig(config);
+    setCurrentStep('generating');
+  };
+
+  // 生成完成回调
+  const handleComplete = (projectId: string) => {
+    console.log('项目创建完成:', projectId);
+  };
+
+  // 返回表单页面
+  const handleBack = () => {
+    setCurrentStep('form');
+    setGenerationConfig(null);
+  };
+
+  // 渲染表单页面
+  const renderForm = () => (
+    <Card style={{ background: 'var(--color-bg-container)' }}>
+      <Title level={isMobile ? 4 : 3} style={{ marginBottom: 24 }}>
+        创建新项目
+      </Title>
+      <Paragraph style={{ marginBottom: 32, color: actualTheme === 'dark' ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.45)' }}>
+        填写基本信息后，AI将自动为您生成世界观、角色和大纲节点（大纲可在项目内手动展开为章节）
+      </Paragraph>
+
+      {actualTheme === 'dark' && (
+        <style>{`
+          .ant-form-item-label > label {
+            color: rgba(255, 255, 255, 0.85) !important;
+          }
+          /* 修复 Radio 文字在深色模式下的颜色 */
+          .ant-radio-wrapper {
+             color: rgba(255, 255, 255, 0.85) !important;
+          }
+        `}</style>
+      )}
+
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={handleAutoGenerate}
+        initialValues={{
+          genre: ['玄幻'],
+          chapter_count: 30,
+          narrative_perspective: '第三人称',
+          character_count: 5,
+          target_words: 100000,
+          outline_mode: 'one-to-many', // 默认为细化模式
+        }}
+      >
+        <Form.Item
+          label="书名"
+          name="title"
+          rules={[{ required: true, message: '请输入书名' }]}
+        >
+          <Input placeholder="输入你的小说标题" size="large" />
+        </Form.Item>
+
+        <Form.Item
+          label="小说简介"
+          name="description"
+          rules={[{ required: true, message: '请输入小说简介' }]}
+        >
+          <TextArea
+            rows={3}
+            placeholder="用一段话介绍你的小说..."
+            showCount
+            maxLength={300}
+          />
+        </Form.Item>
+
+        <Form.Item
+          label="主题"
+          name="theme"
+          rules={[{ required: true, message: '请输入主题' }]}
+        >
+          <TextArea
+            rows={4}
+            placeholder="描述你的小说主题..."
+            showCount
+            maxLength={500}
+          />
+        </Form.Item>
+
+        <Form.Item
+          label="类型"
+          name="genre"
+          rules={[{ required: true, message: '请选择小说类型' }]}
+        >
+          <Select
+            mode="tags"
+            placeholder="选择或输入类型标签（如：玄幻、都市、修仙）"
+            size="large"
+            tokenSeparators={[',']}
+            maxTagCount={5}
+            loading={genresLoading}
+            notFoundContent={genresLoading ? <Spin size="small" /> : null}
+          >
+            {genres.map(genre => (
+              <Select.Option key={genre.id} value={genre.name}>
+                {genre.name}
+              </Select.Option>
+            ))}
+          </Select>
+        </Form.Item>
+
+        <Form.Item
+          label="大纲章节模式"
+          name="outline_mode"
+          rules={[{ required: true, message: '请选择大纲章节模式' }]}
+          tooltip="创建后不可更改，请根据创作习惯选择"
+        >
+          <Radio.Group size="large" style={{ width: '100%' }}>
+            <Row gutter={16}>
+              <Col xs={24} sm={12} style={{ marginBottom: isMobile ? 16 : 0 }}>
+                <Card
+                  hoverable
+                  style={{
+                    borderColor: form.getFieldValue('outline_mode') === 'one-to-one' ? 'var(--color-primary)' : 'var(--color-border)',
+                    borderWidth: 2,
+                    height: '100%',
+                    // 修复1: 显式指定背景色，跟随 CSS 变量，解决深色模式下变白的问题
+                    background: 'var(--color-bg-container)', 
+                  }}
+                  onClick={() => form.setFieldValue('outline_mode', 'one-to-one')}
+                >
+                  <Radio value="one-to-one" style={{ width: '100%' }}>
+                    <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                      <div style={{ fontSize: 16, fontWeight: 'bold' }}>
+                        <CheckCircleOutlined style={{ marginRight: 8, color: 'var(--color-success)' }} />
+                        传统模式 (1→1)
+                      </div>
+                      {/* 修复2: 文字颜色根据主题动态变化 */}
+                      <div style={{ fontSize: 12, color: actualTheme === 'dark' ? 'rgba(255,255,255,0.65)' : '#666' }}>
+                        一个大纲对应一个章节，简单直接
+                      </div>
+                      <div style={{ fontSize: 11, color: actualTheme === 'dark' ? 'rgba(255,255,255,0.45)' : '#999' }}>
+                        💡 适合：简单剧情、快速创作、短篇小说
+                      </div>
+                    </Space>
+                  </Radio>
+                </Card>
+              </Col>
+
+              <Col xs={24} sm={12}>
+                <Card
+                  hoverable
+                  style={{
+                    borderColor: form.getFieldValue('outline_mode') === 'one-to-many' ? 'var(--color-primary)' : 'var(--color-border)',
+                    borderWidth: 2,
+                    height: '100%',
+                    // 修复1: 显式指定背景色
+                    background: 'var(--color-bg-container)',
+                  }}
+                  onClick={() => form.setFieldValue('outline_mode', 'one-to-many')}
+                >
+                  <Radio value="one-to-many" style={{ width: '100%' }}>
+                    <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                      <div style={{ fontSize: 16, fontWeight: 'bold' }}>
+                        <CheckCircleOutlined style={{ marginRight: 8, color: 'var(--color-success)' }} />
+                        细化模式 (1→N) 推荐
+                      </div>
+                      {/* 修复2: 文字颜色根据主题动态变化 */}
+                      <div style={{ fontSize: 12, color: actualTheme === 'dark' ? 'rgba(255,255,255,0.65)' : '#666' }}>
+                        一个大纲可展开为多个章节，灵活控制
+                      </div>
+                      <div style={{ fontSize: 11, color: actualTheme === 'dark' ? 'rgba(255,255,255,0.45)' : '#999' }}>
+                        💡 适合：复杂剧情、长篇创作、需要细化控制
+                      </div>
+                    </Space>
+                  </Radio>
+                </Card>
+              </Col>
+            </Row>
+          </Radio.Group>
+        </Form.Item>
+
+        <Row gutter={16}>
+          <Col xs={24} sm={12}>
+            <Form.Item
+              label="叙事视角"
+              name="narrative_perspective"
+              rules={[{ required: true, message: '请选择叙事视角' }]}
+            >
+              <Select size="large" placeholder="选择小说的叙事视角">
+                <Select.Option value="第一人称">第一人称</Select.Option>
+                <Select.Option value="第三人称">第三人称</Select.Option>
+                <Select.Option value="全知视角">全知视角</Select.Option>
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={12}>
+            <Form.Item
+              label="角色数量"
+              name="character_count"
+              rules={[{ required: true, message: '请输入角色数量' }]}
+            >
+              <InputNumber
+                min={3}
+                max={20}
+                style={{ width: '100%' }}
+                size="large"
+                addonAfter="个"
+                placeholder="AI生成的角色数量"
+              />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Form.Item
+          label="目标字数"
+          name="target_words"
+          rules={[{ required: true, message: '请输入目标字数' }]}
+        >
+          <InputNumber
+            min={10000}
+            style={{ width: '100%' }}
+            size="large"
+            addonAfter="字"
+            placeholder="整部小说的目标字数"
+          />
+        </Form.Item>
+
+        <Form.Item>
+          <Space direction="vertical" style={{ width: '100%' }} size={12}>
+            <Button
+              type="primary"
+              htmlType="submit"
+              size="large"
+              block
+              icon={<RocketOutlined />}
+            >
+              开始创建项目
+            </Button>
+            <Button
+              size="large"
+              block
+              onClick={() => navigate('/')}
+            >
+              返回首页
+            </Button>
+          </Space>
+        </Form.Item>
+      </Form>
+    </Card>
+  );
+
+  return (
+    <div style={{
+      minHeight: '100vh',
+      background: 'var(--color-bg-base)',
+    }}>
+      {/* 顶部标题栏 - 固定不滚动 */}
+      <div style={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 100,
+        background: 'var(--color-primary)',
+        boxShadow: 'var(--shadow-header)',
+      }}>
+        <div style={{
+          maxWidth: 1200,
+          margin: '0 auto',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: isMobile ? '12px 16px' : '16px 24px',
+        }}>
+          <Button
+            icon={<ArrowLeftOutlined />}
+            onClick={() => navigate('/')}
+            size={isMobile ? 'middle' : 'large'}
+            disabled={currentStep === 'generating'}
+            style={{
+              background: 'rgba(255,255,255,0.2)',
+              borderColor: 'rgba(255,255,255,0.3)',
+              color: '#fff',
+            }}
+          >
+            {isMobile ? '返回' : '返回首页'}
+          </Button>
+
+          <Title level={isMobile ? 4 : 2} style={{
+            margin: 0,
+            color: '#fff',
+            textShadow: '0 2px 4px rgba(0,0,0,0.1)',
+          }}>
+            项目创建向导
+          </Title>
+
+          <div style={{ width: isMobile ? 60 : 120 }}></div>
+        </div>
+      </div>
+
+      {/* 内容区域 */}
+      <div style={{
+        maxWidth: 800,
+        margin: '0 auto',
+        padding: isMobile ? '16px 12px' : '24px 24px',
+      }}>
+        {currentStep === 'form' && renderForm()}
+        {currentStep === 'generating' && generationConfig && (
+          <AIProjectGenerator
+            config={generationConfig}
+            storagePrefix="wizard"
+            onComplete={handleComplete}
+            onBack={handleBack}
+            isMobile={isMobile}
+            resumeProjectId={resumeProjectId || undefined}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
