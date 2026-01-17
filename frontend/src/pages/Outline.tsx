@@ -7,7 +7,7 @@ import { cardStyles } from '../components/CardStyles';
 import { SSEPostClient } from '../utils/sseClient';
 import { SSEProgressModal } from '../components/SSEProgressModal';
 import { outlineApi, chapterApi, projectApi } from '../services/api';
-import type { OutlineExpansionResponse, BatchOutlineExpansionResponse, ChapterPlanItem, ApiError } from '../types';
+import type { OutlineExpansionResponse, BatchOutlineExpansionResponse, ApiError } from '../types';
 
 // 角色预测数据类型
 interface PredictedCharacter {
@@ -86,19 +86,12 @@ interface OutlineGenerateRequestData {
   confirmed_organizations?: PredictedOrganization[];
 }
 
-// 跳过的大纲信息类型
-interface SkippedOutlineInfo {
-  outline_id: string;
-  outline_title: string;
-  reason: string;
-}
-
-// 场景类型
-interface SceneInfo {
-  location: string;
-  characters: string[];
-  purpose: string;
-}
+// 场景类型（未使用，保留供将来扩展）
+// interface SceneInfo {
+//   location: string;
+//   characters: string[];
+//   purpose: string;
+// }
 
 const { TextArea } = Input;
 
