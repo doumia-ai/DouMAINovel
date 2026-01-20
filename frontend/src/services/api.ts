@@ -1018,3 +1018,83 @@ export const genreApi = {
   deleteGenre: (id: string) =>
     api.delete<unknown, { success: boolean; message: string }>(`/genres/${id}`),
 };
+
+// 伏笔管理API
+export const foreshadowApi = {
+  // 获取项目伏笔列表
+  getProjectForeshadows: (projectId: string, params?: {
+    status?: string;
+    category?: string;
+    is_long_term?: boolean;
+    sort_by?: string;
+    limit?: number;
+  }) =>
+    api.get<unknown, import('../types').ForeshadowListResponse>(
+      `/foreshadows/projects/${projectId}`,
+      { params }
+    ),
+
+  // 获取伏笔统计
+  getForeshadowStats: (projectId: string, currentChapter?: number) =>
+    api.get<unknown, import('../types').ForeshadowStats>(
+      `/foreshadows/projects/${projectId}/stats`,
+      { params: { current_chapter: currentChapter } }
+    ),
+
+  // 获取章节伏笔上下文
+  getChapterContext: (projectId: string, chapterNumber: number, params?: {
+    include_pending?: boolean;
+    include_overdue?: boolean;
+    lookahead?: number;
+  }) =>
+    api.get<unknown, import('../types').ForeshadowContextResponse>(
+      `/foreshadows/projects/${projectId}/context/${chapterNumber}`,
+      { params }
+    ),
+
+  // 获取待回收伏笔
+  getPendingResolveForeshadows: (projectId: string, currentChapter: number, lookahead?: number) =>
+    api.get<unknown, { total: number; items: import('../types').Foreshadow[] }>(
+      `/foreshadows/projects/${projectId}/pending-resolve`,
+      { params: { current_chapter: currentChapter, lookahead } }
+    ),
+
+  // 获取单个伏笔
+  getForeshadow: (foreshadowId: string) =>
+    api.get<unknown, import('../types').Foreshadow>(`/foreshadows/${foreshadowId}`),
+
+  // 创建伏笔
+  createForeshadow: (data: import('../types').ForeshadowCreate) =>
+    api.post<unknown, import('../types').Foreshadow>('/foreshadows', data),
+
+  // 更新伏笔
+  updateForeshadow: (foreshadowId: string, data: import('../types').ForeshadowUpdate) =>
+    api.put<unknown, import('../types').Foreshadow>(`/foreshadows/${foreshadowId}`, data),
+
+  // 删除伏笔
+  deleteForeshadow: (foreshadowId: string) =>
+    api.delete<unknown, { message: string; id: string }>(`/foreshadows/${foreshadowId}`),
+
+  // 标记伏笔为已埋入
+  plantForeshadow: (foreshadowId: string, data: import('../types').PlantForeshadowRequest) =>
+    api.post<unknown, import('../types').Foreshadow>(`/foreshadows/${foreshadowId}/plant`, data),
+
+  // 标记伏笔为已回收
+  resolveForeshadow: (foreshadowId: string, data: import('../types').ResolveForeshadowRequest) =>
+    api.post<unknown, import('../types').Foreshadow>(`/foreshadows/${foreshadowId}/resolve`, data),
+
+  // 标记伏笔为已废弃
+  abandonForeshadow: (foreshadowId: string, reason?: string) =>
+    api.post<unknown, import('../types').Foreshadow>(
+      `/foreshadows/${foreshadowId}/abandon`,
+      null,
+      { params: { reason } }
+    ),
+
+  // 从分析结果同步伏笔
+  syncFromAnalysis: (projectId: string, data: import('../types').SyncFromAnalysisRequest) =>
+    api.post<unknown, import('../types').SyncFromAnalysisResponse>(
+      `/foreshadows/projects/${projectId}/sync-from-analysis`,
+      data
+    ),
+};

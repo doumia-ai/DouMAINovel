@@ -22,6 +22,7 @@ import PromptTemplates from './pages/PromptTemplates';
 import Genres from './pages/Genres';
 import Sponsor from './pages/Sponsor';
 import AIGCDetect from './pages/AIGCDetect';
+import Foreshadows from './pages/Foreshadows';
 // import Polish from './pages/Polish';
 import Login from './pages/Login';
 import AuthCallback from './pages/AuthCallback';
@@ -82,6 +83,7 @@ function AppContent() {
             <Route path="organizations" element={<Organizations />} />
             <Route path="chapters" element={<Chapters />} />
             <Route path="chapter-analysis" element={<ChapterAnalysis />} />
+            <Route path="foreshadows" element={<Foreshadows />} />
             <Route path="writing-styles" element={<WritingStyles />} />
             <Route path="sponsor" element={<Sponsor />} />
             {/* <Route path="polish" element={<Polish />} /> */}
