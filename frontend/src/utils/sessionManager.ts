@@ -1,5 +1,6 @@
-import { authApi } from '../services/api';
 import { message } from 'antd';
+
+import { authApi } from '../services/api/index.js';
 
 /**
  * 会话管理工具

@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+
 import { Card, Form, Input, Button, Select, Slider, InputNumber, message, Space, Typography, Spin, Modal, Alert, Grid, Tabs, List, Tag, Popconfirm, Empty, ConfigProvider, theme } from 'antd';
 import { SettingOutlined, SaveOutlined, DeleteOutlined, ReloadOutlined, ArrowLeftOutlined, InfoCircleOutlined, CheckCircleOutlined, CloseCircleOutlined, ThunderboltOutlined, PlusOutlined, EditOutlined, CopyOutlined, WarningOutlined } from '@ant-design/icons';
-import { settingsApi, mcpPluginApi } from '../services/api';
-import type { SettingsUpdate, APIKeyPreset, PresetCreateRequest, APIKeyPresetConfig } from '../types';
-import KeyPoolManager from '../components/KeyPoolManager';
-import { useTheme } from '../contexts/ThemeContext';
-import { ThemedModal } from '../components/ThemedModal';
-import { PageHeader } from '../components/PageHeader';
+import { useNavigate } from 'react-router-dom';
+
+import type { SettingsUpdate, APIKeyPreset, PresetCreateRequest, APIKeyPresetConfig } from '../types.js';
+
+import KeyPoolManager from '../components/KeyPoolManager.js';
+import { PageHeader } from '../components/PageHeader.js';
+import { ThemedModal } from '../components/ThemedModal.js';
+import { settingsApi, mcpPluginApi } from '../services/api/index.js';
+import { useTheme } from '../contexts/ThemeContext.js';
 
 const { Text } = Typography;
 const { Option } = Select;
@@ -649,8 +652,6 @@ export default function SettingsPage() {
     switch (provider) {
       case 'openai':
         return 'blue';
-      // case 'anthropic':
-      //   return 'purple';
       case 'gemini':
         return 'green';
       default:
@@ -1424,7 +1425,6 @@ export default function SettingsPage() {
             >
               <Select>
                 <Select.Option value="openai">OpenAI Compatible</Select.Option>
-                {/* <Select.Option value="anthropic">Anthropic (Claude)</Select.Option> */}
                 <Select.Option value="gemini">Google Gemini</Select.Option>
               </Select>
             </Form.Item>

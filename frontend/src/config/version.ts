@@ -33,13 +33,13 @@ export const VERSION_INFO = {
 /**
  * 获取格式化的版本信息
  */
-export const getVersionString = () => {
+export function getVersionString(): string {
   return `v${VERSION_INFO.version}`;
-};
+}
 
 /**
  * 获取完整的版本描述
  */
-export const getFullVersionInfo = () => {
+export function getFullVersionInfo(): string {
   return `${VERSION_INFO.projectName} ${getVersionString()} - Build ${VERSION_INFO.buildTime}`;
-};
+}

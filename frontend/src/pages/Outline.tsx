@@ -1,13 +1,16 @@
-﻿import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
+
 import { Button, List, Modal, Form, Input, message, Empty, Space, Popconfirm, Card, Select, Radio, Tag, InputNumber, Tabs } from 'antd';
 import { EditOutlined, DeleteOutlined, ThunderboltOutlined, BranchesOutlined, AppstoreAddOutlined, CheckCircleOutlined, ExclamationCircleOutlined, PlusOutlined, FileTextOutlined } from '@ant-design/icons';
-import { useStore } from '../store';
-import { useOutlineSync } from '../store/hooks';
-import { cardStyles } from '../components/CardStyles';
-import { SSEPostClient } from '../utils/sseClient';
-import { SSEProgressModal } from '../components/SSEProgressModal';
-import { outlineApi, chapterApi, projectApi } from '../services/api';
-import type { OutlineExpansionResponse, BatchOutlineExpansionResponse, ApiError } from '../types';
+
+import type { OutlineExpansionResponse, BatchOutlineExpansionResponse, ApiError } from '../types.js';
+
+import { SSEPostClient } from '../utils/sseClient.js';
+import { SSEProgressModal } from '../components/SSEProgressModal.js';
+import { cardStyles } from '../components/CardStyles.js';
+import { outlineApi, chapterApi, projectApi } from '../services/api/index.js';
+import { useOutlineSync } from '../store/hooks.js';
+import { useStore } from '../store/index.js';
 
 // 角色预测数据类型
 interface PredictedCharacter {

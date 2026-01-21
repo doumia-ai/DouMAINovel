@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Form, Input, InputNumber, Select, Button, Card,
@@ -9,7 +10,7 @@ import {
 } from '@ant-design/icons';
 import { AIProjectGenerator, type GenerationConfig } from '../components/AIProjectGenerator';
 import { useTheme } from '../contexts/ThemeContext';
-import api from '../services/api';
+import api from '../services/api/index.js';
 import type { WizardBasicInfo } from '../types';
 
 const { TextArea } = Input;

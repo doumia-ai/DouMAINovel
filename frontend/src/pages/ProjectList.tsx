@@ -1,17 +1,19 @@
+import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+
 import { Card, Button, Empty, Modal, message, Spin, Row, Col, Space, Tag, Progress, Typography, Badge, Alert, Upload, Checkbox, Divider, Switch, Dropdown, Form, Input, InputNumber } from 'antd';
 import { EditOutlined, DeleteOutlined, BookOutlined, RocketOutlined, CalendarOutlined, FileTextOutlined, TrophyOutlined, FireOutlined, SettingOutlined, InfoCircleOutlined, CloseOutlined, UploadOutlined, DownloadOutlined, ApiOutlined, MoreOutlined, BulbOutlined, LoadingOutlined, FileSearchOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
-import { projectApi } from '../services/api';
-import { useStore } from '../store';
-import { useProjectSync } from '../store/hooks';
-import type { ReactNode } from 'react';
-import { cardStyles, cardHoverHandlers, gridConfig, headerButtonStyles } from '../components/CardStyles';
-import UserMenu from '../components/UserMenu';
-import ChangelogFloatingButton from '../components/ChangelogFloatingButton';
-import { useResponsive } from '../hooks/useResponsive';
-import { StatCard } from '../components/StatCard';
-import { PageHeader } from '../components/PageHeader';
+import { useNavigate } from 'react-router-dom';
+
+import ChangelogFloatingButton from '../components/ChangelogFloatingButton.js';
+import UserMenu from '../components/UserMenu.js';
+import { PageHeader } from '../components/PageHeader.js';
+import { StatCard } from '../components/StatCard.js';
+import { cardStyles, cardHoverHandlers, gridConfig, headerButtonStyles } from '../components/CardStyles.js';
+import { projectApi } from '../services/api/index.js';
+import { useProjectSync } from '../store/hooks.js';
+import { useResponsive } from '../hooks/useResponsive.js';
+import { useStore } from '../store/index.js';
 
 const { Title, Text, Paragraph } = Typography;
 

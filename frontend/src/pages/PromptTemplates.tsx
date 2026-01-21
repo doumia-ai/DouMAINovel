@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+
 import { useNavigate } from 'react-router-dom';
 import {
   Card,
@@ -499,7 +500,11 @@ export default function PromptTemplates() {
                               icon={<CheckCircleOutlined />}
                               color={template.is_system_default || template.is_active ? 'success' : 'default'}
                             >
-                              {template.is_system_default ? '始终启用' : (template.is_active ? '已启用' : '已禁用')}
+                              {(() => {
+                                if (template.is_system_default) return '始终启用';
+                                if (template.is_active) return '已启用';
+                                return '已禁用';
+                              })()}
                             </Tag>
                           </Space>
 

@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
+
+import type { MenuProps } from 'antd';
 import { Dropdown, Avatar, Space, Typography, message, Modal, Form, Input, Button, Segmented } from 'antd';
 import { UserOutlined, LogoutOutlined, TeamOutlined, CrownOutlined, LockOutlined } from '@ant-design/icons';
-import { authApi } from '../services/api';
-import type { User } from '../types';
-import type { MenuProps } from 'antd';
 import { useNavigate } from 'react-router-dom';
-import { useTheme, type ThemeMode } from '../contexts/ThemeContext';
+
+import type { User } from '../types.js';
+import { useTheme, type ThemeMode } from '../contexts/ThemeContext.js';
+
+import { authApi } from '../services/api/index.js';
 
 const { Text } = Typography;
 

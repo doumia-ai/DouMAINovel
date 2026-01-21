@@ -1,4 +1,4 @@
-import { VERSION_INFO } from '../config/version';
+import { VERSION_INFO } from '../config/version.js';
 
 interface VersionCheckResult {
   hasUpdate: boolean;

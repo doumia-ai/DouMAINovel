@@ -4,9 +4,9 @@
  */
 
 import { useCallback } from 'react';
+
 import { message } from 'antd';
-import { useStore } from './index';
-import { projectApi, outlineApi, characterApi, chapterApi } from '../services/api';
+
 import type {
   PaginationResponse,
   Outline,
@@ -22,6 +22,9 @@ import type {
   GenerateOutlineRequest,
   GenerateCharacterRequest
 } from '../types';
+
+import { projectApi, outlineApi, characterApi, chapterApi } from '../services/api/index.js';
+import { useStore } from './index.js';
 
 /**
  * 项目数据同步 Hook

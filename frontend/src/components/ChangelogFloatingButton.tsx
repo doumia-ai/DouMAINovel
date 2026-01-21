@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { FloatButton } from 'antd';
+
 import { FileTextOutlined } from '@ant-design/icons';
-import ChangelogModal from './ChangelogModal';
+import { FloatButton } from 'antd';
+
+import ChangelogModal from './ChangelogModal.js';
 
 export default function ChangelogFloatingButton() {
   const [showChangelog, setShowChangelog] = useState(false);

@@ -1,19 +1,22 @@
 import { useState, useEffect, useRef } from 'react';
+
 import { Button, Modal, Form, Input, Select, message, Row, Col, Empty, Tabs, Divider, Typography, Space, InputNumber, Checkbox, ConfigProvider, theme } from 'antd';
 import { ThunderboltOutlined, UserOutlined, TeamOutlined, PlusOutlined, ExportOutlined, ImportOutlined, DownloadOutlined } from '@ant-design/icons';
-import { useStore } from '../store';
-import { useCharacterSync } from '../store/hooks';
-import { characterGridConfig } from '../components/CardStyles';
-import { CharacterCard } from '../components/CharacterCard';
-import { SSELoadingOverlay } from '../components/SSELoadingOverlay';
-import { ThemedModal } from '../components/ThemedModal';
-import type { Character, ApiError } from '../types';
-import { characterApi } from '../services/api';
-import { SSEPostClient } from '../utils/sseClient';
-import api from '../services/api';
-import { useTheme } from '../contexts/ThemeContext';
-import { useResponsive } from '../hooks/useResponsive';
-import { getResponsiveModalProps } from '../utils/modalUtils';
+
+import type { Character, ApiError } from '../types.js';
+import { getResponsiveModalProps } from '../utils/modalUtils.js';
+
+import api from '../services/api/index.js';
+import { CharacterCard } from '../components/CharacterCard.js';
+import { SSELoadingOverlay } from '../components/SSELoadingOverlay.js';
+import { SSEPostClient } from '../utils/sseClient.js';
+import { ThemedModal } from '../components/ThemedModal.js';
+import { characterApi } from '../services/api/index.js';
+import { characterGridConfig } from '../components/CardStyles.js';
+import { useCharacterSync } from '../store/hooks.js';
+import { useResponsive } from '../hooks/useResponsive.js';
+import { useStore } from '../store/index.js';
+import { useTheme } from '../contexts/ThemeContext.js';
 
 const { Title } = Typography;
 const { TextArea } = Input;

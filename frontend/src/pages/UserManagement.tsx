@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+
 import { useNavigate } from 'react-router-dom';
 import {
   Table,
@@ -33,7 +34,7 @@ import {
   SearchOutlined,
   MoreOutlined,
 } from '@ant-design/icons';
-import { adminApi } from '../services/api';
+import { adminApi } from '../services/api/index.js';
 import type { User } from '../types';
 import UserMenu from '../components/UserMenu';
 import { useTheme } from '../contexts/ThemeContext';
@@ -267,11 +268,24 @@ export default function UserManagement() {
       dataIndex: 'trust_level',
       key: 'trust_level',
       width: 100,
-      render: (level: number) => (
-        <Tag color={level === -1 ? 'default' : level >= 5 ? 'green' : 'blue'}>
-          {level === -1 ? '已禁用' : `Level ${level}`}
-        </Tag>
-      ),
+      render: (level: number) => {
+        const getTrustLevelColor = (trustLevel: number): string => {
+          if (trustLevel === -1) return 'default';
+          if (trustLevel >= 5) return 'green';
+          return 'blue';
+        };
+
+        const getTrustLevelText = (trustLevel: number): string => {
+          if (trustLevel === -1) return '已禁用';
+          return `Level ${trustLevel}`;
+        };
+
+        return (
+          <Tag color={getTrustLevelColor(level)}>
+            {getTrustLevelText(level)}
+          </Tag>
+        );
+      },
     },
     {
       title: '创建时间',

@@ -1,2 +1,2 @@
-export { default as DetectConfigPanel } from './DetectConfigPanel';
-export { default as DetectResultPanel } from './DetectResultPanel';
+export { default as DetectConfigPanel } from './DetectConfigPanel.js';
+export { default as DetectResultPanel } from './DetectResultPanel.js';

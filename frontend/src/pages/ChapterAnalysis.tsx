@@ -10,7 +10,8 @@ import {
   FundOutlined,
 } from '@ant-design/icons';
 import { useParams } from 'react-router-dom';
-import api from '../services/api';
+
+import api from '../services/api/index.js';
 import AnnotatedText, { type MemoryAnnotation } from '../components/AnnotatedText';
 import MemorySidebar from '../components/MemorySidebar';
 

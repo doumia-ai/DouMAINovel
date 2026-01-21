@@ -6,6 +6,7 @@ import {
   ThunderboltOutlined,
   UserOutlined,
 } from '@ant-design/icons';
+
 import type { MemoryAnnotation } from './AnnotatedText';
 
 const { Panel } = Collapse;

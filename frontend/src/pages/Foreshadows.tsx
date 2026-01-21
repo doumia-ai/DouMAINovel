@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+
 import { useParams } from 'react-router-dom';
 import {
   Card, Table, Button, Tag, Space, Modal, Form, Input, Select,
@@ -13,7 +14,7 @@ import {
   BulbOutlined, EyeOutlined, FlagOutlined, WarningOutlined,
   ClockCircleOutlined, MoreOutlined, ReloadOutlined, InfoCircleOutlined
 } from '@ant-design/icons';
-import { foreshadowApi, chapterApi, characterApi } from '../services/api';
+import { foreshadowApi, chapterApi, characterApi } from '../services/api/index.js';
 import type {
   Foreshadow, ForeshadowCreate, ForeshadowUpdate, ForeshadowStats,
   ForeshadowStatus, ForeshadowCategory, Chapter, Character

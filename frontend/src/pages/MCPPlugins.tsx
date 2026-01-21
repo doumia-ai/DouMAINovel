@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+
 import { useNavigate } from 'react-router-dom';
 import {
   Card,
@@ -33,7 +34,7 @@ import {
   QuestionCircleOutlined,
   WarningOutlined,
 } from '@ant-design/icons';
-import { mcpPluginApi, settingsApi } from '../services/api';
+import { mcpPluginApi, settingsApi } from '../services/api/index.js';
 import type { MCPPlugin, MCPTool } from '../types';
 
 const { Paragraph, Text, Title } = Typography;
@@ -534,9 +535,17 @@ export default function MCPPluginsPage() {
                   <Space align="start">
                     <div style={{
                       width: 40, height: 40, borderRadius: '50%',
-                      background: modelSupportStatus === 'supported' ? token.colorSuccessBg : modelSupportStatus === 'unsupported' ? token.colorErrorBg : token.colorInfoBg,
+                      background: (() => {
+                        if (modelSupportStatus === 'supported') return token.colorSuccessBg;
+                        if (modelSupportStatus === 'unsupported') return token.colorErrorBg;
+                        return token.colorInfoBg;
+                      })(),
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      border: `1px solid ${modelSupportStatus === 'supported' ? token.colorSuccessBorder : modelSupportStatus === 'unsupported' ? token.colorErrorBorder : token.colorInfoBorder}`
+                      border: `1px solid ${(() => {
+                        if (modelSupportStatus === 'supported') return token.colorSuccessBorder;
+                        if (modelSupportStatus === 'unsupported') return token.colorErrorBorder;
+                        return token.colorInfoBorder;
+                      })()}`
                     }}>
                       {modelSupportStatus === 'supported' ? (
                         <CheckCircleOutlined style={{ fontSize: 20, color: token.colorSuccess }} />
@@ -549,7 +558,11 @@ export default function MCPPluginsPage() {
                     <div>
                       <Text strong style={{ fontSize: 16, display: 'block', color: token.colorText }}>模型能力检查</Text>
                       <Text type="secondary" style={{ fontSize: 13 }}>
-                        {modelSupportStatus === 'supported' ? '当前模型支持 Function Calling' : modelSupportStatus === 'unsupported' ? '当前模型不支持 Function Calling' : '请先检测模型能力'}
+                        {(() => {
+                          if (modelSupportStatus === 'supported') return '当前模型支持 Function Calling';
+                          if (modelSupportStatus === 'unsupported') return '当前模型不支持 Function Calling';
+                          return '请先检测模型能力';
+                        })()}
                       </Text>
                     </div>
                   </Space>

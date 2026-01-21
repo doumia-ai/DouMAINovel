@@ -63,7 +63,7 @@ export const DEFAULT_DETECT_CONFIG: DetectConfig = {
 
 const STORAGE_KEY = 'aigc_detect_config';
 
-export const loadDetectConfig = (): DetectConfig => {
+export function loadDetectConfig(): DetectConfig {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
@@ -84,15 +84,15 @@ export const loadDetectConfig = (): DetectConfig => {
     console.warn('Failed to load detect config:', e);
   }
   return { ...DEFAULT_DETECT_CONFIG };
-};
+}
 
-export const saveDetectConfig = (config: DetectConfig): void => {
+export function saveDetectConfig(config: DetectConfig): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
   } catch (e) {
     console.warn('Failed to save detect config:', e);
   }
-};
+}
 
 // =======================
 // 内部工具函数

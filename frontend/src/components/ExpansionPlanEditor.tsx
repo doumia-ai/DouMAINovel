@@ -1,8 +1,11 @@
+import { useState, useEffect } from 'react';
+
 import { Modal, Form, Input, InputNumber, Select, Tag, Space, Button, message, Divider } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
-import { useState, useEffect } from 'react';
-import type { ExpansionPlanData, Character } from '../types';
-import { characterApi } from '../services/api';
+
+import type { ExpansionPlanData, Character } from '../types.js';
+
+import { characterApi } from '../services/api/index.js';
 
 const { TextArea } = Input;
 

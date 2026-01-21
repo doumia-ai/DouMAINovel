@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Modal, Button, Card, Statistic, Row, Col, message } from 'antd';
-import { CheckOutlined, CloseOutlined, SwapOutlined } from '@ant-design/icons';
+
 import ReactDiffViewer from 'react-diff-viewer-continued';
+import { CheckOutlined, CloseOutlined, SwapOutlined } from '@ant-design/icons';
+import { Modal, Button, Card, Statistic, Row, Col, message } from 'antd';
 
 interface ChapterContentComparisonProps {
   visible: boolean;

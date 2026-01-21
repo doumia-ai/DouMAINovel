@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+
+import axios from 'axios';
 import { Card, Table, Tag, Button, Space, message, Modal, Form, Select, InputNumber, Input, Descriptions, Drawer } from 'antd';
 import { PlusOutlined, UserOutlined, EditOutlined, DeleteOutlined, UnorderedListOutlined, BankOutlined } from '@ant-design/icons';
-import { useStore } from '../store';
-import { useCharacterSync } from '../store/hooks';
-import axios from 'axios';
+import { useParams } from 'react-router-dom';
+
+import { useCharacterSync } from '../store/hooks.js';
+import { useStore } from '../store/index.js';
 
 interface Organization {
   id: string;
@@ -58,6 +60,13 @@ export default function Organizations() {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [modal, contextHolder] = Modal.useModal();
   const [orgListVisible, setOrgListVisible] = useState(false);
+
+  // Helper function for power level color
+  const getPowerLevelColor = (powerLevel: number): string => {
+    if (powerLevel >= 70) return 'red';
+    if (powerLevel >= 50) return 'orange';
+    return 'default';
+  };
 
   useEffect(() => {
     const handleResize = () => {
@@ -234,11 +243,19 @@ export default function Organizations() {
       title: '忠诚度',
       dataIndex: 'loyalty',
       key: 'loyalty',
-      render: (loyalty: number) => (
-        <span style={{ color: loyalty >= 70 ? 'green' : loyalty >= 40 ? 'orange' : 'red' }}>
-          {loyalty}%
-        </span>
-      ),
+      render: (loyalty: number) => {
+        const getLoyaltyColor = (value: number): string => {
+          if (value >= 70) return 'green';
+          if (value >= 40) return 'orange';
+          return 'red';
+        };
+
+        return (
+          <span style={{ color: getLoyaltyColor(loyalty) }}>
+            {loyalty}%
+          </span>
+        );
+      },
       width: isMobile ? 80 : undefined,
     },
     {
@@ -491,7 +508,7 @@ export default function Organizations() {
                     <Descriptions.Item label="类型">{selectedOrg.type}</Descriptions.Item>
                     <Descriptions.Item label="成员数量">{selectedOrg.member_count}</Descriptions.Item>
                     <Descriptions.Item label="势力等级">
-                      <Tag color={selectedOrg.power_level >= 70 ? 'red' : selectedOrg.power_level >= 50 ? 'orange' : 'default'}>
+                      <Tag color={getPowerLevelColor(selectedOrg.power_level)}>
                         {selectedOrg.power_level}
                       </Tag>
                     </Descriptions.Item>

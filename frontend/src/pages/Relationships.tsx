@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+
+import axios from 'axios';
 import { Card, Table, Tag, Button, Space, message, Modal, Form, Select, Slider, Input, Tabs, AutoComplete } from 'antd';
 import { PlusOutlined, ApartmentOutlined, UserOutlined, EditOutlined } from '@ant-design/icons';
-import { useStore } from '../store';
-import axios from 'axios';
+import { useParams } from 'react-router-dom';
+
+import { useStore } from '../store/index.js';
 
 const { TextArea } = Input;
 

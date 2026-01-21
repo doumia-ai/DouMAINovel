@@ -29,7 +29,7 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
 } from '@ant-design/icons';
-import { settingsApi } from '../services/api';
+import { settingsApi } from '../services/api/index.js';
 import type { KeyPool, KeyPoolCreateRequest, KeyPoolStatsResponse, KeyStats } from '../types';
 
 const { Text } = Typography;

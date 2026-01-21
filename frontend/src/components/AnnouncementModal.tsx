@@ -1,6 +1,8 @@
-import { Modal, Button, Space, ConfigProvider, theme } from 'antd';
 import { useEffect, useState } from 'react';
-import { useTheme } from '../contexts/ThemeContext';
+
+import { Modal, Button, Space, ConfigProvider, theme } from 'antd';
+
+import { useTheme } from '../contexts/ThemeContext.js';
 
 interface AnnouncementModalProps {
   visible: boolean;

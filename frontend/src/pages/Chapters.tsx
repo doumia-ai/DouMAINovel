@@ -1,18 +1,21 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { List, Button, Modal, Form, Input, Select, message, Empty, Space, Badge, Tag, Card, InputNumber, Alert, Radio, Descriptions, Collapse, Popconfirm, FloatButton } from 'antd';
-import { EditOutlined, FileTextOutlined, ThunderboltOutlined, LockOutlined, DownloadOutlined, SettingOutlined, FundOutlined, SyncOutlined, CheckCircleOutlined, CloseCircleOutlined, RocketOutlined, StopOutlined, InfoCircleOutlined, CaretRightOutlined, DeleteOutlined, BookOutlined, FormOutlined, PlusOutlined, ReadOutlined } from '@ant-design/icons';
-import { useStore } from '../store';
-import { useChapterSync } from '../store/hooks';
-import { projectApi, writingStyleApi, chapterApi } from '../services/api';
-import type { Chapter, ChapterUpdate, ApiError, WritingStyle, AnalysisTask, ExpansionPlanData } from '../types';
+
 import type { TextAreaRef } from 'antd/es/input/TextArea';
-import ChapterAnalysis from '../components/ChapterAnalysis';
-import ExpansionPlanEditor from '../components/ExpansionPlanEditor';
-import { SSELoadingOverlay } from '../components/SSELoadingOverlay';
-import { SSEProgressModal } from '../components/SSEProgressModal';
-import FloatingIndexPanel from '../components/FloatingIndexPanel';
-import ChapterReader from '../components/ChapterReader';
-import { useResponsive } from '../hooks/useResponsive';
+import { EditOutlined, FileTextOutlined, ThunderboltOutlined, LockOutlined, DownloadOutlined, SettingOutlined, FundOutlined, SyncOutlined, CheckCircleOutlined, CloseCircleOutlined, RocketOutlined, StopOutlined, InfoCircleOutlined, CaretRightOutlined, DeleteOutlined, BookOutlined, FormOutlined, PlusOutlined, ReadOutlined } from '@ant-design/icons';
+import { List, Button, Modal, Form, Input, Select, message, Empty, Space, Badge, Tag, Card, InputNumber, Alert, Radio, Descriptions, Collapse, Popconfirm, FloatButton } from 'antd';
+
+import type { Chapter, ChapterUpdate, ApiError, WritingStyle, AnalysisTask, ExpansionPlanData } from '../types.js';
+
+import ChapterAnalysis from '../components/ChapterAnalysis.js';
+import ChapterReader from '../components/ChapterReader.js';
+import ExpansionPlanEditor from '../components/ExpansionPlanEditor.js';
+import FloatingIndexPanel from '../components/FloatingIndexPanel.js';
+import { SSELoadingOverlay } from '../components/SSELoadingOverlay.js';
+import { SSEProgressModal } from '../components/SSEProgressModal.js';
+import { projectApi, writingStyleApi, chapterApi } from '../services/api/index.js';
+import { useChapterSync } from '../store/hooks.js';
+import { useResponsive } from '../hooks/useResponsive.js';
+import { useStore } from '../store/index.js';
 
 const { TextArea } = Input;
 
@@ -303,7 +306,13 @@ export default function Chapters() {
     // 检查通知权限
     if (Notification.permission === 'granted') {
       // 选择图标
-      const icon = type === 'success' ? '/logo.svg' : type === 'error' ? '/favicon.ico' : '/logo.svg';
+      const getNotificationIcon = (notificationType: 'success' | 'error' | 'info'): string => {
+        if (notificationType === 'success') return '/logo.svg';
+        if (notificationType === 'error') return '/favicon.ico';
+        return '/logo.svg';
+      };
+
+      const icon = getNotificationIcon(type);
       
       const notification = new Notification(title, {
         body,
@@ -1539,7 +1548,10 @@ export default function Chapters() {
           <BookOutlined style={{ marginRight: 8 }} />
           章节管理
         </h2>
-        <Space direction={isMobile ? 'vertical' : 'horizontal'} style={{ width: isMobile ? '100%' : 'auto' }}>
+        <Space 
+          direction={isMobile ? 'vertical' : 'horizontal'} 
+          style={{ width: isMobile ? '100%' : 'auto' }}
+        >
           {currentProject.outline_mode === 'one-to-many' && (
             <Button
               icon={<PlusOutlined />}
@@ -1676,12 +1688,12 @@ export default function Chapters() {
                     }
                     description={
                       item.content ? (
-                        <div style={{ marginTop: 8, color: 'rgba(0,0,0,0.65)', lineHeight: 1.6, fontSize: isMobile ? 12 : 14 }}>
+                        <div style={{ marginTop: 8, color: 'var(--color-text-secondary)', lineHeight: 1.6, fontSize: isMobile ? 12 : 14 }}>
                           {item.content.substring(0, isMobile ? 80 : 150)}
                           {item.content.length > (isMobile ? 80 : 150) && '...'}
                         </div>
                       ) : (
-                        <span style={{ color: 'rgba(0,0,0,0.45)', fontSize: isMobile ? 12 : 14 }}>暂无内容</span>
+                        <span style={{ color: 'var(--color-text-tertiary)', fontSize: isMobile ? 12 : 14 }}>暂无内容</span>
                       )
                     }
                   />
@@ -1900,12 +1912,12 @@ export default function Chapters() {
                           }
                           description={
                             item.content ? (
-                              <div style={{ marginTop: 8, color: 'rgba(0,0,0,0.65)', lineHeight: 1.6, fontSize: isMobile ? 12 : 14 }}>
+                              <div style={{ marginTop: 8, color: 'var(--color-text-secondary)', lineHeight: 1.6, fontSize: isMobile ? 12 : 14 }}>
                                 {item.content.substring(0, isMobile ? 80 : 150)}
                                 {item.content.length > (isMobile ? 80 : 150) && '...'}
                               </div>
                             ) : (
-                              <span style={{ color: 'rgba(0,0,0,0.45)', fontSize: isMobile ? 12 : 14 }}>暂无内容</span>
+                              <span style={{ color: 'var(--color-text-tertiary)', fontSize: isMobile ? 12 : 14 }}>暂无内容</span>
                             )
                           }
                         />

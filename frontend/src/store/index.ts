@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import type { Project, Outline, Character, Chapter } from '../types';
+
+import type { Project, Outline, Character, Chapter } from '../types.js';
 
 interface AppState {
   currentProject: Project | null;

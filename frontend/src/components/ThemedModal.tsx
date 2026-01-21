@@ -1,6 +1,7 @@
-import { Modal, ConfigProvider, theme } from 'antd';
 import type { ModalProps } from 'antd';
-import { useTheme } from '../contexts/ThemeContext';
+import { Modal, ConfigProvider, theme } from 'antd';
+
+import { useTheme } from '../contexts/ThemeContext.js';
 
 /**
  * ThemedModal - A Modal component that automatically inherits theme from ThemeContext

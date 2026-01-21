@@ -1,6 +1,8 @@
-import { Card, Row, Col, Space, Typography } from 'antd';
 import type { ReactNode } from 'react';
-import { useResponsive } from '../hooks/useResponsive';
+
+import { Card, Row, Col, Space, Typography } from 'antd';
+
+import { useResponsive } from '../hooks/useResponsive.js';
 
 const { Title, Text } = Typography;
 

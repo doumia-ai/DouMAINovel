@@ -1,7 +1,9 @@
 import { useState, useMemo } from 'react';
+
 import { Drawer, Input, List, Typography, Empty, Tag } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
-import type { Chapter } from '../types';
+
+import type { Chapter } from '../types.js';
 
 const { Link } = Typography;
 

@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Typography, Space, Divider, Badge, Tooltip, Button } from 'antd';
+
 import { CopyrightOutlined, GiftOutlined, ClockCircleOutlined, GithubOutlined, ForkOutlined } from '@ant-design/icons';
-import { VERSION_INFO, getVersionString } from '../config/version';
-import { checkLatestVersion } from '../services/versionService';
-import { useTheme } from '../contexts/ThemeContext';
+import { Typography, Space, Divider, Badge, Tooltip, Button } from 'antd';
+
+import { VERSION_INFO, getVersionString } from '../config/version.js';
+import { checkLatestVersion } from '../services/versionService.js';
+import { useTheme } from '../contexts/ThemeContext.js';
 
 const { Text, Link } = Typography;
 

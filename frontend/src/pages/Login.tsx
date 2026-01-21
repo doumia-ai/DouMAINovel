@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
+
 import { Button, Card, Space, Typography, message, Spin, Form, Input, Tabs, ConfigProvider, theme } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
-import { authApi } from '../services/api';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import AnnouncementModal from '../components/AnnouncementModal';
-import { useTheme } from '../contexts/ThemeContext';
+
+import AnnouncementModal from '../components/AnnouncementModal.js';
+import { authApi } from '../services/api/index.js';
+import { useTheme } from '../contexts/ThemeContext.js';
 
 const { Title, Paragraph } = Typography;
 

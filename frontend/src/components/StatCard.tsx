@@ -1,6 +1,8 @@
-import { Card, Statistic } from 'antd';
 import type { ReactNode } from 'react';
-import { useResponsive } from '../hooks/useResponsive';
+
+import { Card, Statistic } from 'antd';
+
+import { useResponsive } from '../hooks/useResponsive.js';
 
 interface StatCardProps {
   title: string;

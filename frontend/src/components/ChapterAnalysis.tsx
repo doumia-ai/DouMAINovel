@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+
 import { Modal, Spin, Alert, Tabs, Card, Tag, List, Empty, Statistic, Row, Col, Button } from 'antd';
 import {
   ThunderboltOutlined,
@@ -502,7 +503,10 @@ export default function ChapterAnalysis({ chapterId, visible, onClose }: Chapter
                 <Card size={isMobile ? 'small' : 'default'}>
                   {analysis_data.emotional_tone ? (
                     <div>
-                      <Row gutter={isMobile ? 8 : 16} style={{ marginBottom: isMobile ? 16 : 24 }}>
+                      <Row 
+                        gutter={isMobile ? 8 : 16} 
+                        style={{ marginBottom: isMobile ? 16 : 24 }}
+                      >
                         <Col span={isMobile ? 24 : 12}>
                           <Statistic
                             title="主导情绪"

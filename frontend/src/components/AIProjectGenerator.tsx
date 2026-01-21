@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+
 import { Card, Button, Space, Typography, message, Progress, ConfigProvider, theme } from 'antd';
 import { CheckCircleOutlined, LoadingOutlined } from '@ant-design/icons';
-import { wizardStreamApi } from '../services/api';
-import type { ApiError } from '../types';
-import { useTheme } from '../contexts/ThemeContext';
+import { useNavigate } from 'react-router-dom';
+
+import type { ApiError } from '../types.js';
+
+import { useTheme } from '../contexts/ThemeContext.js';
+import { wizardStreamApi } from '../services/api/index.js';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -991,7 +994,11 @@ export const AIProjectGenerator: React.FC<AIProjectGeneratorProps> = ({
         <Card style={{ marginBottom: 24, maxWidth: '100%' }}>
         <Progress
           percent={progress}
-          status={hasError ? 'exception' : (progress === 100 ? 'success' : 'active')}
+          status={(() => {
+            if (hasError) return 'exception';
+            if (progress === 100) return 'success';
+            return 'active';
+          })()}
           strokeColor={{
             '0%': 'var(--color-primary)',
             '100%': 'var(--color-primary-active)',
@@ -1057,6 +1064,19 @@ export const AIProjectGenerator: React.FC<AIProjectGeneratorProps> = ({
             { key: 'outline', label: '生成大纲', step: generationSteps.outline },
           ].map(({ key, label, step }) => {
             const status = getStepStatus(step);
+            
+            const getStepBackground = (stepStatus: string): string => {
+              if (stepStatus === 'processing') return 'var(--color-info-bg)';
+              if (stepStatus === 'error') return 'var(--color-error-bg)';
+              return 'var(--color-bg-layout)';
+            };
+
+            const getStepBorderColor = (stepStatus: string): string => {
+              if (stepStatus === 'processing') return 'var(--color-info-border)';
+              if (stepStatus === 'error') return 'var(--color-error-border)';
+              return 'var(--color-border-secondary)';
+            };
+
             return (
               <div
                 key={key}
@@ -1065,9 +1085,9 @@ export const AIProjectGenerator: React.FC<AIProjectGeneratorProps> = ({
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   padding: isMobile ? '10px 12px' : '12px 20px',
-                  background: step === 'processing' ? 'var(--color-info-bg)' : (step === 'error' ? 'var(--color-error-bg)' : 'var(--color-bg-layout)'),
+                  background: getStepBackground(step),
                   borderRadius: 8,
-                  border: `1px solid ${step === 'processing' ? 'var(--color-info-border)' : (step === 'error' ? 'var(--color-error-border)' : 'var(--color-border-secondary)')}`,
+                  border: `1px solid ${getStepBorderColor(step)}`,
                   gap: '8px',
                   maxWidth: '100%',
                   overflow: 'hidden'

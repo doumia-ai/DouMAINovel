@@ -1,6 +1,7 @@
 import { Segmented } from 'antd';
-import { useTheme, type ThemeMode } from '../contexts/ThemeContext';
 import { SunOutlined, MoonOutlined, LaptopOutlined } from '@ant-design/icons';
+
+import { useTheme, type ThemeMode } from '../contexts/ThemeContext.js';
 
 interface ThemeSwitcherProps {
   style?: React.CSSProperties;

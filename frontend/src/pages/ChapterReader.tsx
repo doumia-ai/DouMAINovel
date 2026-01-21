@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+
 import { Card, Spin, Alert, Button, Space, Switch, Drawer, message, Progress } from 'antd';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeftOutlined,
   EyeOutlined,
@@ -10,7 +11,7 @@ import {
   LeftOutlined,
   RightOutlined,
 } from '@ant-design/icons';
-import api from '../services/api';
+import api from '../services/api/index.js';
 import AnnotatedText, { type MemoryAnnotation } from '../components/AnnotatedText';
 import MemorySidebar from '../components/MemorySidebar';
 

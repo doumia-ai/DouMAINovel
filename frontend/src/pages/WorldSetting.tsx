@@ -1,11 +1,13 @@
+import { useState } from 'react';
+
 import { Card, Descriptions, Empty, Typography, Button, Modal, Form, Input, message, Flex, ConfigProvider, theme } from 'antd';
 import { GlobalOutlined, EditOutlined, SyncOutlined } from '@ant-design/icons';
-import { useState } from 'react';
-import { useStore } from '../store';
-import { cardStyles } from '../components/CardStyles';
-import { projectApi, wizardStreamApi } from '../services/api';
-import { SSELoadingOverlay } from '../components/SSELoadingOverlay';
-import { useTheme } from '../contexts/ThemeContext';
+
+import { SSELoadingOverlay } from '../components/SSELoadingOverlay.js';
+import { cardStyles } from '../components/CardStyles.js';
+import { projectApi, wizardStreamApi } from '../services/api/index.js';
+import { useStore } from '../store/index.js';
+import { useTheme } from '../contexts/ThemeContext.js';
 
 const { Title, Paragraph } = Typography;
 const { TextArea } = Input;

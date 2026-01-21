@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+
 import { Card, Input, Button, Space, Typography, message, Spin, Modal } from 'antd';
 import { SendOutlined, ArrowLeftOutlined, ReloadOutlined } from '@ant-design/icons';
-import { inspirationApi } from '../services/api';
-import { AIProjectGenerator, type GenerationConfig } from '../components/AIProjectGenerator';
+import { useNavigate } from 'react-router-dom';
+
+import { AIProjectGenerator, type GenerationConfig } from '../components/AIProjectGenerator.js';
+
+import { inspirationApi } from '../services/api/index.js';
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -328,9 +331,16 @@ const Inspiration: React.FC = () => {
       }
 
       // 添加新的AI消息
+      const getStepLabel = (currentStep: string): string => {
+        if (currentStep === 'title') return '书名';
+        if (currentStep === 'description') return '简介';
+        if (currentStep === 'theme') return '主题';
+        return '类型';
+      };
+
       const aiMessage: Message = {
         type: 'ai',
-        content: response.prompt || `根据您的反馈，我重新生成了一些${step === 'title' ? '书名' : step === 'description' ? '简介' : step === 'theme' ? '主题' : '类型'}选项：`,
+        content: response.prompt || `根据您的反馈，我重新生成了一些${getStepLabel(step)}选项：`,
         options: response.options || [],
         isMultiSelect: step === 'genre',
         canRefine: true,

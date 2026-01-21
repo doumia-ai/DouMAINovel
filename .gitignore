@@ -117,3 +117,6 @@ backend/migrate_all_databases.py
 test_api.py
 # Embedding models (downloaded from HuggingFace at runtime)
 backend/embedding/
+
+# ChromaDB vector database
+backend/data/chroma_db/

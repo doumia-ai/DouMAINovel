@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+
 import { Spin, Result, Button, Modal, Input, message } from 'antd';
-import { authApi } from '../services/api';
-import AnnouncementModal from '../components/AnnouncementModal';
+import { useNavigate } from 'react-router-dom';
+
+import AnnouncementModal from '../components/AnnouncementModal.js';
+import { authApi } from '../services/api/index.js';
 
 export default function AuthCallback() {
   const navigate = useNavigate();
@@ -300,7 +302,11 @@ export default function AuthCallback() {
         <Result
           status="success"
           title="登录成功"
-          subTitle={showPasswordModal ? "请设置账号密码..." : (showAnnouncement ? "欢迎使用..." : "正在跳转...")}
+          subTitle={(() => {
+            if (showPasswordModal) return "请设置账号密码...";
+            if (showAnnouncement) return "欢迎使用...";
+            return "正在跳转...";
+          })()}
           style={{ background: 'white', padding: 40, borderRadius: 8 }}
         />
       </div>

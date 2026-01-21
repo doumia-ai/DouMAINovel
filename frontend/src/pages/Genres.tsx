@@ -1,34 +1,16 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Button, Modal, Form, Input, message, Empty, Card, Tag, Space, Divider, Typography, Collapse, Spin, Row, Col } from 'antd';
+
 import { BookOutlined, PlusOutlined, EditOutlined, DeleteOutlined, ArrowLeftOutlined, LockOutlined } from '@ant-design/icons';
-import api from '../services/api';
-import { cardStyles, cardHoverHandlers, gridConfig } from '../components/CardStyles';
+import { Button, Modal, Form, Input, message, Empty, Card, Tag, Space, Divider, Typography, Collapse, Spin, Row, Col } from 'antd';
+import { useNavigate } from 'react-router-dom';
+
+import api, { type Genre, type GenreListResponse } from '../services/api/index.js';
+
+import { cardStyles, cardHoverHandlers, gridConfig } from '../components/CardStyles.js';
 
 const { TextArea } = Input;
 const { Title, Text, Paragraph } = Typography;
 const { Panel } = Collapse;
-
-interface Genre {
-    id: string;
-    name: string;
-    is_builtin: boolean;
-    description?: string;
-    world_building_guide?: string;
-    character_guide?: string;
-    plot_guide?: string;
-    writing_style_guide?: string;
-    example_works?: string;
-    keywords?: string[];
-    sort_order: number;
-    created_at?: string;
-    updated_at?: string;
-}
-
-interface GenreListResponse {
-    genres: Genre[];
-    total: number;
-}
 
 export default function Genres() {
     const navigate = useNavigate();
