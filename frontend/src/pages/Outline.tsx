@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Button, List, Modal, Form, Input, message, Empty, Space, Popconfirm, Card, Select, Radio, Tag, InputNumber, Tabs } from 'antd';
 import { EditOutlined, DeleteOutlined, ThunderboltOutlined, BranchesOutlined, AppstoreAddOutlined, CheckCircleOutlined, ExclamationCircleOutlined, PlusOutlined, FileTextOutlined } from '@ant-design/icons';
 
-import type { OutlineExpansionResponse, BatchOutlineExpansionResponse, ApiError } from '../types.js';
+import type { OutlineExpansionResponse, BatchOutlineExpansionResponse, ApiError } from '../types/index.js';
 
 import { SSEPostClient } from '../utils/sseClient.js';
 import { SSEProgressModal } from '../components/SSEProgressModal.js';

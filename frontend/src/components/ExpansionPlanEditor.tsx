@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { Modal, Form, Input, InputNumber, Select, Tag, Space, Button, message, Divider } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 
-import type { ExpansionPlanData, Character } from '../types.js';
+import type { ExpansionPlanData, Character } from '../types/index.js';
 
 import { characterApi } from '../services/api/index.js';
 

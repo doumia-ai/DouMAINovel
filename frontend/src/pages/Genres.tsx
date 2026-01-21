@@ -4,7 +4,9 @@ import { BookOutlined, PlusOutlined, EditOutlined, DeleteOutlined, ArrowLeftOutl
 import { Button, Modal, Form, Input, message, Empty, Card, Tag, Space, Divider, Typography, Collapse, Spin, Row, Col } from 'antd';
 import { useNavigate } from 'react-router-dom';
 
-import api, { type Genre, type GenreListResponse } from '../services/api/index.js';
+import type { Genre, GenreListResponse } from '../types/index.js';
+
+import api from '../services/api/index.js';
 
 import { cardStyles, cardHoverHandlers, gridConfig } from '../components/CardStyles.js';
 
@@ -175,7 +177,7 @@ export default function Genres() {
                     <div style={{ marginBottom: 12 }}>
                         <Text strong style={{ fontSize: 12 }}>关键元素：</Text>
                         <div style={{ marginTop: 4 }}>
-                            {genre.keywords.slice(0, 5).map((keyword, index) => (
+                            {genre.keywords.slice(0, 5).map((keyword: string, index: number) => (
                                 <Tag key={index} style={{ marginBottom: 4, fontSize: 11 }}>{keyword}</Tag>
                             ))}
                             {genre.keywords.length > 5 && (

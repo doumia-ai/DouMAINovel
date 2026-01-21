@@ -5,7 +5,7 @@ import { Dropdown, Avatar, Space, Typography, message, Modal, Form, Input, Butto
 import { UserOutlined, LogoutOutlined, TeamOutlined, CrownOutlined, LockOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 
-import type { User } from '../types.js';
+import type { User } from '../types/index.js';
 import { useTheme, type ThemeMode } from '../contexts/ThemeContext.js';
 
 import { authApi } from '../services/api/index.js';

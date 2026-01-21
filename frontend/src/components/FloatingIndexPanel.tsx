@@ -3,7 +3,7 @@ import { useState, useMemo } from 'react';
 import { Drawer, Input, List, Typography, Empty, Tag } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 
-import type { Chapter } from '../types.js';
+import type { Chapter } from '../types/index.js';
 
 const { Link } = Typography;
 

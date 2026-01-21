@@ -71,14 +71,14 @@ export function processRouteMetadata(route: RouteConfig): RouteObject {
     if ('meta' in child) {
       return processRouteMetadata(child as RouteConfig);
     }
-    return child;
+    return child as RouteObject;
   });
 
   return {
     ...rest,
     element: processedElement,
     children: processedChildren,
-  };
+  } as RouteObject;
 }
 
 /**

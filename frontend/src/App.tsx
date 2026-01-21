@@ -17,7 +17,6 @@ function AppContent() {
   // Create router with processed routes
   const router = createBrowserRouter(processedRoutes, {
     future: {
-      v7_startTransition: true,
       v7_relativeSplatPath: true,
     },
   });

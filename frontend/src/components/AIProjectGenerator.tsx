@@ -4,7 +4,7 @@ import { Card, Button, Space, Typography, message, Progress, ConfigProvider, the
 import { CheckCircleOutlined, LoadingOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 
-import type { ApiError } from '../types.js';
+import type { ApiError } from '../types/index.js';
 
 import { useTheme } from '../contexts/ThemeContext.js';
 import { wizardStreamApi } from '../services/api/index.js';

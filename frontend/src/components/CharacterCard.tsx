@@ -1,7 +1,7 @@
 import { Card, Space, Tag, Typography, Popconfirm } from 'antd';
 import { EditOutlined, DeleteOutlined, UserOutlined, BankOutlined, ExportOutlined } from '@ant-design/icons';
 
-import type { Character } from '../types.js';
+import type { Character } from '../types/index.js';
 
 import { cardStyles } from './CardStyles.js';
 

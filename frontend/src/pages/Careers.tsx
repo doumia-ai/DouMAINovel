@@ -38,10 +38,10 @@ export default function Careers() {
             setLoading(true);
             const response = await careerApi.getCareers(projectId!);
             console.log('职业列表响应:', response);
-            console.log('主职业数量:', response.main_careers?.length);
-            console.log('副职业数量:', response.sub_careers?.length);
-            setMainCareers(response.main_careers || []);
-            setSubCareers(response.sub_careers || []);
+            console.log('主职业数量:', response.data.main_careers?.length);
+            console.log('副职业数量:', response.data.sub_careers?.length);
+            setMainCareers(response.data.main_careers || []);
+            setSubCareers(response.data.sub_careers || []);
         } catch (error: any) {
             console.error('获取职业列表失败:', error);
             message.error('获取职业列表失败');

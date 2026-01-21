@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Button, Modal, Form, Input, Select, message, Row, Col, Empty, Tabs, Divider, Typography, Space, InputNumber, Checkbox, ConfigProvider, theme } from 'antd';
 import { ThunderboltOutlined, UserOutlined, TeamOutlined, PlusOutlined, ExportOutlined, ImportOutlined, DownloadOutlined } from '@ant-design/icons';
 
-import type { Character, ApiError } from '../types.js';
+import type { Character, ApiError } from '../types/index.js';
 import { getResponsiveModalProps } from '../utils/modalUtils.js';
 
 import api from '../services/api/index.js';
