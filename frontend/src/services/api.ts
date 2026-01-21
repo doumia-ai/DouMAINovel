@@ -1026,7 +1026,9 @@ export const foreshadowApi = {
     status?: string;
     category?: string;
     is_long_term?: boolean;
+    source_type?: string;
     sort_by?: string;
+    page?: number;
     limit?: number;
   }) =>
     api.get<unknown, import('../types').ForeshadowListResponse>(
