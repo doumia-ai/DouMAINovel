@@ -1,7 +1,7 @@
 """添加伏笔管理表
 
 Revision ID: 6a73f37e9adb
-Revises: a7e4408e1d5b
+Revises: d1e2f3a4b5c6
 Create Date: 2026-01-19 17:29:23.350443
 
 """
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = '6a73f37e9adb'
-down_revision: Union[str, None] = 'a7e4408e1d5b'
+down_revision: Union[str, None] = 'd1e2f3a4b5c6'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
