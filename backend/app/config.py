@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     
     # 应用配置
     app_name: str = "DouMAINovel"
-    app_version: str = "1.0.0"
+    app_version: str = "1.3.0-e"
     app_host: str = "0.0.0.0"
     app_port: int = 8000
     debug: bool = True
