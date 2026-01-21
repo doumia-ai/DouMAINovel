@@ -3,7 +3,8 @@ import { useParams } from 'react-router-dom';
 import {
   Card, Table, Button, Tag, Space, Modal, Form, Input, Select,
   InputNumber, Switch, message, Tooltip, Popconfirm, Statistic,
-  Row, Col, Empty, Divider, Badge, Alert, Pagination, Dropdown
+  Row, Col, Empty, Divider, Badge, Alert, Pagination, Dropdown,
+  theme
 } from 'antd';
 import type { MenuProps } from 'antd';
 import {
@@ -43,6 +44,7 @@ const CATEGORY_CONFIG: Record<string, { label: string; color: string }> = {
 
 export default function Foreshadows() {
   const { projectId } = useParams<{ projectId: string }>();
+  const { token } = theme.useToken();
   const [loading, setLoading] = useState(false);
   const [foreshadows, setForeshadows] = useState<Foreshadow[]>([]);
   const [stats, setStats] = useState<ForeshadowStats | null>(null);
@@ -105,9 +107,10 @@ export default function Foreshadows() {
     if (!projectId) return;
     try {
       const chaptersData = await chapterApi.getChapters(projectId);
-      setChapters(chaptersData);
+      setChapters(Array.isArray(chaptersData) ? chaptersData : []);
     } catch (error) {
       console.error('加载章节列表失败:', error);
+      setChapters([]);
     }
   }, [projectId]);
 
@@ -116,9 +119,11 @@ export default function Foreshadows() {
     if (!projectId) return;
     try {
       const charactersData = await characterApi.getCharacters(projectId);
-      setCharacters(charactersData);
+      // API返回的是 { items: Character[], total: number }
+      setCharacters(Array.isArray(charactersData) ? charactersData : (charactersData as any).items || []);
     } catch (error) {
       console.error('加载角色列表失败:', error);
+      setCharacters([]);
     }
   }, [projectId]);
 
@@ -658,12 +663,11 @@ export default function Foreshadows() {
       {/* 分页器 - 固定在底部居中 */}
       <div style={{
         padding: '12px 0',
-        borderTop: '1px solid #f0f0f0',
+        borderTop: `1px solid ${token.colorBorder}`,
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
         flexShrink: 0,
-        background: '#fff',
       }}>
         <Pagination
           current={currentPage}
@@ -867,7 +871,7 @@ export default function Foreshadows() {
               {currentForeshadow.hint_text && (
                 <Col span={24}>
                   <strong>暗示文本：</strong>
-                  <p style={{ marginTop: 8, whiteSpace: 'pre-wrap', color: '#666' }}>
+                  <p style={{ marginTop: 8, whiteSpace: 'pre-wrap', color: token.colorTextSecondary }}>
                     {currentForeshadow.hint_text}
                   </p>
                 </Col>
@@ -876,7 +880,7 @@ export default function Foreshadows() {
               {currentForeshadow.resolution_text && (
                 <Col span={24}>
                   <strong>揭示文本：</strong>
-                  <p style={{ marginTop: 8, whiteSpace: 'pre-wrap', color: '#666' }}>
+                  <p style={{ marginTop: 8, whiteSpace: 'pre-wrap', color: token.colorTextSecondary }}>
                     {currentForeshadow.resolution_text}
                   </p>
                 </Col>
@@ -919,7 +923,7 @@ export default function Foreshadows() {
               {currentForeshadow.notes && (
                 <Col span={24}>
                   <strong>备注：</strong>
-                  <p style={{ marginTop: 8, color: '#666' }}>{currentForeshadow.notes}</p>
+                  <p style={{ marginTop: 8, color: token.colorTextSecondary }}>{currentForeshadow.notes}</p>
                 </Col>
               )}
               

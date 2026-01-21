@@ -22,7 +22,7 @@ from app.logger import get_logger
 
 logger = get_logger(__name__)
 
-router = APIRouter(prefix="/api/foreshadows", tags=["foreshadows"])
+router = APIRouter(tags=["foreshadows"])
 
 
 @router.get("/projects/{project_id}", response_model=ForeshadowListResponse)

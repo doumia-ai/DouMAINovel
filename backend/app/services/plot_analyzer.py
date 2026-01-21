@@ -32,6 +32,7 @@ class PlotAnalyzer:
         word_count: int,
         user_id: str = None,
         db: AsyncSession = None,
+        existing_foreshadows: str = None,
         max_retries: int = 3
     ) -> Optional[Dict[str, Any]]:
         """
@@ -44,6 +45,7 @@ class PlotAnalyzer:
             word_count: 字数
             user_id: 用户ID（用于获取自定义提示词）
             db: 数据库会话（用于查询自定义提示词）
+            existing_foreshadows: 已埋入的伏笔列表（格式化字符串）
             max_retries: 最大重试次数，默认3次
         
         Returns:
@@ -71,7 +73,8 @@ class PlotAnalyzer:
             chapter_number=chapter_number,
             title=title,
             word_count=word_count,
-            content=analysis_content
+            content=analysis_content,
+            existing_foreshadows=existing_foreshadows or "暂无已埋入伏笔"
         )
         
         last_error = None

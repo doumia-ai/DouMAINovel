@@ -862,13 +862,38 @@ async def analyze_chapter_background(
             task.progress = 20
             await db_session.commit()
         
+        # 2.5. 获取已埋入的伏笔列表（用于分析时的伏笔追踪）
+        from app.services.foreshadow_service import foreshadow_service
+        existing_foreshadows = []
+        try:
+            planted_foreshadows = await foreshadow_service.get_planted_foreshadows_for_analysis(
+                db=db_session,
+                project_id=project_id,
+                current_chapter_number=chapter.chapter_number
+            )
+            # 格式化为提示词需要的格式
+            if planted_foreshadows:
+                existing_foreshadows = [
+                    f"ID: {f['id']}\n标题: {f['title']}\n内容: {f['content']}\n埋入章节: 第{f['plant_chapter_number']}章\n"
+                    f"计划回收: 第{f.get('target_resolve_chapter_number', '未设定')}章\n"
+                    f"分类: {f.get('category', '未分类')}\n"
+                    f"{'[' + f.get('resolve_hint', '') + ']' if f.get('resolve_hint') else ''}"
+                    for f in planted_foreshadows
+                ]
+            logger.info(f"  📋 获取到{len(existing_foreshadows)}个已埋入伏笔")
+        except Exception as e:
+            logger.warning(f"⚠️ 获取已埋入伏笔失败，继续分析: {str(e)}")
+        
         # 3. 使用PlotAnalyzer分析章节
         analyzer = PlotAnalyzer(ai_service)
         analysis_result = await analyzer.analyze_chapter(
             chapter_number=chapter.chapter_number,
             title=chapter.title,
             content=chapter.content,
-            word_count=chapter.word_count or len(chapter.content)
+            word_count=chapter.word_count or len(chapter.content),
+            user_id=user_id,
+            db=db_session,
+            existing_foreshadows="\n\n".join(existing_foreshadows) if existing_foreshadows else "暂无已埋入伏笔"
         )
         
         if not analysis_result:
@@ -1377,10 +1402,12 @@ async def generate_chapter_content_stream(
                         chapter_outline=chapter_outline_content,
                         target_word_count=target_word_count,
                         continuation_point=chapter_context.continuation_point,
+                        previous_chapter_summary=chapter_context.previous_chapter_summary or '暂无上一章摘要',
                         # P1 重要参数
                         genre=project.genre or '未设定',
                         narrative_perspective=chapter_perspective,
                         characters_info=characters_info or '暂无角色信息',
+                        foreshadow_reminders=chapter_context.foreshadow_reminders or '暂无伏笔提醒',
                         # P2 参考参数（动态裁剪后的）
                         story_skeleton=chapter_context.story_skeleton or '',
                         relevant_memories=chapter_context.relevant_memories or ''
@@ -2658,10 +2685,12 @@ async def generate_single_chapter_for_batch(
             chapter_outline=chapter_outline_content,
             target_word_count=target_word_count,
             continuation_point=chapter_context.continuation_point,
+            previous_chapter_summary=chapter_context.previous_chapter_summary or '暂无上一章摘要',
             # P1 重要参数
             genre=project.genre or '未设定',
             narrative_perspective=project.narrative_perspective or '第三人称',
             characters_info=characters_info or '暂无角色信息',
+            foreshadow_reminders=chapter_context.foreshadow_reminders or '暂无伏笔提醒',
             # P2 参考参数（动态裁剪后的）
             story_skeleton=chapter_context.story_skeleton or '',
             relevant_memories=chapter_context.relevant_memories or ''

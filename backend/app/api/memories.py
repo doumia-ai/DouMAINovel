@@ -71,13 +71,38 @@ async def analyze_chapter(
             max_tokens=settings.max_tokens
         )
         
+        # 获取已埋入的伏笔列表（用于分析时的伏笔追踪）
+        from app.services.foreshadow_service import foreshadow_service
+        existing_foreshadows = []
+        try:
+            planted_foreshadows = await foreshadow_service.get_planted_foreshadows_for_analysis(
+                db=db,
+                project_id=project_id,
+                current_chapter_number=chapter.chapter_number
+            )
+            # 格式化为提示词需要的格式
+            if planted_foreshadows:
+                existing_foreshadows = [
+                    f"ID: {f['id']}\n标题: {f['title']}\n内容: {f['content']}\n埋入章节: 第{f['plant_chapter_number']}章\n"
+                    f"计划回收: 第{f.get('target_resolve_chapter_number', '未设定')}章\n"
+                    f"分类: {f.get('category', '未分类')}\n"
+                    f"{'[' + f.get('resolve_hint', '') + ']' if f.get('resolve_hint') else ''}"
+                    for f in planted_foreshadows
+                ]
+            logger.info(f"  📋 获取到{len(existing_foreshadows)}个已埋入伏笔")
+        except Exception as e:
+            logger.warning(f"⚠️ 获取已埋入伏笔失败，继续分析: {str(e)}")
+        
         # 执行剧情分析
         analyzer = get_plot_analyzer(ai_service)
         analysis_result = await analyzer.analyze_chapter(
             chapter_number=chapter.chapter_number,
             title=chapter.title,
             content=chapter.content,
-            word_count=chapter.word_count or len(chapter.content)
+            word_count=chapter.word_count or len(chapter.content),
+            user_id=user_id,
+            db=db,
+            existing_foreshadows="\n\n".join(existing_foreshadows) if existing_foreshadows else "暂无已埋入伏笔"
         )
         
         if not analysis_result:

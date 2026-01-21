@@ -16,6 +16,7 @@ import {
   FundOutlined,
   HeartOutlined,
   TrophyOutlined,
+  BulbOutlined,
 } from '@ant-design/icons';
 import { useStore } from '../store';
 import { useCharacterSync, useOutlineSync, useChapterSync } from '../store/hooks';
@@ -136,6 +137,11 @@ export default function ProjectDetail() {
       label: <Link to={`/project/${projectId}/chapters`}>章节管理</Link>,
     },
     {
+      key: 'foreshadows',
+      icon: <BulbOutlined />,
+      label: <Link to={`/project/${projectId}/foreshadows`}>伏笔管理</Link>,
+    },
+    {
       key: 'chapter-analysis',
       icon: <FundOutlined />,
       label: <Link to={`/project/${projectId}/chapter-analysis`}>剧情分析</Link>,
@@ -161,6 +167,7 @@ export default function ProjectDetail() {
     if (path.includes('/organizations')) return 'organizations';
     if (path.includes('/outline')) return 'outline';
     if (path.includes('/characters')) return 'characters';
+    if (path.includes('/foreshadows')) return 'foreshadows';
     if (path.includes('/chapter-analysis')) return 'chapter-analysis';
     if (path.includes('/chapters')) return 'chapters';
     if (path.includes('/writing-styles')) return 'writing-styles';
