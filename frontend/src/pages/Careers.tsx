@@ -37,14 +37,39 @@ export default function Careers() {
         try {
             setLoading(true);
             const response = await careerApi.getCareers(projectId!);
-            console.log('职业列表响应:', response);
+            console.log('✅ 职业列表响应:', response);
             console.log('主职业数量:', response.data.main_careers?.length);
             console.log('副职业数量:', response.data.sub_careers?.length);
             setMainCareers(response.data.main_careers || []);
             setSubCareers(response.data.sub_careers || []);
         } catch (error: any) {
-            console.error('获取职业列表失败:', error);
-            message.error('获取职业列表失败');
+            console.error('❌ 获取职业列表失败:', error);
+            console.error('错误详情:', {
+                status: error.response?.status,
+                statusText: error.response?.statusText,
+                data: error.response?.data,
+                message: error.message
+            });
+            
+            // Handle specific error codes
+            if (error.response?.status === 401) {
+                message.error('登录已过期，请重新登录');
+                // Redirect to login after a short delay
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 1500);
+            } else if (error.response?.status === 404) {
+                message.error('项目不存在或无权访问');
+            } else if (error.response?.status === 500) {
+                const errorDetail = error.response?.data?.detail || '服务器错误，请稍后重试';
+                message.error(errorDetail);
+                console.error('服务器错误详情:', errorDetail);
+            } else if (error.message === 'Network Error') {
+                message.error('网络连接失败，请检查网络设置');
+            } else {
+                const errorMsg = error.response?.data?.detail || '获取职业列表失败';
+                message.error(errorMsg);
+            }
         } finally {
             setLoading(false);
         }

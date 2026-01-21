@@ -128,7 +128,20 @@ else:
 @app.get("/health")
 async def health_check():
     """健康检查"""
-    return {"status": "ok"}
+    return {"status": "ok", "service": "DouMAINovel API"}
+
+
+@app.get("/api/health/detailed")
+async def detailed_health_check(request: Request):
+    """详细健康检查（包含认证状态）"""
+    user_id = getattr(request.state, 'user_id', None)
+    return {
+        "status": "ok",
+        "service": "DouMAINovel API",
+        "authenticated": user_id is not None,
+        "user_id": user_id,
+        "timestamp": "2026-01-22T00:00:00Z"
+    }
 
 
 @app.get("/health/db-sessions")

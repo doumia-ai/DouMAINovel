@@ -41,59 +41,70 @@ async def get_careers(
 ):
     """获取指定项目的所有职业"""
     user_id = getattr(request.state, 'user_id', None)
+    logger.info(f"GET /careers: project_id={project_id}, user_id={user_id}")
+    
     await verify_project_access(project_id, user_id, db)
     
-    # 获取总数
-    count_result = await db.execute(
-        select(func.count(Career.id)).where(Career.project_id == project_id)
-    )
-    total = count_result.scalar_one()
-    
-    # 获取职业列表
-    result = await db.execute(
-        select(Career)
-        .where(Career.project_id == project_id)
-        .order_by(Career.type, Career.created_at.desc())
-    )
-    careers = result.scalars().all()
-    
-    # 分类返回
-    main_careers = []
-    sub_careers = []
-    
-    for career in careers:
-        # 解析JSON字段
-        stages = json.loads(career.stages) if career.stages else []
-        attribute_bonuses = json.loads(career.attribute_bonuses) if career.attribute_bonuses else None
+    try:
+        # 获取总数
+        count_result = await db.execute(
+            select(func.count(Career.id)).where(Career.project_id == project_id)
+        )
+        total = count_result.scalar_one()
+        logger.debug(f"Total careers found: {total}")
         
-        career_dict = {
-            "id": career.id,
-            "project_id": career.project_id,
-            "name": career.name,
-            "type": career.type,
-            "description": career.description,
-            "category": career.category,
-            "stages": stages,
-            "max_stage": career.max_stage,
-            "requirements": career.requirements,
-            "special_abilities": career.special_abilities,
-            "worldview_rules": career.worldview_rules,
-            "attribute_bonuses": attribute_bonuses,
-            "source": career.source,
-            "created_at": career.created_at,
-            "updated_at": career.updated_at
-        }
+        # 获取职业列表
+        result = await db.execute(
+            select(Career)
+            .where(Career.project_id == project_id)
+            .order_by(Career.type, Career.created_at.desc())
+        )
+        careers = result.scalars().all()
         
-        if career.type == "main":
-            main_careers.append(career_dict)
-        else:
-            sub_careers.append(career_dict)
-    
-    return CareerListResponse(
-        total=total,
-        main_careers=main_careers,
-        sub_careers=sub_careers
-    )
+        # 分类返回
+        main_careers = []
+        sub_careers = []
+        
+        for career in careers:
+            # 解析JSON字段
+            stages = json.loads(career.stages) if career.stages else []
+            attribute_bonuses = json.loads(career.attribute_bonuses) if career.attribute_bonuses else None
+            
+            career_dict = {
+                "id": career.id,
+                "project_id": career.project_id,
+                "name": career.name,
+                "type": career.type,
+                "description": career.description,
+                "category": career.category,
+                "stages": stages,
+                "max_stage": career.max_stage,
+                "requirements": career.requirements,
+                "special_abilities": career.special_abilities,
+                "worldview_rules": career.worldview_rules,
+                "attribute_bonuses": attribute_bonuses,
+                "source": career.source,
+                "created_at": career.created_at,
+                "updated_at": career.updated_at
+            }
+            
+            if career.type == "main":
+                main_careers.append(career_dict)
+            else:
+                sub_careers.append(career_dict)
+        
+        logger.info(f"✅ Returning {len(main_careers)} main careers, {len(sub_careers)} sub careers")
+        
+        return CareerListResponse(
+            total=total,
+            main_careers=main_careers,
+            sub_careers=sub_careers
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error getting careers: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"获取职业列表失败: {str(e)}")
 
 
 @router.post("", response_model=CareerResponse, summary="创建职业")
