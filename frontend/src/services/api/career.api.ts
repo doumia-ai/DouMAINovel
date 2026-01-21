@@ -67,7 +67,7 @@ export const careerApi = {
    * Get all careers for a project
    */
   getCareers: (projectId: string) =>
-    httpClient.get<CareerListResponse>('/careers', {
+    httpClient.get<unknown, CareerListResponse>('/careers', {
       params: { project_id: projectId }
     }),
 
@@ -75,23 +75,23 @@ export const careerApi = {
    * Get a single career by ID
    */
   getCareer: (careerId: string) =>
-    httpClient.get<Career>(`/careers/${careerId}`),
+    httpClient.get<unknown, Career>(`/careers/${careerId}`),
 
   /**
    * Create a new career
    */
   createCareer: (data: CareerCreate) =>
-    httpClient.post<Career>('/careers', data),
+    httpClient.post<unknown, Career>('/careers', data),
 
   /**
    * Update an existing career
    */
   updateCareer: (careerId: string, data: CareerUpdate) =>
-    httpClient.put<Career>(`/careers/${careerId}`, data),
+    httpClient.put<unknown, Career>(`/careers/${careerId}`, data),
 
   /**
    * Delete a career
    */
   deleteCareer: (careerId: string) =>
-    httpClient.delete<{ message: string; id: string }>(`/careers/${careerId}`),
+    httpClient.delete<unknown, { message: string; id: string }>(`/careers/${careerId}`),
 };
