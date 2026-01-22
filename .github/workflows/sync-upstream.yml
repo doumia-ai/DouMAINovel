@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write   # 明确允许推送代码
+  contents: write
 
 jobs:
   sync:
@@ -24,36 +24,29 @@ jobs:
           git remote add upstream https://github.com/xiamuceer-j/MuMuAINovel.git || true
           git fetch upstream
 
-      - name: Backup fork-specific files
-        run: |
-          # 备份 fork 独有的 workflow 文件
-          mkdir -p /tmp/fork-backup/.github/workflows
-          cp -r .github/workflows/* /tmp/fork-backup/.github/workflows/ 2>/dev/null || true
-          echo "Backed up workflow files:"
-          ls -la /tmp/fork-backup/.github/workflows/ 2>/dev/null || echo "No files to backup"
-
-      - name: Reset main to upstream/main
+      - name: Hard reset to upstream/main (code only)
         run: |
           git reset --hard upstream/main
 
-      - name: Restore fork-specific files
+      - name: Restore fork workflows from origin/main
         run: |
-          # 确保 .github/workflows 目录存在
-          mkdir -p .github/workflows
-          # 恢复备份的 workflow 文件（覆盖上游同名文件）
-          cp -r /tmp/fork-backup/.github/workflows/* .github/workflows/ 2>/dev/null || true
-          echo "Restored workflow files:"
-          ls -la .github/workflows/ 2>/dev/null || echo "No files restored"
+          echo "Restoring .github/workflows from fork origin/main"
+          git checkout origin/main -- .github/workflows || true
+          git status --short
 
-      - name: Commit restored files if changed
+      - name: Commit synced code (excluding workflows)
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .github/workflows/
+
+          # 明确只提交非-workflow 变更
+          git add .
+          git reset .github/workflows || true
+
           if git diff --staged --quiet; then
-            echo "No changes to commit"
+            echo "No code changes to commit"
           else
-            git commit -m "chore: restore fork-specific workflow files after upstream sync"
+            git commit -m "chore: sync main with upstream (keep fork workflows)"
           fi
 
       - name: Push to origin main safely
