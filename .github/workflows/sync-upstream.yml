@@ -2,7 +2,7 @@ name: Sync upstream main
 
 on:
   schedule:
-    - cron: "0 3 * * *"   # 每天 UTC 03:00（北京时间 11:00）
+    - cron: "0 3 * * *"
   workflow_dispatch:
 
 permissions:
@@ -24,32 +24,33 @@ jobs:
           git remote add upstream https://github.com/xiamuceer-j/MuMuAINovel.git || true
           git fetch upstream
 
-      - name: Hard reset to upstream/main (code only)
+      - name: Preserve fork workflows
         run: |
-          git reset --hard upstream/main
+          echo "Preserving fork workflows"
+          mkdir -p /tmp/fork-workflows
+          cp -r .github/workflows /tmp/fork-workflows
 
-      - name: Restore fork workflows from origin/main
+      - name: Sync files from upstream (exclude workflows)
         run: |
-          echo "Restoring .github/workflows from fork origin/main"
-          git checkout origin/main -- .github/workflows || true
-          git status --short
+          git checkout upstream/main -- .
+          rm -rf .github/workflows
+          mv /tmp/fork-workflows .github/workflows
 
-      - name: Commit synced code (excluding workflows)
+      - name: Commit synced code
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # 明确只提交非-workflow 变更
           git add .
-          git reset .github/workflows || true
+          git reset .github/workflows
 
           if git diff --staged --quiet; then
-            echo "No code changes to commit"
+            echo "No changes to commit"
           else
-            git commit -m "chore: sync main with upstream (keep fork workflows)"
+            git commit -m "chore: sync main with upstream (workflows preserved)"
           fi
 
-      - name: Push to origin main safely
+      - name: Push to origin main
         run: |
           git push origin main --force-with-lease
 
