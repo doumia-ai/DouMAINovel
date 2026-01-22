@@ -1,4 +1,4 @@
-name: Sync upstream main
+name: Sync upstream main (PR)
 
 on:
   schedule:
@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   sync:
@@ -24,36 +25,32 @@ jobs:
           git remote add upstream https://github.com/xiamuceer-j/MuMuAINovel.git || true
           git fetch upstream
 
-      - name: Preserve fork workflows
+      - name: Create sync branch
         run: |
-          echo "Preserving fork workflows"
-          mkdir -p /tmp/fork-workflows
-          cp -r .github/workflows /tmp/fork-workflows
+          git checkout -B sync-upstream upstream/main
 
-      - name: Sync files from upstream (exclude workflows)
+      - name: Restore fork workflows
         run: |
-          git checkout upstream/main -- .
-          rm -rf .github/workflows
-          mv /tmp/fork-workflows .github/workflows
+          git checkout origin/main -- .github/workflows
 
-      - name: Commit synced code
+      - name: Commit sync branch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-
           git add .
-          git reset .github/workflows
+          git commit -m "chore: sync upstream main (keep fork workflows)" || echo "No changes"
 
-          if git diff --staged --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "chore: sync main with upstream (workflows preserved)"
-          fi
-
-      - name: Push to origin main
+      - name: Push sync branch
         run: |
-          git push origin main --force-with-lease
+          git push origin sync-upstream --force
 
-      - name: Show synced commit
-        run: |
-          git --no-pager log -1 --oneline
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: sync-upstream
+          base: main
+          title: "chore: sync upstream main"
+          body: |
+            Automated sync from upstream.
+            Fork workflows are preserved.
