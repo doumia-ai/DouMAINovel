@@ -50,6 +50,10 @@ jobs:
             git commit -m "chore: restore fork-specific workflow files after upstream sync"
           fi
 
+      - name: Fetch origin main
+        run: |
+          git fetch origin main
+
       - name: Push to origin main with PAT
         env:
           PAT_TOKEN: ${{ secrets.SYNC_PAT }}
