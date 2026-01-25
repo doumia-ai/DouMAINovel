@@ -1,0 +1,62 @@
+name: Sync upstream main
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout fork main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Add upstream and fetch
+        run: |
+          git remote add upstream https://github.com/xiamuceer-j/MuMuAINovel.git || true
+          git fetch upstream
+
+      - name: Backup fork-specific files
+        run: |
+          mkdir -p /tmp/fork-backup/.github/workflows
+          cp -r .github/workflows/* /tmp/fork-backup/.github/workflows/ 2>/dev/null || true
+
+      - name: Reset main to upstream/main
+        run: |
+          git reset --hard upstream/main
+
+      - name: Restore fork-specific files
+        run: |
+          mkdir -p .github/workflows
+          cp -r /tmp/fork-backup/.github/workflows/* .github/workflows/ 2>/dev/null || true
+
+      - name: Commit restored files if changed
+        run: |
+          git config user.name "doumia-ai"
+          git config user.email "your-email@example.com"
+
+          git add .github/workflows/
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: restore fork-specific workflow files after upstream sync"
+          fi
+
+      - name: Push to origin main with PAT
+        env:
+          PAT_TOKEN: ${{ secrets.SYNC_PAT }}
+        run: |
+          git push https://x-access-token:${PAT_TOKEN}@github.com/doumia-ai/DouMAINovel.git \
+            main --force-with-lease
+
+      - name: Show synced commit
+        run: |
+          git --no-pager log -1 --oneline
