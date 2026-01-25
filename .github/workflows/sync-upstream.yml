@@ -59,7 +59,7 @@ jobs:
           PAT_TOKEN: ${{ secrets.SYNC_PAT }}
         run: |
           git push https://x-access-token:${PAT_TOKEN}@github.com/doumia-ai/DouMAINovel.git \
-            main --force-with-lease
+            main --force
 
       - name: Show synced commit
         run: |
