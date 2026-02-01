@@ -128,7 +128,8 @@ export const routes: RouteConfig[] = [
   },
   {
     path: '/prompt-workshop',
-    element: <PromptWorkshop />,
+    // 提示词工坊必须在项目布局（黄色框）内使用：请从项目-写作风格进入
+    element: <Navigate to="/projects" replace />,
     meta: {
       requiresAuth: true,
       showFooter: true,
@@ -264,6 +265,13 @@ export const routes: RouteConfig[] = [
         element: <WritingStyles />,
         meta: {
           title: '写作风格',
+        },
+      },
+      {
+        path: 'prompt-workshop',
+        element: <PromptWorkshop />,
+        meta: {
+          title: '提示词工坊',
         },
       },
       {

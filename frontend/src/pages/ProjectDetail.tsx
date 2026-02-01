@@ -172,6 +172,8 @@ export default function ProjectDetail() {
     if (path.includes('/chapter-analysis')) return 'chapter-analysis';
     if (path.includes('/chapters')) return 'chapters';
     if (path.includes('/writing-styles')) return 'writing-styles';
+    // 提示词工坊是从“写作风格”进入的扩展页：侧边栏选中保持在写作风格
+    if (path.includes('/prompt-workshop')) return 'writing-styles';
     if (path.includes('/sponsor')) return 'sponsor';
     return 'sponsor'; // 默认选中赞助支持
   }, [location.pathname]);

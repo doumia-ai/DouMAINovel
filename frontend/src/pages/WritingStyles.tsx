@@ -187,7 +187,13 @@ export default function WritingStyles() {
         </h2>
         <Space direction={isMobile ? 'vertical' : 'horizontal'} style={{ width: isMobile ? '100%' : 'auto' }}>
           <Button
-            onClick={() => navigate('/prompt-workshop')}
+            onClick={() => {
+              if (!currentProject?.id) {
+                message.warning('请先选择项目');
+                return;
+              }
+              navigate(`/project/${currentProject.id}/prompt-workshop`);
+            }}
             block={isMobile}
           >
             提示词工坊

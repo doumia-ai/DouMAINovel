@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   Card,
   Row,
@@ -22,6 +23,7 @@ import {
   Statistic,
 } from 'antd';
 import {
+  ArrowLeftOutlined,
   SearchOutlined,
   DownloadOutlined,
   HeartOutlined,
@@ -40,6 +42,7 @@ import {
   PlusOutlined,
 } from '@ant-design/icons';
 import { promptWorkshopApi, authApi } from '../services/api/index.js';
+import { useStore } from '../store';
 import type {
   PromptWorkshopItem,
   PromptSubmission,
@@ -119,7 +122,11 @@ export default function PromptWorkshop() {
   
   // 当前活动的 Tab
   const [activeTab, setActiveTab] = useState<string>('browse');
-  
+
+  const navigate = useNavigate();
+  const { projectId } = useParams<{ projectId: string }>();
+  const { currentProject } = useStore();
+
   const isMobile = window.innerWidth <= 768;
   
   // 判断是否为服务端管理员
@@ -319,14 +326,12 @@ export default function PromptWorkshop() {
 
   // 获取分类名称
   const getCategoryName = (cat: string) => {
-    return PROMPT_CATEGORIES[cat] || cat;
+    const found = PROMPT_CATEGORIES.find(c => c.value === cat);
+    return found?.label || cat;
   };
   
   // 获取分类选项列表
-  const categoryOptions = Object.entries(PROMPT_CATEGORIES).map(([value, label]) => ({
-    value,
-    label,
-  }));
+  const categoryOptions = PROMPT_CATEGORIES;
 
   // 获取提交状态标签
   const getStatusTag = (status: string) => {
@@ -427,12 +432,12 @@ export default function PromptWorkshop() {
                 >
                   <Card
                     hoverable
-                    style={{ 
-                      height: '100%', 
+                    style={{
+                      height: '100%',
                       borderRadius: 12,
                       display: 'flex',
                       flexDirection: 'column',
-                      border: '1px solid #f0f0f0',
+                      border: '1px solid var(--color-border)',
                     }}
                     bodyStyle={{ 
                       padding: 16, 
@@ -490,7 +495,7 @@ export default function PromptWorkshop() {
                         style={{
                           fontSize: 12,
                           marginBottom: 0,
-                          backgroundColor: '#fafafa',
+                          backgroundColor: 'var(--color-bg-layout)',
                           padding: 8,
                           borderRadius: 4,
                           flex: 1,
@@ -513,7 +518,7 @@ export default function PromptWorkshop() {
                       )}
                     </div>
                     
-                    <div style={{ marginTop: 8, color: '#999', fontSize: 12 }}>
+                    <div style={{ marginTop: 8, color: 'var(--color-text-tertiary)', fontSize: 12 }}>
                       <Space>
                         <span><UserOutlined /> {item.author_name || '匿名'}</span>
                       </Space>
@@ -570,7 +575,11 @@ export default function PromptWorkshop() {
                 }}
               >
                 <Card
-                  style={{ borderRadius: 12, height: '100%', border: '1px solid #f0f0f0' }}
+                  style={{
+                    borderRadius: 12,
+                    height: '100%',
+                    border: '1px solid var(--color-border)',
+                  }}
                   bodyStyle={{ padding: 16 }}
                 >
                   <Space direction="vertical" style={{ width: '100%' }}>
@@ -600,7 +609,7 @@ export default function PromptWorkshop() {
                       />
                     )}
                     
-                    <div style={{ fontSize: 12, color: '#999' }}>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
                       提交时间: {sub.created_at ? new Date(sub.created_at).toLocaleDateString() : '-'}
                     </div>
                     
@@ -854,7 +863,7 @@ export default function PromptWorkshop() {
                 }}
               >
                 <Card
-                  style={{ borderRadius: 12, border: '1px solid #f0f0f0' }}
+                  style={{ borderRadius: 12, border: '1px solid var(--color-border)' }}
                   bodyStyle={{ padding: 16 }}
                   actions={[
                     <Button
@@ -888,7 +897,7 @@ export default function PromptWorkshop() {
                       {sub.prompt_content}
                     </Paragraph>
                     
-                    <div style={{ fontSize: 11, color: '#999' }}>
+                    <div style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
                       <div>提交者: {sub.submitter_name || '未知'}</div>
                       <div>来源: {sub.source_instance}</div>
                       <div>时间: {sub.created_at ? new Date(sub.created_at).toLocaleDateString() : '-'}</div>
@@ -929,7 +938,7 @@ export default function PromptWorkshop() {
                 }}
               >
                 <Card
-                  style={{ borderRadius: 12, border: '1px solid #f0f0f0' }}
+                  style={{ borderRadius: 12, border: '1px solid var(--color-border)' }}
                   bodyStyle={{ padding: 16 }}
                   actions={[
                     <Tooltip title="编辑" key="edit">
@@ -966,7 +975,7 @@ export default function PromptWorkshop() {
                       {item.prompt_content}
                     </Paragraph>
                     
-                    <div style={{ fontSize: 11, color: '#999' }}>
+                    <div style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
                       <Space>
                         <span><HeartOutlined /> {item.like_count || 0}</span>
                         <span><DownloadOutlined /> {item.download_count || 0}</span>
@@ -982,28 +991,74 @@ export default function PromptWorkshop() {
     </div>
   );
 
+  const handleBack = () => {
+    // 优先回到“当前项目”的写作风格（因为进入工坊的入口在写作风格页）
+    if (projectId) {
+      navigate(`/project/${projectId}/writing-styles`);
+      return;
+    }
+
+    if (currentProject?.id) {
+      navigate(`/project/${currentProject.id}/writing-styles`);
+      return;
+    }
+
+    // 兜底：若是从写作风格页进入，history back 即可
+    navigate(-1);
+  };
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      {/* 固定区域：标题 + Tabs切换栏 + 筛选栏 */}
-      <div style={{ flexShrink: 0 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* 固定区域：标题 + Tabs切换栏 + 筛选栏（sticky，跟随项目内容区滚动） */}
+      <div style={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 10,
+        backgroundColor: 'var(--color-bg-container)',
+        padding: isMobile ? '12px 0' : '16px 0',
+        marginBottom: isMobile ? 12 : 16,
+        borderBottom: '1px solid var(--color-border)',
+      }}>
         {/* 标题和操作区 */}
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          padding: isMobile ? '12px 0' : '16px 0',
-          marginBottom: isMobile ? 12 : 16,
-          borderBottom: '1px solid #f0f0f0',
           flexWrap: 'wrap',
           gap: 12,
+          marginBottom: 12,
         }}>
-          <h2 style={{ margin: 0, fontSize: isMobile ? 18 : 24, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <CloudOutlined />
-            提示词工坊
-            {serviceStatus?.mode === 'server' && (
-              <Badge status="success" text="服务端模式" style={{ marginLeft: 8, fontSize: 12 }} />
-            )}
-          </h2>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            flex: '1 1 auto',
+            minWidth: 0,
+          }}>
+            <Button icon={<ArrowLeftOutlined />} onClick={handleBack}>
+              返回
+            </Button>
+
+            <h2 style={{
+              margin: 0,
+              fontSize: isMobile ? 18 : 24,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              minWidth: 0,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              flex: '1 1 auto',
+            }}>
+              <CloudOutlined />
+              提示词工坊
+              {serviceStatus?.mode === 'server' && (
+                <Badge status="success" text="服务端模式" style={{ marginLeft: 8, fontSize: 12 }} />
+              )}
+            </h2>
+          </div>
+
           <Button
             type="primary"
             icon={<CloudUploadOutlined />}
@@ -1043,15 +1098,15 @@ export default function PromptWorkshop() {
               ),
             }] : []),
           ]}
-          tabBarStyle={{ marginBottom: 16 }}
+          tabBarStyle={{ marginBottom: 12 }}
         />
 
         {/* 筛选栏（仅在浏览工坊时显示） */}
         {activeTab === 'browse' && renderFilterBar()}
       </div>
 
-      {/* 滚动区域：只有卡片列表滚动 */}
-      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+      {/* 内容区滚动：由页面自身控制（与写作风格一致），不会突破项目内容容器 */}
+      <div style={{ flex: 1, overflowY: 'auto' }}>
         {activeTab === 'browse' && renderWorkshopList()}
         {activeTab === 'submissions' && renderMySubmissions()}
         {activeTab === 'admin' && renderAdminPanel()}
@@ -1186,7 +1241,7 @@ export default function PromptWorkshop() {
             )}
             
             <div style={{
-              backgroundColor: '#f5f5f5',
+              backgroundColor: 'var(--color-bg-layout)',
               padding: 16,
               borderRadius: 8,
               marginBottom: 16,
@@ -1237,7 +1292,7 @@ export default function PromptWorkshop() {
         {reviewingSubmission && (
           <div>
             <div style={{
-              backgroundColor: '#f5f5f5',
+              backgroundColor: 'var(--color-bg-layout)',
               padding: 16,
               borderRadius: 8,
               marginBottom: 16,
