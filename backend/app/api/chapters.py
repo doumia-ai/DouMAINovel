@@ -285,58 +285,45 @@ async def update_chapter(
             project.current_words = project.current_words - old_word_count + new_word_count
         
         # 如果内容被清空，清理相关数据
-            if not chapter.content or chapter.content.strip() == "":
-                chapter.status = "draft"
-                
-                # 清理分析任务
-                analysis_tasks_result = await db.execute(
-                    select(AnalysisTask).where(AnalysisTask.chapter_id == chapter_id)
+        if not chapter.content or chapter.content.strip() == "":
+            chapter.status = "draft"
+            
+            # 清理分析任务
+            analysis_tasks_result = await db.execute(
+                select(AnalysisTask).where(AnalysisTask.chapter_id == chapter_id)
+            )
+            analysis_tasks = analysis_tasks_result.scalars().all()
+            for task in analysis_tasks:
+                await db.delete(task)
+            
+            # 清理分析结果
+            plot_analysis_result = await db.execute(
+                select(PlotAnalysis).where(PlotAnalysis.chapter_id == chapter_id)
+            )
+            plot_analyses = plot_analysis_result.scalars().all()
+            for analysis in plot_analyses:
+                await db.delete(analysis)
+            
+            # 清理故事记忆（关系数据库）
+            story_memories_result = await db.execute(
+                select(StoryMemory).where(StoryMemory.chapter_id == chapter_id)
+            )
+            story_memories = story_memories_result.scalars().all()
+            for memory in story_memories:
+                await db.delete(memory)
+            
+            # 清理向量数据库中的记忆数据
+            try:
+                await memory_service.delete_chapter_memories(
+                    user_id=user_id,
+                    project_id=chapter.project_id,
+                    chapter_id=chapter_id
                 )
-                analysis_tasks = analysis_tasks_result.scalars().all()
-                for task in analysis_tasks:
-                    await db.delete(task)
-                
-                # 清理分析结果
-                plot_analysis_result = await db.execute(
-                    select(PlotAnalysis).where(PlotAnalysis.chapter_id == chapter_id)
-                )
-                plot_analyses = plot_analysis_result.scalars().all()
-                for analysis in plot_analyses:
-                    await db.delete(analysis)
-                
-                # 清理故事记忆（关系数据库）
-                story_memories_result = await db.execute(
-                    select(StoryMemory).where(StoryMemory.chapter_id == chapter_id)
-                )
-                story_memories = story_memories_result.scalars().all()
-                for memory in story_memories:
-                    await db.delete(memory)
-                
-                # 清理向量数据库中的记忆数据
-                try:
-                    await memory_service.delete_chapter_memories(
-                        user_id=user_id,
-                        project_id=chapter.project_id,
-                        chapter_id=chapter_id
-                    )
-                    logger.info(f"✅ 已清理章节 {chapter_id[:8]} 的向量记忆数据")
-                except Exception as e:
-                    logger.warning(f"⚠️ 清理向量记忆数据失败: {str(e)}")
-                
-                # 🔮 清理章节相关的分析伏笔数据
-                try:
-                    foreshadow_result = await foreshadow_service.delete_chapter_foreshadows(
-                        db=db,
-                        project_id=chapter.project_id,
-                        chapter_id=chapter_id,
-                        only_analysis_source=True  # 只删除分析来源的伏笔，保留手动创建的
-                    )
-                    if foreshadow_result['deleted_count'] > 0:
-                        logger.info(f"🔮 已清理章节 {chapter_id[:8]} 的 {foreshadow_result['deleted_count']} 个伏笔数据")
-                except Exception as e:
-                    logger.warning(f"⚠️ 清理伏笔数据失败: {str(e)}")
-                
-                logger.info(f"🗑️ 章节 {chapter_id[:8]} 内容已清空，已清理分析、记忆和伏笔数据")
+                logger.info(f"✅ 已清理章节 {chapter_id[:8]} 的向量记忆数据")
+            except Exception as e:
+                logger.warning(f"⚠️ 清理向量记忆数据失败: {str(e)}")
+            
+            logger.info(f"🗑️ 章节 {chapter_id[:8]} 内容已清空，已清理分析和记忆数据")
     
     await db.commit()
     await db.refresh(chapter)
@@ -411,20 +398,6 @@ async def delete_chapter(
         logger.info(f"✅ 已清理章节 {chapter_id[:8]} 的向量记忆数据")
     except Exception as e:
         logger.warning(f"⚠️ 清理向量记忆数据失败: {str(e)}")
-        # 不阻断删除流程，继续执行
-    
-    # 🔮 清理与该章节相关的伏笔数据（仅分析来源的伏笔）
-    try:
-        foreshadow_result = await foreshadow_service.delete_chapter_foreshadows(
-            db=db,
-            project_id=chapter.project_id,
-            chapter_id=chapter_id,
-            only_analysis_source=True  # 只删除分析来源的伏笔，保留手动创建的
-        )
-        if foreshadow_result['deleted_count'] > 0:
-            logger.info(f"🔮 已清理章节 {chapter_id[:8]} 的 {foreshadow_result['deleted_count']} 个伏笔数据")
-    except Exception as e:
-        logger.warning(f"⚠️ 清理伏笔数据失败: {str(e)}")
         # 不阻断删除流程，继续执行
     
     # 删除章节（关系数据库中的记忆会被级联删除）
@@ -891,13 +864,27 @@ async def analyze_chapter_background(
             task.progress = 20
             await db_session.commit()
         
-        # 获取已埋入的伏笔列表（用于回收匹配，传入当前章节号以启用智能标记）
-        existing_foreshadows = await foreshadow_service.get_planted_foreshadows_for_analysis(
-            db=db_session,
-            project_id=project_id,
-            current_chapter_number=chapter.chapter_number  # 传入当前章节号以启用智能标记
-        )
-        logger.info(f"📋 后台分析 - 已获取{len(existing_foreshadows)}个已埋入伏笔用于匹配（含智能回收标记）")
+        # 2.5. 获取已埋入的伏笔列表（用于分析时的伏笔追踪）
+        from app.services.foreshadow_service import foreshadow_service
+        existing_foreshadows = []
+        try:
+            planted_foreshadows = await foreshadow_service.get_planted_foreshadows_for_analysis(
+                db=db_session,
+                project_id=project_id,
+                current_chapter_number=chapter.chapter_number
+            )
+            # 格式化为提示词需要的格式
+            if planted_foreshadows:
+                existing_foreshadows = [
+                    f"ID: {f['id']}\n标题: {f['title']}\n内容: {f['content']}\n埋入章节: 第{f['plant_chapter_number']}章\n"
+                    f"计划回收: 第{f.get('target_resolve_chapter_number', '未设定')}章\n"
+                    f"分类: {f.get('category', '未分类')}\n"
+                    f"{'[' + f.get('resolve_hint', '') + ']' if f.get('resolve_hint') else ''}"
+                    for f in planted_foreshadows
+                ]
+            logger.info(f"  📋 获取到{len(existing_foreshadows)}个已埋入伏笔")
+        except Exception as e:
+            logger.warning(f"⚠️ 获取已埋入伏笔失败，继续分析: {str(e)}")
         
         # 定义重试回调函数，用于在重试时更新任务状态
         async def on_retry_callback(attempt: int, max_retries: int, wait_time: int, error_reason: str):
@@ -927,6 +914,8 @@ async def analyze_chapter_background(
             title=chapter.title,
             content=chapter.content,
             word_count=chapter.word_count or len(chapter.content),
+            user_id=user_id,
+            db=db_session,
             existing_foreshadows=existing_foreshadows,
             on_retry=on_retry_callback
         )
@@ -1014,20 +1003,7 @@ async def analyze_chapter_background(
             task.progress = 80
             await db_session.commit()
         
-        # 5. 清理旧的分析伏笔（重新分析时需要先清理）
-        try:
-            async with write_lock:
-                clean_result = await foreshadow_service.clean_chapter_analysis_foreshadows(
-                    db=db_session,
-                    project_id=project_id,
-                    chapter_id=chapter_id
-                )
-            if clean_result['cleaned_count'] > 0:
-                logger.info(f"🧹 重新分析前清理了 {clean_result['cleaned_count']} 个旧伏笔")
-        except Exception as clean_error:
-            logger.warning(f"⚠️ 清理旧伏笔失败（继续分析）: {str(clean_error)}")
-        
-        # 6. 提取记忆并保存到向量数据库（传入章节内容用于计算位置）
+        # 5. 提取记忆并保存到向量数据库（传入章节内容用于计算位置）
         memories = analyzer.extract_memories_from_analysis(
             analysis=analysis_result,
             chapter_id=chapter_id,
@@ -1126,33 +1102,6 @@ async def analyze_chapter_background(
                 logger.error(f"⚠️ 更新角色职业失败: {str(career_error)}", exc_info=True)
         else:
             logger.debug("📋 分析结果中无角色状态信息，跳过职业更新")
-        
-        # 🔮 自动更新伏笔状态（根据分析结果）
-        if analysis_result.get('foreshadows'):
-            try:
-                logger.info(f"🔮 开始根据分析结果自动更新伏笔状态...")
-                async with write_lock:
-                    foreshadow_stats = await foreshadow_service.auto_update_from_analysis(
-                        db=db_session,
-                        project_id=project_id,
-                        chapter_id=chapter_id,
-                        chapter_number=chapter.chapter_number,
-                        analysis_foreshadows=analysis_result.get('foreshadows', [])
-                    )
-                
-                if foreshadow_stats['planted_count'] > 0 or foreshadow_stats['resolved_count'] > 0:
-                    logger.info(
-                        f"✅ 伏笔自动更新: 埋入{foreshadow_stats['planted_count']}个, "
-                        f"回收{foreshadow_stats['resolved_count']}个"
-                    )
-                else:
-                    logger.info("ℹ️ 本章节无新的伏笔状态变化")
-                    
-            except Exception as foreshadow_error:
-                # 伏笔更新失败不应影响整个分析流程
-                logger.error(f"⚠️ 自动更新伏笔失败: {str(foreshadow_error)}", exc_info=True)
-        else:
-            logger.debug("📋 分析结果中无伏笔信息，跳过伏笔自动更新")
         
         # 最终更新任务状态（写操作，需要锁）- 增加重试机制
         update_success = False
@@ -1394,9 +1343,9 @@ async def generate_chapter_content_stream(
                 else:
                     logger.info("未指定写作风格，使用原始提示词")
                 
-                # 🚀 使用新的优化上下文构建器（含伏笔服务）
-                logger.info(f"🔧 使用优化的章节上下文构建器（V2 + 伏笔提醒）")
-                context_builder = ChapterContextBuilder(foreshadow_service=foreshadow_service)
+                # 🚀 使用新的优化上下文构建器
+                logger.info(f"🔧 使用优化的章节上下文构建器（V2）")
+                context_builder = ChapterContextBuilder()
                 chapter_context = await context_builder.build(
                     chapter=current_chapter,
                     project=project,
@@ -1451,12 +1400,9 @@ async def generate_chapter_content_stream(
                             if current_chapter.summary and current_chapter.summary.strip():
                                 chapter_outline_content += f"\n\n【章节补充说明】\n{current_chapter.summary}"
                             
-                            # 可选：附加大纲的背景信息（限制长度，避免喧宾夺主）
+                            # 可选：附加大纲的背景信息
                             if outline:
-                                outline_bg = outline.content
-                                if len(outline_bg) > 200:
-                                    outline_bg = outline_bg[:200] + "..."
-                                chapter_outline_content += f"\n\n【大纲节点背景】\n{outline_bg}"
+                                chapter_outline_content += f"\n\n【大纲节点背景】\n{outline.content}"
                             
                             logger.info(f"✏️ 一对多模式：使用expansion_plan详细规划（{len(chapter_outline_content)}字符）")
                         except json.JSONDecodeError as e:
@@ -1470,18 +1416,6 @@ async def generate_chapter_content_stream(
                 # 🚀 使用 V2 优化模板构建提示词
                 if chapter_context.continuation_point:
                     # 有前置内容，使用 WITH_CONTEXT 模板
-                    
-                    # 尝试从context中提取上一章摘要
-                    previous_summary = "（无上一章摘要，请根据锚点续写）"
-                    if chapter_context.context_stats.get('recent_summaries', 0) > 0:
-                        # 简单的提取逻辑，实际可能需要更精确的解析
-                        # 但在这里，context_stats并没有直接存储内容。
-                        # 我们利用ChapterContext对象中可能存在的summary信息，或者直接从recent_summary文本中截取最后一段
-                        if hasattr(chapter_context, 'recent_summary') and chapter_context.recent_summary:
-                            lines = chapter_context.recent_summary.strip().split('\n')
-                            if lines:
-                                previous_summary = lines[-1]
-                    
                     template = await PromptService.get_template("CHAPTER_GENERATION_V2_WITH_CONTEXT", current_user_id, db_session)
                     base_prompt = PromptService.format_prompt(
                         template,
@@ -1492,12 +1426,12 @@ async def generate_chapter_content_stream(
                         chapter_outline=chapter_outline_content,
                         target_word_count=target_word_count,
                         continuation_point=chapter_context.continuation_point,
+                        previous_chapter_summary=chapter_context.previous_chapter_summary or '暂无上一章摘要',
                         # P1 重要参数
                         genre=project.genre or '未设定',
                         narrative_perspective=chapter_perspective,
                         characters_info=characters_info or '暂无角色信息',
-                        foreshadow_reminders=chapter_context.foreshadow_reminders or '暂无需要关注的伏笔',
-                        previous_chapter_summary=previous_summary,
+                        foreshadow_reminders=chapter_context.foreshadow_reminders or '暂无伏笔提醒',
                         # P2 参考参数（动态裁剪后的）
                         story_skeleton=chapter_context.story_skeleton or '',
                         relevant_memories=chapter_context.relevant_memories or ''
@@ -1541,19 +1475,11 @@ async def generate_chapter_content_stream(
 确保在整个章节创作过程中始终保持风格的一致性。"""
                     logger.info(f"✅ 已将写作风格注入系统提示词（{len(style_content)}字符）")
                 
-                # 🔢 计算 max_tokens 限制
-                # 中文字符约 1.5-2 个 token，使用 2.5 倍系数确保有足够空间完成段落
-                # 同时设置上限防止过长，下限确保基本可用
-                calculated_max_tokens = int(target_word_count * 3)
-                calculated_max_tokens = max(2000, min(calculated_max_tokens, 16000))  # 限制在 2000-16000 之间
-                logger.info(f"📊 目标字数: {target_word_count}, 计算 max_tokens: {calculated_max_tokens}")
-                
                 # 准备生成参数
                 generate_kwargs = {
                     "prompt": prompt,
-                    "system_prompt": system_prompt_with_style,
-                    "tool_choice": "required",
-                    "max_tokens": calculated_max_tokens  # 添加 max_tokens 限制
+                    "system_prompt": system_prompt_with_style, 
+                    "tool_choice": "required"
                 }
                 if custom_model:
                     logger.info(f"  使用自定义模型: {custom_model}")
@@ -1619,20 +1545,6 @@ async def generate_chapter_content_stream(
                 await db_session.refresh(current_chapter)
                 
                 logger.info(f"成功创作章节 {chapter_id}，共 {new_word_count} 字")
-                
-                # 🔮 章节生成后自动标记计划在本章埋入的伏笔
-                try:
-                    plant_result = await foreshadow_service.auto_plant_pending_foreshadows(
-                        db=db_session,
-                        project_id=project.id,
-                        chapter_id=chapter_id,
-                        chapter_number=current_chapter.chapter_number,
-                        chapter_content=full_content
-                    )
-                    if plant_result.get('planted_count', 0) > 0:
-                        logger.info(f"🔮 自动标记伏笔已埋入: {plant_result['planted_count']}个")
-                except Exception as plant_error:
-                    logger.warning(f"⚠️ 自动标记伏笔埋入失败: {str(plant_error)}")
                 
                 # 创建分析任务
                 analysis_task = AnalysisTask(
@@ -1797,18 +1709,11 @@ async def get_analysis_task_status(
     current_time = datetime.now()
     
     # 自动恢复卡住的任务
-    # 注意：后端分析有3次重试机制，每次重试会重置 started_at
-    # 所以超时时间需要足够长以支持完整的重试周期（约5分钟）
     if task.status == 'running':
-        # 检查是否正在重试（error_message 包含"重试"信息）
-        is_retrying = task.error_message and '重试' in task.error_message
-        # 如果正在重试，给予更长的超时时间（5分钟），否则3分钟
-        timeout_minutes = 5 if is_retrying else 3
-        
-        # 如果任务在running状态超过超时时间，标记为失败
-        if task.started_at and (current_time - task.started_at) > timedelta(minutes=timeout_minutes):
+        # 如果任务在running状态超过1分钟，标记为失败
+        if task.started_at and (current_time - task.started_at) > timedelta(minutes=1):
             task.status = 'failed'
-            task.error_message = f'任务超时（超过{timeout_minutes}分钟未完成，已自动恢复）'
+            task.error_message = '任务超时（超过1分钟未完成，已自动恢复）'
             task.completed_at = current_time
             task.progress = 0
             auto_recovered = True
@@ -1817,10 +1722,10 @@ async def get_analysis_task_status(
             logger.warning(f"🔄 自动恢复卡住的任务: {task.id}, 章节: {chapter_id}")
     
     elif task.status == 'pending':
-        # 如果任务在pending状态超过3分钟仍未开始，标记为失败
-        if task.created_at and (current_time - task.created_at) > timedelta(minutes=3):
+        # 如果任务在pending状态超过2分钟仍未开始，标记为失败
+        if task.created_at and (current_time - task.created_at) > timedelta(minutes=2):
             task.status = 'failed'
-            task.error_message = '任务启动超时（超过3分钟未启动，已自动恢复）'
+            task.error_message = '任务启动超时（超过2分钟未启动，已自动恢复）'
             task.completed_at = current_time
             task.progress = 0
             auto_recovered = True
@@ -2413,9 +2318,6 @@ async def execute_batch_generation_in_order(
             task.started_at = datetime.now()
             await db_session.commit()
         
-        # 维护上一章的摘要，用于传递给下一章（防重复上下文）
-        last_generated_summary = None
-
         # 按顺序生成每个章节
         for idx, chapter_id in enumerate(task.chapter_ids, 1):
             # 检查任务是否被取消
@@ -2464,8 +2366,7 @@ async def execute_batch_generation_in_order(
                         raise Exception(f"前置条件不满足: {error_msg}")
                     
                     # 生成章节内容（复用现有流式生成逻辑的核心部分），传递model参数
-                    # 并获取生成后的摘要（如果生成函数支持返回）
-                    generated_summary = await generate_single_chapter_for_batch(
+                    await generate_single_chapter_for_batch(
                         db_session=db_session,
                         chapter=chapter,
                         user_id=user_id,
@@ -2473,14 +2374,8 @@ async def execute_batch_generation_in_order(
                         target_word_count=task.target_word_count,
                         ai_service=ai_service,
                         write_lock=write_lock,
-                        custom_model=custom_model,
-                        previous_summary_context=last_generated_summary
+                        custom_model=custom_model
                     )
-                    
-                    # 更新上一章摘要，供下一章使用
-                    if generated_summary:
-                        last_generated_summary = f"第{chapter.chapter_number}章《{chapter.title}》：{generated_summary}"
-                        logger.info(f"📝 已更新上一章摘要上下文: {last_generated_summary[:50]}...")
                     
                     logger.info(f"✅ 章节生成完成: 第{chapter.chapter_number}章")
                     
@@ -2656,15 +2551,11 @@ async def generate_single_chapter_for_batch(
     target_word_count: int,
     ai_service: AIService,
     write_lock: Lock,
-    custom_model: Optional[str] = None,
-    previous_summary_context: Optional[str] = None
-) -> Optional[str]:
+    custom_model: Optional[str] = None
+):
     """
     为批量生成执行单个章节的生成（非流式）
     复用现有生成逻辑的核心部分
-    
-    Returns:
-        生成章节的摘要（前200字）
     """
     # 获取项目信息
     project_result = await db_session.execute(
@@ -2745,9 +2636,9 @@ async def generate_single_chapter_for_batch(
             if style.user_id is None or style.user_id == user_id:
                 style_content = style.prompt_content or ""
     
-    # 🚀 使用新的优化上下文构建器（含伏笔服务）
-    logger.info(f"🔧 批量生成 - 使用优化的章节上下文构建器（V2 + 伏笔提醒）")
-    context_builder = ChapterContextBuilder(foreshadow_service=foreshadow_service)
+    # 🚀 使用新的优化上下文构建器
+    logger.info(f"🔧 批量生成 - 使用优化的章节上下文构建器（V2）")
+    context_builder = ChapterContextBuilder()
     chapter_context = await context_builder.build(
         chapter=chapter,
         project=project,
@@ -2792,12 +2683,9 @@ async def generate_single_chapter_for_batch(
                 if chapter.summary and chapter.summary.strip():
                     chapter_outline_content += f"\n\n【章节补充说明】\n{chapter.summary}"
                 
-                # 可选：附加大纲的背景信息（限制长度）
+                # 可选：附加大纲的背景信息
                 if outline:
-                    outline_bg = outline.content
-                    if len(outline_bg) > 200:
-                        outline_bg = outline_bg[:200] + "..."
-                    chapter_outline_content += f"\n\n【大纲节点背景】\n{outline_bg}"
+                    chapter_outline_content += f"\n\n【大纲节点背景】\n{outline.content}"
                 
                 logger.info(f"✏️ 批量生成 - 一对多模式：使用expansion_plan详细规划")
             except json.JSONDecodeError as e:
@@ -2811,18 +2699,6 @@ async def generate_single_chapter_for_batch(
     # 🚀 使用 V2 优化模板构建提示词（批量生成）
     if chapter_context.continuation_point:
         # 有前置内容，使用 WITH_CONTEXT 模板
-        
-        # 确定上一章摘要：优先使用传入的 previous_summary_context（批量生成的上一章），
-        # 否则尝试从 chapter_context 中获取
-        final_prev_summary = "（无上一章摘要，请根据锚点续写）"
-        
-        if previous_summary_context:
-            final_prev_summary = previous_summary_context
-        elif hasattr(chapter_context, 'recent_summary') and chapter_context.recent_summary:
-            lines = chapter_context.recent_summary.strip().split('\n')
-            if lines:
-                final_prev_summary = lines[-1]
-                
         template = await PromptService.get_template("CHAPTER_GENERATION_V2_WITH_CONTEXT", user_id, db_session)
         base_prompt = PromptService.format_prompt(
             template,
@@ -2833,12 +2709,12 @@ async def generate_single_chapter_for_batch(
             chapter_outline=chapter_outline_content,
             target_word_count=target_word_count,
             continuation_point=chapter_context.continuation_point,
+            previous_chapter_summary=chapter_context.previous_chapter_summary or '暂无上一章摘要',
             # P1 重要参数
             genre=project.genre or '未设定',
             narrative_perspective=project.narrative_perspective or '第三人称',
             characters_info=characters_info or '暂无角色信息',
-            foreshadow_reminders=chapter_context.foreshadow_reminders or '暂无需要关注的伏笔',
-            previous_chapter_summary=final_prev_summary,
+            foreshadow_reminders=chapter_context.foreshadow_reminders or '暂无伏笔提醒',
             # P2 参考参数（动态裁剪后的）
             story_skeleton=chapter_context.story_skeleton or '',
             relevant_memories=chapter_context.relevant_memories or ''
@@ -2877,21 +2753,13 @@ async def generate_single_chapter_for_batch(
 确保在整个章节创作过程中始终保持风格的一致性。"""
         logger.info(f"✅ 批量生成 - 已将写作风格注入系统提示词（{len(style_content)}字符）")
     
-    # 🔢 计算 max_tokens 限制（批量生成）
-    # 中文字符约 1.5-2 个 token，使用 2.5 倍系数确保有足够空间完成段落
-    # 同时设置上限防止过长，下限确保基本可用
-    calculated_max_tokens = int(target_word_count * 3)
-    calculated_max_tokens = max(2000, min(calculated_max_tokens, 16000))  # 限制在 2000-16000 之间
-    logger.info(f"📊 批量生成 - 目标字数: {target_word_count}, 计算 max_tokens: {calculated_max_tokens}")
-    
     # 非流式生成内容
     full_content = ""
     # 准备生成参数
     generate_kwargs = {
         "prompt": prompt,
         "system_prompt": system_prompt_with_style,
-        "tool_choice": "required",
-        "max_tokens": calculated_max_tokens  # 添加 max_tokens 限制
+        "tool_choice": "required"
     }
     # 如果传入了自定义模型，使用指定的模型
     if custom_model:
@@ -2927,26 +2795,6 @@ async def generate_single_chapter_for_batch(
         await db_session.refresh(chapter)
     
     logger.info(f"✅ 单章节生成完成: 第{chapter.chapter_number}章，共 {new_word_count} 字")
-    
-    # 生成简短摘要返回
-    summary_preview = full_content[:300].replace('\n', ' ') if full_content else ""
-    
-    # 🔮 批量生成后自动标记计划在本章埋入的伏笔
-    try:
-        async with write_lock:
-            plant_result = await foreshadow_service.auto_plant_pending_foreshadows(
-                db=db_session,
-                project_id=chapter.project_id,
-                chapter_id=chapter.id,
-                chapter_number=chapter.chapter_number,
-                chapter_content=full_content
-            )
-        if plant_result.get('planted_count', 0) > 0:
-            logger.info(f"🔮 批量生成 - 自动标记伏笔已埋入: {plant_result['planted_count']}个")
-    except Exception as plant_error:
-        logger.warning(f"⚠️ 批量生成 - 自动标记伏笔埋入失败: {str(plant_error)}")
-        
-    return summary_preview
 
 
 

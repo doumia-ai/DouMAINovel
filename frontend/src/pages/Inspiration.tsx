@@ -1,9 +1,12 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+
 import { Card, Input, Button, Space, Typography, message, Spin, Modal } from 'antd';
 import { SendOutlined, ArrowLeftOutlined, ReloadOutlined } from '@ant-design/icons';
-import { inspirationApi } from '../services/api';
-import { AIProjectGenerator, type GenerationConfig } from '../components/AIProjectGenerator';
+import { useNavigate } from 'react-router-dom';
+
+import { AIProjectGenerator, type GenerationConfig } from '../components/AIProjectGenerator.js';
+
+import { inspirationApi } from '../services/api/index.js';
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -102,18 +105,8 @@ const Inspiration: React.FC = () => {
 
   // ==================== 缓存管理函数 ====================
 
-  // 清除缓存
-  const clearCache = useCallback(() => {
-    try {
-      localStorage.removeItem(CACHE_KEY);
-      console.log('🗑️ 缓存已清除');
-    } catch (error) {
-      console.error('清除缓存失败:', error);
-    }
-  }, []);
-
   // 保存到缓存
-  const saveToCache = useCallback(() => {
+  const saveToCache = () => {
     try {
       // 只在对话阶段保存，生成阶段不保存
       if (currentStep === 'generating' || currentStep === 'complete') {
@@ -140,10 +133,10 @@ const Inspiration: React.FC = () => {
     } catch (error) {
       console.error('保存缓存失败:', error);
     }
-  }, [currentStep, messages, wizardData, initialIdea, selectedOptions, lastFailedRequest]);
+  };
 
   // 从缓存恢复
-  const restoreFromCache = useCallback((): boolean => {
+  const restoreFromCache = (): boolean => {
     try {
       const cached = localStorage.getItem(CACHE_KEY);
       if (!cached) {
@@ -184,7 +177,17 @@ const Inspiration: React.FC = () => {
       clearCache();
       return false;
     }
-  }, [clearCache]);
+  };
+
+  // 清除缓存
+  const clearCache = () => {
+    try {
+      localStorage.removeItem(CACHE_KEY);
+      console.log('🗑️ 缓存已清除');
+    } catch (error) {
+      console.error('清除缓存失败:', error);
+    }
+  };
 
   // ==================== 组件挂载时恢复缓存 ====================
 
@@ -193,7 +196,7 @@ const Inspiration: React.FC = () => {
       restoreFromCache();
       setCacheLoaded(true);
     }
-  }, [cacheLoaded, restoreFromCache]);
+  }, []);
 
   // ==================== 自动保存：状态变化时保存 ====================
 
@@ -206,7 +209,7 @@ const Inspiration: React.FC = () => {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [messages, currentStep, wizardData, initialIdea, selectedOptions, lastFailedRequest, cacheLoaded, saveToCache]);
+  }, [messages, currentStep, wizardData, initialIdea, selectedOptions, lastFailedRequest, cacheLoaded]);
 
   // 自动滚动到底部
   const scrollToBottom = () => {
@@ -259,7 +262,7 @@ const Inspiration: React.FC = () => {
       };
       setMessages(prev => [...prev, aiMessage]);
       setLastFailedRequest(null);
-    } catch (error: unknown) {
+    } catch (error: any) {
       console.error('重试失败:', error);
       message.error('重试失败，请稍后再试');
     } finally {
@@ -307,7 +310,7 @@ const Inspiration: React.FC = () => {
       const step = targetMessage.step as 'title' | 'description' | 'theme' | 'genre';
       
       // 构建上下文
-      const context: Partial<WizardData> & { initial_idea?: string } = {
+      const context: any = {
         initial_idea: initialIdea,
         title: wizardData.title,
         description: wizardData.description,
@@ -328,9 +331,16 @@ const Inspiration: React.FC = () => {
       }
 
       // 添加新的AI消息
+      const getStepLabel = (currentStep: string): string => {
+        if (currentStep === 'title') return '书名';
+        if (currentStep === 'description') return '简介';
+        if (currentStep === 'theme') return '主题';
+        return '类型';
+      };
+
       const aiMessage: Message = {
         type: 'ai',
-        content: response.prompt || `根据您的反馈，我重新生成了一些${step === 'title' ? '书名' : step === 'description' ? '简介' : step === 'theme' ? '主题' : '类型'}选项：`,
+        content: response.prompt || `根据您的反馈，我重新生成了一些${getStepLabel(step)}选项：`,
         options: response.options || [],
         isMultiSelect: step === 'genre',
         canRefine: true,
@@ -339,11 +349,9 @@ const Inspiration: React.FC = () => {
       setMessages(prev => [...prev, aiMessage]);
 
       message.success('已根据您的反馈重新生成选项');
-    } catch (error: unknown) {
+    } catch (error: any) {
       console.error('优化选项失败:', error);
-      const errMsg = error instanceof Error ? error.message : '优化失败，请重试';
-      const axiosError = error as { response?: { data?: { detail?: string } } };
-      message.error(axiosError.response?.data?.detail || errMsg);
+      message.error(error.response?.data?.detail || '优化失败，请重试');
     } finally {
       setRefining(false);
     }
@@ -408,11 +416,9 @@ const Inspiration: React.FC = () => {
       } else {
         await handleCustomInput(userInput);
       }
-    } catch (error: unknown) {
+    } catch (error: any) {
       console.error('发送消息失败:', error);
-      const errMsg = error instanceof Error ? error.message : '生成失败，请重试';
-      const axiosError = error as { response?: { data?: { detail?: string } } };
-      message.error(axiosError.response?.data?.detail || errMsg);
+      message.error(error.response?.data?.detail || '生成失败，请重试');
     } finally {
       setLoading(false);
     }
@@ -579,11 +585,9 @@ const Inspiration: React.FC = () => {
       setWizardData(updatedData);
 
       await generateNextStep(updatedData);
-    } catch (error: unknown) {
+    } catch (error: any) {
       console.error('选择选项失败:', error);
-      const errMsg = error instanceof Error ? error.message : '生成失败，请重试';
-      const axiosError = error as { response?: { data?: { detail?: string } } };
-      message.error(axiosError.response?.data?.detail || errMsg);
+      message.error(error.response?.data?.detail || '生成失败，请重试');
     } finally {
       setLoading(false);
     }
@@ -631,11 +635,9 @@ const Inspiration: React.FC = () => {
 
       setWizardData(updatedData);
       await generateNextStep(updatedData);
-    } catch (error: unknown) {
+    } catch (error: any) {
       console.error('处理自定义输入失败:', error);
-      const errMsg = error instanceof Error ? error.message : '处理失败，请重试';
-      const axiosError = error as { response?: { data?: { detail?: string } } };
-      message.error(axiosError.response?.data?.detail || errMsg);
+      message.error(error.response?.data?.detail || '处理失败，请重试');
     } finally {
       setLoading(false);
     }
@@ -900,6 +902,7 @@ const Inspiration: React.FC = () => {
                         key={optIndex}
                         hoverable={!msg.optionsDisabled}
                         size="small"
+                        variant="borderless"
                         onClick={() => !msg.optionsDisabled && handleSelectOption(option)}
                         style={{
                           cursor: msg.optionsDisabled ? 'not-allowed' : 'pointer',
@@ -909,8 +912,11 @@ const Inspiration: React.FC = () => {
                           background: msg.optionsDisabled
                             ? 'var(--color-bg-layout)'
                             : msg.isMultiSelect && selectedOptions.includes(option)
-                              ? 'var(--color-bg-spotlight)'
+                              ? 'var(--color-info-bg)'
                               : 'var(--color-bg-container)',
+                          color: msg.isMultiSelect && selectedOptions.includes(option)
+                            ? 'var(--color-primary)'
+                            : 'var(--color-text-primary)',
                           opacity: msg.optionsDisabled ? 0.6 : 1,
                           animation: 'floatIn 0.6s ease-out',
                           animationDelay: `${optIndex * 0.1}s`,
@@ -930,7 +936,7 @@ const Inspiration: React.FC = () => {
                           }
                         }}
                       >
-                        {option}
+                        <span style={{ color: 'inherit' }}>{option}</span>
                       </Card>
                     ))}
 
@@ -1058,7 +1064,7 @@ const Inspiration: React.FC = () => {
 
   return (
     <div style={{
-      minHeight: '100dvh',
+      minHeight: '100vh',
       background: 'var(--color-bg-base)',
     }}>
       {contextHolder}
@@ -1126,7 +1132,7 @@ const Inspiration: React.FC = () => {
               color: '#fff',
             }}
           >
-            {isMobile ? '返回' : '返回首页'}
+            {isMobile ? '返回' : '返回项目列表'}
           </Button>
 
           <div style={{ textAlign: 'center' }}>
@@ -1141,6 +1147,12 @@ const Inspiration: React.FC = () => {
             >
               ✨ 灵感模式
             </Title>
+            <Text style={{
+              color: 'rgba(255,255,255,0.85)',
+              fontSize: isMobile ? 12 : 14,
+            }}>
+              通过对话快速创建你的小说项目
+            </Text>
           </div>
 
           {/* 重新开始按钮 - 只在对话进行中显示 */}

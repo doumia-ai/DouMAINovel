@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Button, Card, Space, Typography, message, Spin, Form, Input, Tabs } from 'antd';
+
+import { Button, Card, Space, Typography, message, Spin, Form, Input, Tabs, ConfigProvider, theme } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
-import { authApi } from '../services/api';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import AnnouncementModal from '../components/AnnouncementModal';
+
+import AnnouncementModal from '../components/AnnouncementModal.js';
+import { authApi } from '../services/api/index.js';
+import { useTheme } from '../contexts/ThemeContext.js';
 
 const { Title, Paragraph } = Typography;
 
@@ -16,6 +19,7 @@ export default function Login() {
   const [linuxdoEnabled, setLinuxdoEnabled] = useState(false);
   const [form] = Form.useForm();
   const [showAnnouncement, setShowAnnouncement] = useState(false);
+  const { actualTheme } = useTheme();
 
   // 检查是否已登录和获取认证配置
   useEffect(() => {
@@ -33,7 +37,9 @@ export default function Login() {
           setLinuxdoEnabled(config.linuxdo_enabled);
         } catch (error) {
           console.error('获取认证配置失败:', error);
-          // 默认显示LinuxDO登录
+          // 🔧 修复：当API失败时（如Edge浏览器Cookie问题），同时启用两种登录方式
+          // 这样用户至少可以尝试登录，而不是看到空白页面
+          setLocalAuthEnabled(true);
           setLinuxdoEnabled(true);
         }
         setChecking(false);
@@ -132,23 +138,26 @@ export default function Login() {
         />
       </Form.Item>
       <Form.Item style={{ marginBottom: 0 }}>
-        <Button
-          type="primary"
-          htmlType="submit"
-          loading={loading}
-          block
-          style={{
-            height: 48,
-            fontSize: 16,
-            fontWeight: 600,
-            background: 'var(--color-primary)',
-            border: 'none',
-            borderRadius: '12px',
-            boxShadow: 'var(--shadow-primary)',
+        <ConfigProvider
+          theme={{
+            algorithm: actualTheme === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm,
           }}
         >
-          登录
-        </Button>
+          <Button
+            type="primary"
+            htmlType="submit"
+            loading={loading}
+            block
+            style={{
+              height: 48,
+              fontSize: 16,
+              fontWeight: 600,
+              borderRadius: '12px',
+            }}
+          >
+            登录
+          </Button>
+        </ConfigProvider>
       </Form.Item>
     </Form>
   );
@@ -156,45 +165,46 @@ export default function Login() {
   // 渲染LinuxDO登录
   const renderLinuxDOLogin = () => (
     <div style={{ padding: '24px 0 8px' }}>
-      <Button
-        type="primary"
-        size="large"
-        icon={
-          <img
-            src="/favicon.ico"
-            alt="LinuxDO"
+        <ConfigProvider
+          theme={{
+            algorithm: actualTheme === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm,
+          }}
+        >
+          <Button
+            type="primary"
+            size="large"
+            icon={
+              <img
+                src="/favicon.ico"
+                alt="LinuxDO"
+                style={{
+                  width: 20,
+                  height: 20,
+                  marginRight: 8,
+                  verticalAlign: 'middle',
+                }}
+              />
+            }
+            loading={loading}
+            onClick={handleLinuxDOLogin}
+            block
             style={{
-              width: 20,
-              height: 20,
-              marginRight: 8,
-              verticalAlign: 'middle',
+              height: 52,
+              fontSize: 16,
+              fontWeight: 600,
+              borderRadius: '12px',
+              transition: 'all 0.3s ease',
             }}
-          />
-        }
-        loading={loading}
-        onClick={handleLinuxDOLogin}
-        block
-        style={{
-          height: 52,
-          fontSize: 16,
-          fontWeight: 600,
-          background: 'var(--color-primary)',
-          border: 'none',
-          borderRadius: '12px',
-          boxShadow: 'var(--shadow-primary)',
-          transition: 'all 0.3s ease',
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.transform = 'translateY(-2px)';
-          e.currentTarget.style.boxShadow = 'var(--shadow-elevated)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = 'translateY(0)';
-          e.currentTarget.style.boxShadow = 'var(--shadow-primary)';
-        }}
-      >
-        使用 LinuxDO 登录
-      </Button>
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+            }}
+          >
+            使用 LinuxDO 登录
+          </Button>
+        </ConfigProvider>
     </div>
   );
 
@@ -271,7 +281,7 @@ export default function Login() {
             zIndex: 1,
           }}
           bodyStyle={{
-            padding: '40px 32px',
+            padding: window.innerWidth <= 768 ? '24px 20px' : '40px 32px',
           }}
         >
           <Space direction="vertical" size="large" style={{ width: '100%', textAlign: 'center' }}>
@@ -340,21 +350,22 @@ export default function Login() {
               renderLinuxDOLogin()
             )}
 
-            {/* 提示信息 */}
+            {/* 提示信息 - 移动端更紧凑 */}
             <div style={{
-              padding: '16px',
+              padding: window.innerWidth <= 768 ? '12px' : '16px',
               background: 'rgba(77, 128, 136, 0.08)',
               borderRadius: '12px',
               border: '1px solid var(--color-border)',
             }}>
               <Paragraph style={{
-                fontSize: 13,
+                fontSize: window.innerWidth <= 768 ? 12 : 13,
                 color: 'var(--color-text-secondary)',
                 marginBottom: 0,
-                lineHeight: 1.6,
+                lineHeight: 1.5,
               }}>
                 🎉 首次登录将自动创建账号
-                <br />
+                {window.innerWidth > 768 && <br />}
+                {window.innerWidth <= 768 ? ' · ' : ''}
                 🔒 每个用户拥有独立的数据空间
               </Paragraph>
             </div>

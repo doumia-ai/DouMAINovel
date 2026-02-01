@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+
 import { Spin, Result, Button, Modal, Input, message } from 'antd';
-import { authApi } from '../services/api';
-import AnnouncementModal from '../components/AnnouncementModal';
+import { useNavigate } from 'react-router-dom';
+
+import AnnouncementModal from '../components/AnnouncementModal.js';
+import { authApi } from '../services/api/index.js';
 
 export default function AuthCallback() {
   const navigate = useNavigate();
@@ -10,13 +12,7 @@ export default function AuthCallback() {
   const [errorMessage, setErrorMessage] = useState('');
   const [showAnnouncement, setShowAnnouncement] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
-  interface PasswordStatus {
-    has_password: boolean;
-    has_custom_password: boolean;
-    username: string;
-    default_password: string;
-  }
-  const [passwordStatus, setPasswordStatus] = useState<PasswordStatus | null>(null);
+  const [passwordStatus, setPasswordStatus] = useState<any>(null);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [settingPassword, setSettingPassword] = useState(false);
@@ -193,7 +189,7 @@ export default function AuthCallback() {
           setShowAnnouncement(true);
         }, 500);
       }
-    } catch {
+    } catch (error) {
       message.error('密码设置失败，请重试');
     } finally {
       setSettingPassword(false);
@@ -257,14 +253,14 @@ export default function AuthCallback() {
           <p>系统已为您自动生成默认密码，您可以选择设置自定义密码或继续使用默认密码。</p>
           {passwordStatus?.default_password && (
             <div style={{
-              background: '#f0f2f5',
+              background: 'var(--color-bg-layout)',
               padding: 12,
               borderRadius: 4,
               marginTop: 12
             }}>
               <strong>账号：</strong>{passwordStatus.username}<br />
               <strong>默认密码：</strong><code style={{
-                background: '#fff',
+                background: 'var(--color-bg-container)',
                 padding: '2px 8px',
                 borderRadius: 3,
                 color: '#1890ff',
@@ -306,7 +302,11 @@ export default function AuthCallback() {
         <Result
           status="success"
           title="登录成功"
-          subTitle={showPasswordModal ? "请设置账号密码..." : (showAnnouncement ? "欢迎使用..." : "正在跳转...")}
+          subTitle={(() => {
+            if (showPasswordModal) return "请设置账号密码...";
+            if (showAnnouncement) return "欢迎使用...";
+            return "正在跳转...";
+          })()}
           style={{ background: 'white', padding: 40, borderRadius: 8 }}
         />
       </div>

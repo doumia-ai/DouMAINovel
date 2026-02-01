@@ -1,24 +1,24 @@
 import { useState, useEffect } from 'react';
-import { Dropdown, Avatar, Space, Typography, message, Modal, Form, Input, Button } from 'antd';
-import { UserOutlined, LogoutOutlined, TeamOutlined, CrownOutlined, LockOutlined } from '@ant-design/icons';
-import { authApi } from '../services/api';
-import type { User } from '../types';
+
 import type { MenuProps } from 'antd';
+import { Dropdown, Avatar, Space, Typography, message, Modal, Form, Input, Button, Segmented } from 'antd';
+import { UserOutlined, LogoutOutlined, TeamOutlined, CrownOutlined, LockOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+
+import type { User } from '../types/index.js';
+import { useTheme, type ThemeMode } from '../contexts/ThemeContext.js';
+
+import { authApi } from '../services/api/index.js';
 
 const { Text } = Typography;
 
-interface UserMenuProps {
-  /** 是否总是显示完整信息（用于移动端侧边栏） */
-  showFullInfo?: boolean;
-}
-
-export default function UserMenu({ showFullInfo = false }: UserMenuProps) {
+export default function UserMenu() {
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [changePasswordForm] = Form.useForm();
   const [changingPassword, setChangingPassword] = useState(false);
+  const { themeMode, actualTheme, setThemeMode } = useTheme();
 
   useEffect(() => {
     loadCurrentUser();
@@ -59,14 +59,19 @@ export default function UserMenu({ showFullInfo = false }: UserMenuProps) {
       message.success('密码修改成功');
       setShowChangePassword(false);
       changePasswordForm.resetFields();
-    } catch (error: unknown) {
+    } catch (error: any) {
       console.error('修改密码失败:', error);
-      const err = error as { response?: { data?: { detail?: string } } };
-      message.error(err.response?.data?.detail || '修改密码失败');
+      message.error(error.response?.data?.detail || '修改密码失败');
     } finally {
       setChangingPassword(false);
     }
   };
+
+  const themeOptions = [
+    { label: '浅色', value: 'light' as ThemeMode },
+    { label: '深色', value: 'dark' as ThemeMode },
+    { label: '自动', value: 'auto' as ThemeMode },
+  ];
 
   const menuItems: MenuProps['items'] = [
     {
@@ -75,13 +80,37 @@ export default function UserMenu({ showFullInfo = false }: UserMenuProps) {
         <div style={{ padding: '8px 0' }}>
           <Text strong>{currentUser?.display_name || currentUser?.username}</Text>
           <br />
-          <Text type="secondary" style={{ fontSize: 12 }}>
+          <Text style={{ fontSize: 12, color: actualTheme === 'dark' ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.45)' }}>
             Trust Level: {currentUser?.trust_level}
             {currentUser?.is_admin && ' · 管理员'}
           </Text>
         </div>
       ),
       disabled: true,
+    },
+    {
+      type: 'divider',
+    },
+    {
+      key: 'theme-switcher',
+      label: (
+        <div style={{ padding: '4px 0' }} onClick={(e) => e.stopPropagation()}>
+          <div style={{
+            fontSize: 12,
+            color: 'var(--color-text-secondary)',
+            marginBottom: 8
+          }}>
+            主题模式
+          </div>
+          <Segmented
+            value={themeMode}
+            onChange={(value) => setThemeMode(value as ThemeMode)}
+            options={themeOptions}
+            block
+            size="small"
+          />
+        </div>
+      ),
     },
     {
       type: 'divider',
@@ -118,6 +147,9 @@ export default function UserMenu({ showFullInfo = false }: UserMenuProps) {
     return null;
   }
 
+  // 根据主题获取背景色
+  const bgColor = actualTheme === 'dark' ? 'rgba(36, 36, 56, 0.6)' : 'rgba(255, 255, 255, 0.6)';
+
   return (
     <>
       <Dropdown menu={{ items: menuItems }} placement="bottomRight">
@@ -128,7 +160,7 @@ export default function UserMenu({ showFullInfo = false }: UserMenuProps) {
             alignItems: 'center',
             gap: 12,
             padding: '8px 16px',
-            background: 'rgba(255, 255, 255, 0.6)', // 保持半透明以配合 Backdrop
+            background: bgColor,
             backdropFilter: 'blur(10px)',
             WebkitBackdropFilter: 'blur(10px)',
             borderRadius: 24,
@@ -137,12 +169,12 @@ export default function UserMenu({ showFullInfo = false }: UserMenuProps) {
             boxShadow: 'var(--shadow-card)',
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'var(--color-bg-container)'; // 悬浮时变实
+            e.currentTarget.style.background = 'var(--color-bg-container)';
             e.currentTarget.style.transform = 'translateY(-2px)';
             e.currentTarget.style.boxShadow = 'var(--shadow-elevated)';
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.6)';
+            e.currentTarget.style.background = bgColor;
             e.currentTarget.style.transform = 'translateY(0)';
             e.currentTarget.style.boxShadow = 'var(--shadow-card)';
           }}
@@ -154,7 +186,7 @@ export default function UserMenu({ showFullInfo = false }: UserMenuProps) {
               size={40}
               style={{
                 backgroundColor: 'var(--color-primary)',
-                border: '3px solid #fff',
+                border: `3px solid var(--color-bg-container)`,
                 boxShadow: 'var(--shadow-card)',
               }}
             />
@@ -177,18 +209,20 @@ export default function UserMenu({ showFullInfo = false }: UserMenuProps) {
               </div>
             )}
           </div>
-          <Space direction="vertical" size={0} style={{ display: (window.innerWidth <= 768 && !showFullInfo) ? 'none' : 'flex' }}>
+          <Space direction="vertical" size={0} className="user-menu-text" style={{ flex: 1 }}>
             <Text strong style={{
               color: 'var(--color-text-primary)',
               fontSize: 14,
               lineHeight: '20px',
+              whiteSpace: 'nowrap',
             }}>
               {currentUser.display_name || currentUser.username}
             </Text>
             <Text style={{
-              color: 'var(--color-text-secondary)',
+              color: actualTheme === 'dark' ? 'rgba(255,255,255,0.65)' : 'var(--color-text-secondary)',
               fontSize: 12,
               lineHeight: '18px',
+              whiteSpace: 'nowrap',
             }}>
               {currentUser.is_admin ? '👑 管理员' : `🎖️ Trust Level ${currentUser.trust_level}`}
             </Text>

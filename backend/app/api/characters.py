@@ -455,8 +455,13 @@ async def delete_character(
     request: Request,
     db: AsyncSession = Depends(get_db)
 ):
-    """删除角色"""
+    """删除角色
+    
+    按照依赖顺序显式删除所有关联记录，避免依赖数据库 CASCADE 删除导致的超时问题。
+    删除顺序：OrganizationMember → Organization → CharacterRelationship → CharacterCareer → Character
+    """
     from app.models.career import CharacterCareer
+    from sqlalchemy import delete
     
     result = await db.execute(
         select(Character).where(Character.id == character_id)
@@ -470,23 +475,90 @@ async def delete_character(
     user_id = getattr(request.state, 'user_id', None)
     await verify_project_access(character.project_id, user_id, db)
     
-    # 清理角色-职业关联关系
-    career_relations_result = await db.execute(
-        select(CharacterCareer).where(CharacterCareer.character_id == character_id)
-    )
-    career_relations = career_relations_result.scalars().all()
+    character_name = character.name
+    deleted_counts = {
+        "organization_members": 0,
+        "organizations": 0,
+        "relationships": 0,
+        "career_relations": 0
+    }
     
-    for relation in career_relations:
-        await db.delete(relation)
-        logger.info(f"删除角色职业关联：character_id={character_id}, career_id={relation.career_id}, type={relation.career_type}")
-    
-    # 删除角色
-    await db.delete(character)
-    await db.commit()
-    
-    logger.info(f"删除角色成功：{character.name} (ID: {character_id}), 清理了 {len(career_relations)} 条职业关联")
-    
-    return {"message": "角色删除成功"}
+    try:
+        # 1. 如果是组织类型角色，先删除组织成员关联
+        if character.is_organization:
+            # 查找该角色对应的组织
+            org_result = await db.execute(
+                select(Organization).where(Organization.character_id == character_id)
+            )
+            organization = org_result.scalar_one_or_none()
+            
+            if organization:
+                # 删除该组织的所有成员关联
+                member_delete_result = await db.execute(
+                    delete(OrganizationMember).where(OrganizationMember.organization_id == organization.id)
+                )
+                deleted_counts["organization_members"] = member_delete_result.rowcount
+                logger.info(f"删除组织成员关联：organization_id={organization.id}, 数量={deleted_counts['organization_members']}")
+                
+                # 删除组织记录
+                await db.delete(organization)
+                deleted_counts["organizations"] = 1
+                logger.info(f"删除组织记录：organization_id={organization.id}")
+        
+        # 2. 删除该角色作为成员的组织成员关联
+        member_as_char_result = await db.execute(
+            delete(OrganizationMember).where(OrganizationMember.character_id == character_id)
+        )
+        deleted_counts["organization_members"] += member_as_char_result.rowcount
+        if member_as_char_result.rowcount > 0:
+            logger.info(f"删除角色的组织成员身份：character_id={character_id}, 数量={member_as_char_result.rowcount}")
+        
+        # 3. 删除角色关系（作为关系的任一方）
+        relationship_delete_result = await db.execute(
+            delete(CharacterRelationship).where(
+                (CharacterRelationship.character_from_id == character_id) |
+                (CharacterRelationship.character_to_id == character_id)
+            )
+        )
+        deleted_counts["relationships"] = relationship_delete_result.rowcount
+        if deleted_counts["relationships"] > 0:
+            logger.info(f"删除角色关系：character_id={character_id}, 数量={deleted_counts['relationships']}")
+        
+        # 4. 删除角色-职业关联关系
+        career_delete_result = await db.execute(
+            delete(CharacterCareer).where(CharacterCareer.character_id == character_id)
+        )
+        deleted_counts["career_relations"] = career_delete_result.rowcount
+        if deleted_counts["career_relations"] > 0:
+            logger.info(f"删除角色职业关联：character_id={character_id}, 数量={deleted_counts['career_relations']}")
+        
+        # 5. 最后删除角色本身
+        await db.delete(character)
+        
+        # 提交事务
+        await db.commit()
+        
+        logger.info(
+            f"删除角色成功：{character_name} (ID: {character_id}), "
+            f"清理关联记录 - 组织成员:{deleted_counts['organization_members']}, "
+            f"组织:{deleted_counts['organizations']}, "
+            f"关系:{deleted_counts['relationships']}, "
+            f"职业:{deleted_counts['career_relations']}"
+        )
+        
+        return {
+            "message": "角色删除成功",
+            "deleted_relations": deleted_counts
+        }
+        
+    except Exception as e:
+        # 发生异常时回滚事务
+        await db.rollback()
+        logger.error(f"删除角色失败：{character_name} (ID: {character_id}), 错误: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"删除角色失败: {str(e)}"
+        )
 
 
 @router.post("", response_model=CharacterResponse, summary="手动创建角色")

@@ -1,19 +1,17 @@
 import { useState, useEffect } from 'react';
-import { Typography, Space, Divider, Badge, Button, Grid } from 'antd';
-import { GithubOutlined, CopyrightOutlined, HeartFilled, ClockCircleOutlined, GiftOutlined } from '@ant-design/icons';
-import { VERSION_INFO, getVersionString } from '../config/version';
-import { checkLatestVersion } from '../services/versionService';
+
+import { CopyrightOutlined, GiftOutlined, ClockCircleOutlined, GithubOutlined, ForkOutlined } from '@ant-design/icons';
+import { Typography, Space, Divider, Badge, Tooltip, Button } from 'antd';
+
+import { VERSION_INFO, getVersionString } from '../config/version.js';
+import { checkLatestVersion } from '../services/versionService.js';
+import { useTheme } from '../contexts/ThemeContext.js';
 
 const { Text, Link } = Typography;
-const { useBreakpoint } = Grid;
 
-interface AppFooterProps {
-  sidebarWidth?: number;
-}
-
-export default function AppFooter({ sidebarWidth = 0 }: AppFooterProps) {
-  const screens = useBreakpoint();
-  const isMobile = !screens.md;
+export default function AppFooter() {
+  const isMobile = window.innerWidth <= 768;
+  const { actualTheme } = useTheme();
   const [hasUpdate, setHasUpdate] = useState(false);
   const [latestVersion, setLatestVersion] = useState('');
   const [releaseUrl, setReleaseUrl] = useState('');
@@ -26,7 +24,7 @@ export default function AppFooter({ sidebarWidth = 0 }: AppFooterProps) {
         setHasUpdate(result.hasUpdate);
         setLatestVersion(result.latestVersion);
         setReleaseUrl(result.releaseUrl);
-      } catch {
+      } catch (error) {
         // 静默失败
       }
     };
@@ -43,24 +41,20 @@ export default function AppFooter({ sidebarWidth = 0 }: AppFooterProps) {
     }
   };
 
-  // 计算左边距：桌面端有侧边栏时需要偏移
-  const leftOffset = isMobile ? 0 : sidebarWidth;
-
   return (
     <div
       style={{
         position: 'fixed',
         bottom: 0,
-        left: leftOffset,
+        left: 0,
         right: 0,
         backdropFilter: 'blur(20px) saturate(180%)',
         WebkitBackdropFilter: 'blur(20px) saturate(180%)',
         borderTop: '1px solid var(--color-border)',
-        padding: isMobile ? '8px 12px' : '10px 16px',
+        padding: isMobile ? '6px 12px' : '10px 16px',
         zIndex: 100,
         boxShadow: 'var(--shadow-card)',
-        backgroundColor: 'rgba(255, 255, 255, 0.8)', // 半透明背景以支持 backdrop-filter
-        transition: 'left 0.3s ease', // 平滑过渡
+        backgroundColor: actualTheme === 'dark' ? 'rgba(26, 26, 46, 0.8)' : 'rgba(255, 255, 255, 0.8)',
       }}
     >
       <div
@@ -71,73 +65,56 @@ export default function AppFooter({ sidebarWidth = 0 }: AppFooterProps) {
         }}
       >
         {isMobile ? (
-          // 移动端：紧凑单行布局
+          // 移动端：极简单行布局，只显示核心信息
           <div style={{
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
-            gap: 8,
-            flexWrap: 'wrap'
+            gap: 10,
+            lineHeight: 1,
           }}>
-            <Badge dot={hasUpdate} offset={[-8, 2]}>
+            <Badge dot={hasUpdate} offset={[-4, 2]}>
               <Text
                 onClick={handleVersionClick}
                 style={{
                   fontSize: 11,
+                  color: 'var(--color-text-secondary)',
+                  cursor: hasUpdate ? 'pointer' : 'default',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 4,
-                  color: 'var(--color-primary)',
-                  cursor: hasUpdate ? 'pointer' : 'default',
                 }}
-                title={hasUpdate ? `发现新版本 v${latestVersion}，点击查看` : '当前版本'}
               >
                 <strong style={{ color: 'var(--color-text-primary)' }}>{VERSION_INFO.projectName}</strong>
-                <span>{getVersionString()}</span>
+                {' '}{getVersionString()}
               </Text>
             </Badge>
-            <Divider type="vertical" style={{ margin: '0 4px', borderColor: 'var(--color-border)' }} />
-            <Button
-              type="text"
-              size="small"
-              icon={<GiftOutlined />}
-              onClick={() => window.open('https://mumuverse.space:1588/', '_blank')}
-              style={{
-                color: 'var(--color-text-secondary)',
-                fontSize: 11,
-                height: 24,
-                padding: '0 4px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-              }}
-            >
-              赞助
-            </Button>
-            <Divider type="vertical" style={{ margin: '0 4px', borderColor: 'var(--color-border)' }} />
+            <Divider type="vertical" style={{ margin: 0, height: 14, borderColor: 'var(--color-border)' }} />
             <Link
               href={VERSION_INFO.githubUrl}
               target="_blank"
               rel="noopener noreferrer"
-              style={{
-                fontSize: 11,
+              style={{ 
+                fontSize: 14, 
+                color: 'var(--color-text-secondary)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 4,
-                color: 'var(--color-text-secondary)',
               }}
             >
-              <GithubOutlined style={{ fontSize: 12 }} />
+              <GithubOutlined />
             </Link>
-            <Text
-              style={{
-                fontSize: 10,
-                color: 'var(--color-text-tertiary)',
+            <Link
+              href="https://ciii.eu.org/"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ 
+                fontSize: 14, 
+                color: 'var(--color-primary)',
+                display: 'flex',
+                alignItems: 'center',
               }}
             >
-              <ClockCircleOutlined style={{ fontSize: 10, marginRight: 4 }} />
-              {VERSION_INFO.buildTime}
-            </Text>
+              <GiftOutlined />
+            </Link>
           </div>
         ) : (
           // PC端：完整布局
@@ -153,36 +130,37 @@ export default function AppFooter({ sidebarWidth = 0 }: AppFooterProps) {
           >
             {/* 版本信息 */}
             <Badge dot={hasUpdate} offset={[-8, 2]}>
-              <Text
-                onClick={handleVersionClick}
-                style={{
-                  fontSize: 12,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  color: 'var(--color-text-secondary)',
-                  textShadow: 'none',
-                  cursor: hasUpdate ? 'pointer' : 'default',
-                  transition: 'all 0.3s',
-                }}
-                onMouseEnter={(e) => {
-                  if (hasUpdate) {
-                    e.currentTarget.style.transform = 'scale(1.05)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (hasUpdate) {
-                    e.currentTarget.style.transform = 'scale(1)';
-                  }
-                }}
-                title={hasUpdate ? `发现新版本 v${latestVersion}，点击查看` : '当前版本'}
-              >
-                <strong style={{ color: 'var(--color-text-primary)' }}>{VERSION_INFO.projectName}</strong>
-                <span>{getVersionString()}</span>
-              </Text>
+              <Tooltip title={hasUpdate ? `发现新版本 v${latestVersion}，点击查看` : '当前版本'}>
+                <Text
+                  onClick={handleVersionClick}
+                  style={{
+                    fontSize: 12,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    color: 'var(--color-text-secondary)',
+                    textShadow: 'none',
+                    cursor: hasUpdate ? 'pointer' : 'default',
+                    transition: 'all 0.3s',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (hasUpdate) {
+                      e.currentTarget.style.transform = 'scale(1.05)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (hasUpdate) {
+                      e.currentTarget.style.transform = 'scale(1)';
+                    }
+                  }}
+                >
+                  <strong style={{ color: 'var(--color-text-primary)' }}>{VERSION_INFO.projectName}</strong>
+                  <span>{getVersionString()}</span>
+                </Text>
+              </Tooltip>
             </Badge>
 
-            {/* GitHub 链接 */}
+            {/* GitHub 源代码链接 */}
             <Link
               href={VERSION_INFO.githubUrl}
               target="_blank"
@@ -199,24 +177,11 @@ export default function AppFooter({ sidebarWidth = 0 }: AppFooterProps) {
               <span>GitHub</span>
             </Link>
 
-            {/* LinuxDO 社区 */}
-            <Link
-              href={VERSION_INFO.linuxDoUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                fontSize: 12,
-                color: 'var(--color-text-secondary)',
-              }}
-            >
-              LinuxDO 社区
-            </Link>
-
             {/* 赞助按钮 */}
             <Button
               type="primary"
               icon={<GiftOutlined style={{ fontSize: 14 }} />}
-              onClick={() => window.open('https://mumuverse.space:1588/', '_blank')}
+              onClick={() => window.open('https://ciii.eu.org/', '_blank')}
               style={{
                 background: 'var(--color-primary)',
                 border: 'none',
@@ -273,21 +238,22 @@ export default function AppFooter({ sidebarWidth = 0 }: AppFooterProps) {
               <span>{VERSION_INFO.buildTime}</span>
             </Text>
 
-            {/* 致谢信息 */}
-            <Text
+            {/* 原项目来源说明 */}
+            <Link
+              href="https://github.com/xiamuceer-j/MuMuAINovel"
+              target="_blank"
+              rel="noopener noreferrer"
               style={{
                 fontSize: 12,
                 display: 'flex',
                 alignItems: 'center',
-                gap: 4,
+                gap: 6,
                 color: 'var(--color-text-secondary)',
-                textShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
               }}
             >
-              <span>Made with</span>
-              <HeartFilled style={{ color: 'var(--color-error)', fontSize: 11 }} />
-              <span>by {VERSION_INFO.author}</span>
-            </Text>
+              <ForkOutlined style={{ fontSize: 13 }} />
+              <span>基于 MuMuAINovel</span>
+            </Link>
           </Space>
         )}
       </div>

@@ -331,7 +331,7 @@ class AIService:
         mcp_max_rounds: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
-        生成文本（自动支持MCP工具）
+        生成文本（自动支持MCP工具，增强异常处理）
         
         Args:
             prompt: 用户提示词
@@ -348,41 +348,75 @@ class AIService:
             
         Returns:
             包含生成内容的字典
+            
+        Raises:
+            Exception: 当 Provider 调用失败时抛出，包含详细错误信息
         """
-        # 使用全局配置的MCP轮数（如果未指定）
-        if mcp_max_rounds is None:
-            mcp_max_rounds = app_settings.mcp_max_rounds
+        import time
         
-        # 自动加载MCP工具
-        if auto_mcp and tools is None:
-            tools = await self._prepare_mcp_tools(auto_mcp=auto_mcp)
+        start_time = time.time()
         
-        prov = self._get_provider(provider)
-        response = await prov.generate(
-            prompt=prompt,
-            model=model or self.default_model,
-            temperature=temperature or self.default_temperature,
-            max_tokens=max_tokens or self.default_max_tokens,
-            system_prompt=system_prompt or self.default_system_prompt,
-            tools=tools,
-            tool_choice=tool_choice,
-        )
-        
-        # 处理工具调用
-        if handle_tool_calls and response.get("tool_calls"):
-            return await self._handle_tool_calls(
-                original_prompt=prompt,
-                response=response,
-                provider=provider,
-                model=model,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                system_prompt=system_prompt,
+        try:
+            # 使用全局配置的MCP轮数（如果未指定）
+            if mcp_max_rounds is None:
+                mcp_max_rounds = app_settings.mcp_max_rounds
+            
+            # 自动加载MCP工具
+            if auto_mcp and tools is None:
+                tools = await self._prepare_mcp_tools(auto_mcp=auto_mcp)
+            
+            prov = self._get_provider(provider)
+            
+            logger.debug(f"🤖 调用 Provider.generate()...")
+            logger.debug(f"  - Provider: {provider or self.api_provider}")
+            logger.debug(f"  - Model: {model or self.default_model}")
+            logger.debug(f"  - Temperature: {temperature or self.default_temperature}")
+            logger.debug(f"  - Max Tokens: {max_tokens or self.default_max_tokens}")
+            logger.debug(f"  - Tools: {len(tools) if tools else 0} 个")
+            
+            response = await prov.generate(
+                prompt=prompt,
+                model=model or self.default_model,
+                temperature=temperature or self.default_temperature,
+                max_tokens=max_tokens or self.default_max_tokens,
+                system_prompt=system_prompt or self.default_system_prompt,
+                tools=tools,
                 tool_choice=tool_choice,
-                max_rounds=mcp_max_rounds,
             )
-        
-        return response
+            
+            elapsed = time.time() - start_time
+            logger.debug(f"  ✅ Provider.generate() 完成，耗时 {elapsed:.2f}s")
+            
+            # 处理工具调用
+            if handle_tool_calls and response.get("tool_calls"):
+                return await self._handle_tool_calls(
+                    original_prompt=prompt,
+                    response=response,
+                    provider=provider,
+                    model=model,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    system_prompt=system_prompt,
+                    tool_choice=tool_choice,
+                    max_rounds=mcp_max_rounds,
+                )
+            
+            return response
+            
+        except Exception as e:
+            elapsed = time.time() - start_time
+            error_type = type(e).__name__
+            error_msg = str(e)
+            
+            logger.error(f"❌ generate_text 失败")
+            logger.error(f"   错误类型: {error_type}")
+            logger.error(f"   错误信息: {error_msg}")
+            logger.error(f"   耗时: {elapsed:.2f}s")
+            logger.error(f"   Provider: {provider or self.api_provider}")
+            logger.error(f"   Model: {model or self.default_model}")
+            
+            # 重新抛出，保留原始异常信息
+            raise
 
     async def generate_text_stream(
         self,
@@ -453,7 +487,7 @@ class AIService:
         auto_mcp: bool = True,
     ) -> Union[Dict, List]:
         """
-        带重试的 JSON 调用（自动支持MCP工具）
+        带重试的 JSON 调用（自动支持MCP工具，增强异常处理）
         
         Args:
             prompt: 用户提示词
@@ -468,37 +502,85 @@ class AIService:
             
         Returns:
             解析后的JSON数据
+            
+        Raises:
+            ValueError: 当 AI 调用失败或 JSON 解析失败时抛出，包含详细错误信息
         """
+        import time
+        import asyncio
+        
+        start_time = time.time()
         last_response = ""
+        last_error = None
         
         for attempt in range(1, max_retries + 1):
-            current_prompt = prompt if attempt == 1 else self._add_json_hint(prompt, last_response, attempt)
-            
-            result = await self.generate_text(
-                prompt=current_prompt,
-                provider=provider,
-                model=model,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                system_prompt=system_prompt,
-                auto_mcp=auto_mcp,
-                handle_tool_calls=True,
-            )
-            
-            last_response = result.get("content", "")
-            
             try:
-                data = parse_json(last_response)
-                if expected_type == "object" and not isinstance(data, dict):
-                    raise ValueError("期望对象")
-                if expected_type == "array" and not isinstance(data, list):
-                    raise ValueError("期望数组")
-                return data
+                logger.info(f"🤖 AI调用 - 第{attempt}/{max_retries}次尝试...")
+                logger.debug(f"  - Provider: {provider or self.api_provider}")
+                logger.debug(f"  - Model: {model or self.default_model}")
+                
+                current_prompt = prompt if attempt == 1 else self._add_json_hint(prompt, last_response, attempt)
+                
+                result = await self.generate_text(
+                    prompt=current_prompt,
+                    provider=provider,
+                    model=model,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    system_prompt=system_prompt,
+                    auto_mcp=auto_mcp,
+                    handle_tool_calls=True,
+                )
+                
+                last_response = result.get("content", "")
+                elapsed = time.time() - start_time
+                logger.info(f"  ✅ AI调用成功，耗时 {elapsed:.2f}s，响应长度: {len(last_response)}")
+                
+                # 尝试解析 JSON
+                try:
+                    data = parse_json(last_response)
+                    if expected_type == "object" and not isinstance(data, dict):
+                        raise ValueError(f"期望对象，实际为 {type(data).__name__}")
+                    if expected_type == "array" and not isinstance(data, list):
+                        raise ValueError(f"期望数组，实际为 {type(data).__name__}")
+                    
+                    logger.info(f"  ✅ JSON解析成功")
+                    return data
+                except Exception as json_error:
+                    elapsed = time.time() - start_time
+                    logger.warning(f"  ⚠️ JSON解析失败: {json_error}, 耗时 {elapsed:.2f}s")
+                    last_error = json_error
+                    if attempt == max_retries:
+                        raise ValueError(f"JSON解析失败（尝试{max_retries}次）: {json_error}")
+                    # 继续重试
+                    
+            except ValueError:
+                # 重新抛出 ValueError（JSON 解析失败）
+                raise
             except Exception as e:
+                elapsed = time.time() - start_time
+                error_type = type(e).__name__
+                error_msg = str(e)
+                
+                logger.error(f"  ❌ AI调用失败 - 第{attempt}/{max_retries}次")
+                logger.error(f"     错误类型: {error_type}")
+                logger.error(f"     错误信息: {error_msg}")
+                logger.error(f"     耗时: {elapsed:.2f}s")
+                
+                last_error = e
+                
                 if attempt == max_retries:
-                    raise ValueError(f"JSON 解析失败: {e}")
+                    # 最后一次尝试失败，抛出详细异常
+                    raise ValueError(
+                        f"AI调用失败（尝试{max_retries}次，耗时{elapsed:.2f}s）: "
+                        f"{error_type}: {error_msg}"
+                    ) from e
+                
+                # 等待后重试
+                await asyncio.sleep(1)
         
-        raise ValueError("JSON 调用失败")
+        # 理论上不会到这里
+        raise ValueError(f"AI调用失败: {last_error}")
 
     @staticmethod
     def _add_json_hint(prompt: str, failed: str, attempt: int) -> str:
@@ -518,8 +600,26 @@ def create_user_ai_service(
     temperature: float,
     max_tokens: int,
     system_prompt: Optional[str] = None,
+    user_id: Optional[str] = None,
+    enable_key_pool: bool = False,
 ) -> AIService:
-    """创建用户 AI 服务（不带MCP支持）"""
+    """
+    创建用户 AI 服务
+    
+    Args:
+        api_provider: AI提供商
+        api_key: API密钥
+        api_base_url: API基础URL
+        model_name: 模型名称
+        temperature: 温度
+        max_tokens: 最大令牌数
+        system_prompt: 系统提示词
+        user_id: 用户ID（可选，用于Key池等功能）
+        enable_key_pool: 是否启用Key池轮询
+        
+    Returns:
+        配置好的AIService实例
+    """
     return AIService(
         api_provider=api_provider,
         api_key=api_key,
@@ -528,6 +628,8 @@ def create_user_ai_service(
         default_temperature=temperature,
         default_max_tokens=max_tokens,
         default_system_prompt=system_prompt,
+        user_id=user_id,
+        enable_mcp=False,  # 基础版本不启用MCP
     )
 
 

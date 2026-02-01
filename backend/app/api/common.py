@@ -39,7 +39,10 @@ async def verify_project_access(
             - 401: 用户未登录
             - 404: 项目不存在或用户无权访问
     """
+    logger.debug(f"🔍 Verifying project access: project_id={project_id}, user_id={user_id}")
+    
     if not user_id:
+        logger.warning(f"❌ Access denied: No user_id for project {project_id}")
         raise HTTPException(status_code=401, detail="未登录")
     
     result = await db.execute(
@@ -51,9 +54,10 @@ async def verify_project_access(
     project = result.scalar_one_or_none()
     
     if not project:
-        logger.warning(f"项目访问被拒绝: project_id={project_id}, user_id={user_id}")
+        logger.warning(f"❌ Access denied: project_id={project_id}, user_id={user_id} (project not found or access denied)")
         raise HTTPException(status_code=404, detail="项目不存在或无权访问")
     
+    logger.debug(f"✅ Access granted: project '{project.title}' for user {user_id}")
     return project
 
 

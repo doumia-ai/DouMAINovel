@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+
 import { Card, Spin, Alert, Button, Space, Switch, Drawer, message, Progress } from 'antd';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeftOutlined,
   EyeOutlined,
@@ -10,7 +11,7 @@ import {
   LeftOutlined,
   RightOutlined,
 } from '@ant-design/icons';
-import api from '../services/api';
+import api from '../services/api/index.js';
 import AnnotatedText, { type MemoryAnnotation } from '../components/AnnotatedText';
 import MemorySidebar from '../components/MemorySidebar';
 
@@ -75,7 +76,13 @@ const ChapterReader: React.FC = () => {
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const [navigation, setNavigation] = useState<NavigationData | null>(null);
 
-  const loadChapterData = useCallback(async () => {
+  useEffect(() => {
+    if (chapterId) {
+      loadChapterData();
+    }
+  }, [chapterId]);
+
+  const loadChapterData = async () => {
     try {
       setLoading(true);
       setError(null);
@@ -124,20 +131,13 @@ const ChapterReader: React.FC = () => {
       } else {
         setAnnotationsData(null);
       }
-    } catch (err: unknown) {
+    } catch (err: any) {
       console.error('加载章节数据失败:', err);
-      const error = err as { response?: { data?: { detail?: string } }; message?: string };
-      setError(error.response?.data?.detail || error.message || '加载失败');
+      setError(err.response?.data?.detail || err.message || '加载失败');
     } finally {
       setLoading(false);
     }
-  }, [chapterId]);
-
-  useEffect(() => {
-    if (chapterId) {
-      loadChapterData();
-    }
-  }, [chapterId, loadChapterData]);
+  };
 
   const handleAnnotationClick = (annotation: MemoryAnnotation) => {
     setActiveAnnotationId(annotation.id);
@@ -212,11 +212,10 @@ const ChapterReader: React.FC = () => {
         }
       }, 30000);
 
-    } catch (err: unknown) {
+    } catch (err: any) {
       setAnalyzing(false);
-      const error = err as { response?: { data?: { detail?: string } } };
       message.error({
-        content: error.response?.data?.detail || '触发分析失败',
+        content: err.response?.data?.detail || '触发分析失败',
         key: 'analyze'
       });
     }
@@ -418,9 +417,9 @@ const ChapterReader: React.FC = () => {
           <div
             style={{
               width: 400,
-              borderLeft: '1px solid #f0f0f0',
+              borderLeft: '1px solid var(--color-border)',
               overflowY: 'auto',
-              background: '#fafafa',
+              background: 'var(--color-bg-layout)',
             }}
           >
             <MemorySidebar

@@ -4,9 +4,9 @@
  */
 
 import { useCallback } from 'react';
+
 import { message } from 'antd';
-import { useStore } from './index';
-import { projectApi, outlineApi, characterApi, chapterApi } from '../services/api';
+
 import type {
   PaginationResponse,
   Outline,
@@ -22,6 +22,9 @@ import type {
   GenerateOutlineRequest,
   GenerateCharacterRequest
 } from '../types';
+
+import { projectApi, outlineApi, characterApi, chapterApi } from '../services/api/index.js';
+import { useStore } from './index.js';
 
 /**
  * 项目数据同步 Hook
@@ -363,15 +366,12 @@ export function useChapterSync() {
                 }
               } else if (message.type === 'error') {
                 throw new Error(message.error || '生成失败');
-              } else if (message.type === 'result') {
-                // 结果消息，包含分析任务ID
-                if (message.data?.analysis_task_id) {
-                  analysisTaskId = message.data.analysis_task_id;
-                }
+              } else if (message.type === 'done') {
+                // 生成完成，保存分析任务ID
+                analysisTaskId = message.analysis_task_id;
                 if (onProgressUpdate) {
                   onProgressUpdate('生成完成', 100);
                 }
-              } else if (message.type === 'done') {
                 // 生成完成，刷新章节数据
                 await refreshChapters();
               } else if (message.type === 'analysis_started') {

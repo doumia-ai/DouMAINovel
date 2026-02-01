@@ -3,6 +3,8 @@ from typing import List, Dict, Any, Optional, Callable, Awaitable
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 import json
+import time
+import asyncio
 
 from app.models.character import Character
 from app.models.relationship import CharacterRelationship, Organization, OrganizationMember, RelationshipType
@@ -14,11 +16,44 @@ from app.logger import get_logger
 logger = get_logger(__name__)
 
 
+class CharacterAnalysisError(Exception):
+    """角色分析失败异常 - 当 AI 角色分析调用失败时抛出"""
+    def __init__(self, message: str, original_error: Optional[Exception] = None):
+        super().__init__(message)
+        self.original_error = original_error
+
+
 class AutoCharacterService:
     """自动角色引入服务"""
     
     def __init__(self, ai_service: AIService):
         self.ai_service = ai_service
+    
+    def _extract_character_info(self, characters: List[Character]) -> List[Dict[str, Any]]:
+        """
+        从 Character ORM 对象列表中提取信息为字典列表
+        这样可以避免后续 Session 解绑问题
+        
+        Args:
+            characters: Character ORM 对象列表
+            
+        Returns:
+            包含角色信息的字典列表
+        """
+        result = []
+        for char in characters:
+            try:
+                result.append({
+                    "id": char.id,
+                    "name": char.name,
+                    "is_organization": char.is_organization,
+                    "role_type": char.role_type,
+                    "personality": char.personality,
+                })
+            except Exception as e:
+                logger.warning(f"提取角色信息时出错: {e}")
+                continue
+        return result
     
     async def analyze_and_create_characters(
         self,
@@ -26,7 +61,7 @@ class AutoCharacterService:
         outline_content: str,
         existing_characters: List[Character],
         db: AsyncSession,
-        user_id: str = None,
+        user_id: Optional[str] = None,
         enable_mcp: bool = True,
         all_chapters_brief: str = "",
         start_chapter: int = 1,
@@ -42,7 +77,7 @@ class AutoCharacterService:
         Args:
             project_id: 项目ID
             outline_content: 当前批次大纲内容（用于向后兼容，实际不使用）
-            existing_characters: 现有角色列表
+            existing_characters: 现有角色列表（Character ORM 对象）
             db: 数据库会话
             user_id: 用户ID(用于MCP和自定义提示词)
             enable_mcp: 是否启用MCP增强
@@ -79,12 +114,28 @@ class AutoCharacterService:
         if not project:
             raise ValueError("项目不存在")
         
-        # 2. 构建现有角色信息摘要
-        existing_chars_summary = self._build_character_summary(existing_characters)
+        # ⭐ 提取项目属性为本地变量，避免后续 Session 解绑问题
+        project_info = {
+            "id": project.id,
+            "title": project.title,
+            "theme": project.theme or "未设定",
+            "genre": project.genre or "未设定",
+            "world_time_period": project.world_time_period or "未设定",
+            "world_location": project.world_location or "未设定",
+            "world_atmosphere": project.world_atmosphere or "未设定",
+            "world_rules": project.world_rules or "未设定",
+        }
+        
+        # ⭐ 将 existing_characters 转换为字典列表
+        # 这样可以避免后续 Session 解绑问题
+        existing_chars_info = self._extract_character_info(existing_characters)
+        
+        # 2. 构建现有角色信息摘要（使用字典列表）
+        existing_chars_summary = self._build_character_summary_from_dict(existing_chars_info)
         
         # 3. AI预测性分析是否需要新角色
         analysis_result = await self._analyze_character_needs(
-            project=project,
+            project_info=project_info,
             outline_content=outline_content,  # 保留参数向后兼容
             existing_chars_summary=existing_chars_summary,
             db=db,
@@ -107,7 +158,7 @@ class AutoCharacterService:
                 "analysis_result": analysis_result,
                 "predicted_characters": [],
                 "needs_new_characters": False,
-                "reason": analysis_result.get("reason", "当前剧情不需要新角色")
+                "reason": analysis_result.get("reason", "当前剧情不需要新角色") if analysis_result else "当前剧情不需要新角色"
             }
         
         # 5. 如果是预览模式，仅返回预测结果，不创建角色
@@ -126,7 +177,10 @@ class AutoCharacterService:
         
         # 6. 批量生成新角色（非预览模式）
         new_characters = []
+        new_chars_info: List[Dict[str, Any]] = []  # 存储新创建角色的字典信息
         relationships_created = []
+        skipped_existing: List[str] = []  # 🔧 新增：跳过的已存在角色
+        failed_characters: List[Dict[str, Any]] = []  # 🔧 新增：创建失败的角色
         
         character_specs = analysis_result.get("character_specifications", [])
         logger.info(f"🎯 AI建议引入 {len(character_specs)} 个新角色")
@@ -137,14 +191,29 @@ class AutoCharacterService:
                 logger.info(f"  [{idx+1}/{len(character_specs)}] 生成角色规格: {spec_name}")
                 logger.debug(f"     角色规格内容: {json.dumps(spec, ensure_ascii=False)}")
                 
+                # 🔧 新增：检查角色是否已存在（防止重复创建）
+                existing_check = await db.execute(
+                    select(Character).where(
+                        Character.project_id == project_id,
+                        Character.name == spec_name
+                    )
+                )
+                existing_character = existing_check.scalar_one_or_none()
+                if existing_character:
+                    logger.info(f"  ⏭️ 角色 '{spec_name}' 已存在（ID: {existing_character.id}），跳过创建")
+                    skipped_existing.append(spec_name)
+                    if progress_callback:
+                        await progress_callback(f"⏭️ [{idx+1}/{len(character_specs)}] 角色已存在，跳过: {spec_name}")
+                    continue
+                
                 if progress_callback:
                     await progress_callback(f"🎨 [{idx+1}/{len(character_specs)}] 生成角色详情: {spec_name}")
                 
-                # 生成角色详细信息
+                # 生成角色详细信息（使用字典列表而不是 ORM 对象）
                 character_data = await self._generate_character_details(
                     spec=spec,
-                    project=project,
-                    existing_characters=existing_characters + new_characters,  # 包含新创建的
+                    project_info=project_info,
+                    existing_chars_info=existing_chars_info + new_chars_info,  # 使用字典列表
                     db=db,
                     user_id=user_id,
                     enable_mcp=enable_mcp
@@ -163,6 +232,17 @@ class AutoCharacterService:
                 )
                 
                 new_characters.append(character)
+                
+                # ⭐ 提取新创建角色的信息为字典，供后续使用
+                new_char_info = {
+                    "id": character.id,
+                    "name": character.name,
+                    "is_organization": character.is_organization,
+                    "role_type": character.role_type,
+                    "personality": character.personality,
+                }
+                new_chars_info.append(new_char_info)
+                
                 logger.info(f"  ✅ 创建新角色: {character.name} ({character.role_type}), ID: {character.id}")
                 
                 if progress_callback:
@@ -178,8 +258,8 @@ class AutoCharacterService:
                 
                 if relationships_data:
                     logger.info(f"  🔗 开始创建 {len(relationships_data)} 条关系...")
-                    for idx, rel in enumerate(relationships_data):
-                        logger.info(f"     [{idx+1}] {rel.get('target_character_name')} - {rel.get('relationship_type')}")
+                    for rel_idx, rel in enumerate(relationships_data):
+                        logger.info(f"     [{rel_idx+1}] {rel.get('target_character_name')} - {rel.get('relationship_type')}")
                     
                     if progress_callback:
                         await progress_callback(f"🔗 [{idx+1}/{len(character_specs)}] 建立 {len(relationships_data)} 个关系")
@@ -187,10 +267,11 @@ class AutoCharacterService:
                     logger.warning(f"  ⚠️ AI返回的角色数据中没有关系信息！")
                     logger.warning(f"     完整的character_data keys: {list(character_data.keys())}")
                 
+                # ⭐ 使用已提取的角色ID和名称
                 rels = await self._create_relationships(
-                    new_character=character,
+                    new_character_id=new_char_info["id"],
+                    new_character_name=new_char_info["name"],
                     relationship_specs=relationships_data,
-                    existing_characters=existing_characters + new_characters,
                     project_id=project_id,
                     db=db
                 )
@@ -198,43 +279,97 @@ class AutoCharacterService:
                 relationships_created.extend(rels)
                 logger.info(f"  ✅ 实际创建了 {len(rels)} 条关系记录")
                 
+                # 🔧 修复：使用 flush 而不是 commit，等待大纲生成成功后统一提交
+                await db.flush()
+                logger.info(f"  💾 角色 {character.name} 已刷新到数据库（待统一提交）")
+                
             except Exception as e:
                 logger.error(f"  ❌ 创建角色失败: {e}", exc_info=True)
+                # 🔧 新增：记录失败信息
+                failed_characters.append({
+                    "name": spec_name,
+                    "reason": str(e)
+                })
+                if progress_callback:
+                    await progress_callback(f"❌ [{idx+1}/{len(character_specs)}] 角色创建失败: {spec_name}")
                 continue
         
-        # 7. 提交事务（注意：这里只flush，让调用方commit）
-        await db.flush()
-        
-        logger.info(f"🎉 自动角色引入完成: 新增{len(new_characters)}个角色, {len(relationships_created)}条关系")
+        # 7. 记录完成信息（每个角色已单独commit，这里不需要再commit）
+        logger.info(f"🎉 自动角色引入完成: 新增{len(new_characters)}个角色, 跳过{len(skipped_existing)}个已存在, 失败{len(failed_characters)}个, 关系{len(relationships_created)}条")
         
         return {
             "new_characters": new_characters,
             "relationships_created": relationships_created,
             "character_count": len(new_characters),
-            "analysis_result": analysis_result
+            "analysis_result": analysis_result,
+            # 🔧 新增：创建状态摘要
+            "creation_summary": {
+                "total_planned": len(character_specs),
+                "successfully_created": len(new_characters),
+                "skipped_existing": len(skipped_existing),
+                "failed": len(failed_characters),
+                "skipped_names": skipped_existing,
+                "failed_details": failed_characters
+            }
         }
     
     def _build_character_summary(self, characters: List[Character]) -> str:
-        """构建现有角色摘要"""
+        """
+        构建现有角色摘要（从 ORM 对象）
+        注意：此方法可能因 Session 解绑而失败，建议使用 _build_character_summary_from_dict
+        """
         if not characters:
             return "暂无角色"
         
         summary = []
         for char in characters:
-            char_type = "组织" if char.is_organization else "角色"
-            role_desc = char.role_type or "未知"
-            personality = (char.personality or "")[:50]
-            summary.append(f"- {char.name} ({char_type}, {role_desc}): {personality}")
+            try:
+                char_type = "组织" if char.is_organization else "角色"
+                role_desc = char.role_type or "未知"
+                personality = (char.personality or "")[:50]
+                summary.append(f"- {char.name} ({char_type}, {role_desc}): {personality}")
+            except Exception as e:
+                # 处理可能的 Session 解绑问题
+                logger.warning(f"构建角色摘要时出错: {e}")
+                continue
+        
+        return "\n".join(summary[:20])  # 最多显示20个
+    
+    def _build_character_summary_from_dict(self, characters_info: List[Dict[str, Any]]) -> str:
+        """
+        构建现有角色摘要（从字典列表）
+        这个方法不会有 Session 解绑问题
+        
+        Args:
+            characters_info: 角色信息字典列表
+            
+        Returns:
+            角色摘要字符串
+        """
+        if not characters_info:
+            return "暂无角色"
+        
+        summary = []
+        for char_info in characters_info:
+            try:
+                char_type = "组织" if char_info.get("is_organization") else "角色"
+                role_desc = char_info.get("role_type") or "未知"
+                personality = (char_info.get("personality") or "")[:50]
+                name = char_info.get("name", "未知")
+                summary.append(f"- {name} ({char_type}, {role_desc}): {personality}")
+            except Exception as e:
+                logger.warning(f"构建角色摘要时出错: {e}")
+                continue
         
         return "\n".join(summary[:20])  # 最多显示20个
     
     async def _analyze_character_needs(
         self,
-        project: Project,
+        project_info: Dict[str, Any],
         outline_content: str,
         existing_chars_summary: str,
         db: AsyncSession,
-        user_id: str,
+        user_id: Optional[str],
         enable_mcp: bool,
         all_chapters_brief: str = "",
         start_chapter: int = 1,
@@ -242,7 +377,14 @@ class AutoCharacterService:
         plot_stage: str = "发展",
         story_direction: str = "继续推进主线剧情"
     ) -> Dict[str, Any]:
-        """AI预测性分析是否需要新角色（方案A）"""
+        """
+        AI预测性分析是否需要新角色（方案A）
+        
+        Raises:
+            CharacterAnalysisError: 当 AI 调用失败时抛出，不再静默返回默认值
+        """
+        start_time = time.time()
+        logger.info(f"🤖 开始 AI 角色需求分析...")
         
         # 构建分析提示词
         template = await PromptService.get_template(
@@ -251,15 +393,15 @@ class AutoCharacterService:
             db
         )
         
-        # 使用新的预测性分析参数
+        # 使用新的预测性分析参数（使用 project_info 字典）
         prompt = PromptService.format_prompt(
             template,
-            title=project.title,
-            theme=project.theme or "未设定",
-            genre=project.genre or "未设定",
-            time_period=project.world_time_period or "未设定",
-            location=project.world_location or "未设定",
-            atmosphere=project.world_atmosphere or "未设定",
+            title=project_info["title"],
+            theme=project_info["theme"],
+            genre=project_info["genre"],
+            time_period=project_info["world_time_period"],
+            location=project_info["world_location"],
+            atmosphere=project_info["world_atmosphere"],
             existing_characters=existing_chars_summary,
             all_chapters_brief=all_chapters_brief,
             start_chapter=start_chapter,
@@ -269,38 +411,68 @@ class AutoCharacterService:
         )
         
         try:
-            # 使用统一的JSON调用方法（支持自动MCP工具加载）
-            analysis = await self.ai_service.call_with_json_retry(
-                prompt=prompt,
-                max_retries=3,
+            logger.info(f"🤖 调用 AI 服务进行角色需求分析...")
+            
+            # 使用统一的JSON调用方法（支持自动MCP工具加载，设置300秒超时）
+            analysis = await asyncio.wait_for(
+                self.ai_service.call_with_json_retry(
+                    prompt=prompt,
+                    max_retries=3,
+                ),
+                timeout=300.0  # 5分钟超时
             )
             
-            logger.info(f"  ✅ AI分析完成: needs_new_characters={analysis.get('needs_new_characters')}")
-            return analysis
+            elapsed = time.time() - start_time
+            
+            # 确保返回的是字典
+            if isinstance(analysis, dict):
+                logger.info(f"  ✅ AI分析完成: needs_new_characters={analysis.get('needs_new_characters')}, 耗时 {elapsed:.2f}s")
+                return analysis
+            else:
+                error_msg = f"AI返回的数据格式错误: 期望字典，实际为 {type(analysis)}"
+                logger.error(f"  ❌ {error_msg}, 耗时 {elapsed:.2f}s")
+                raise CharacterAnalysisError(error_msg)
             
         except json.JSONDecodeError as e:
-            logger.error(f"  ❌ 角色需求分析JSON解析失败: {e}")
-            return {"needs_new_characters": False}
+            elapsed = time.time() - start_time
+            error_msg = f"角色需求分析JSON解析失败: {e}"
+            logger.error(f"  ❌ {error_msg}, 耗时 {elapsed:.2f}s")
+            raise CharacterAnalysisError(error_msg, e)
+        except CharacterAnalysisError:
+            # 重新抛出自定义异常
+            raise
         except Exception as e:
-            logger.error(f"  ❌ 角色需求分析失败: {e}")
-            return {"needs_new_characters": False}
+            elapsed = time.time() - start_time
+            error_msg = f"角色需求分析失败: {type(e).__name__}: {e}"
+            logger.error(f"  ❌ {error_msg}, 耗时 {elapsed:.2f}s", exc_info=True)
+            raise CharacterAnalysisError(error_msg, e)
     
     async def _generate_character_details(
         self,
         spec: Dict[str, Any],
-        project: Project,
-        existing_characters: List[Character],
+        project_info: Dict[str, Any],
+        existing_chars_info: List[Dict[str, Any]],
         db: AsyncSession,
-        user_id: str,
+        user_id: Optional[str],
         enable_mcp: bool
     ) -> Dict[str, Any]:
-        """生成角色详细信息"""
+        """
+        生成角色详细信息
         
-        # 🎯 获取项目职业列表
+        Args:
+            spec: 角色规格
+            project_info: 项目信息字典
+            existing_chars_info: 现有角色信息字典列表（避免 Session 解绑问题）
+            db: 数据库会话
+            user_id: 用户ID
+            enable_mcp: 是否启用MCP
+        """
+        
+        # 🎯 获取项目职业列表（使用 project_info["id"]）
         from app.models.career import Career
         careers_result = await db.execute(
             select(Career)
-            .where(Career.project_id == project.id)
+            .where(Career.project_id == project_info["id"])
             .order_by(Career.type, Career.name)
         )
         careers = careers_result.scalars().all()
@@ -336,17 +508,19 @@ class AutoCharacterService:
             db
         )
         
-        existing_chars_summary = self._build_character_summary(existing_characters)
+        # ⭐ 使用字典列表构建摘要，避免 Session 解绑问题
+        existing_chars_summary = self._build_character_summary_from_dict(existing_chars_info)
         
+        # 使用 project_info 字典而不是 project 对象
         prompt = PromptService.format_prompt(
             template,
-            title=project.title,
-            genre=project.genre or "未设定",
-            theme=project.theme or "未设定",
-            time_period=project.world_time_period or "未设定",
-            location=project.world_location or "未设定",
-            atmosphere=project.world_atmosphere or "未设定",
-            rules=project.world_rules or "未设定",
+            title=project_info["title"],
+            genre=project_info["genre"],
+            theme=project_info["theme"],
+            time_period=project_info["world_time_period"],
+            location=project_info["world_location"],
+            atmosphere=project_info["world_atmosphere"],
+            rules=project_info["world_rules"],
             existing_characters=existing_chars_summary + careers_info,
             plot_context="根据剧情需要引入的新角色",
             character_specification=json.dumps(spec, ensure_ascii=False, indent=2),
@@ -355,12 +529,20 @@ class AutoCharacterService:
         
         logger.info(f"🔧 角色详情生成: enable_mcp={enable_mcp}")
         
-        # 调用AI生成
+        # 调用AI生成（设置300秒超时，考虑nginx和反向代理延迟）
         try:
-            character_data = await self.ai_service.call_with_json_retry(
-                prompt=prompt,
-                max_retries=2,  # 减少重试次数以加快速度
+            character_data = await asyncio.wait_for(
+                self.ai_service.call_with_json_retry(
+                    prompt=prompt,
+                    max_retries=2,  # 减少重试次数以加快速度
+                ),
+                timeout=300.0  # 5分钟超时
             )
+            
+            # 确保返回的是字典
+            if not isinstance(character_data, dict):
+                logger.error(f"    ❌ AI返回的不是字典类型: {type(character_data)}")
+                raise ValueError("AI返回的角色数据格式错误")
             
             char_name = character_data.get('name', '未知')
             logger.info(f"    ✅ 角色详情生成成功: {char_name}")
@@ -514,13 +696,22 @@ class AutoCharacterService:
     
     async def _create_relationships(
         self,
-        new_character: Character,
+        new_character_id: str,
+        new_character_name: str,
         relationship_specs: List[Dict[str, Any]],
-        existing_characters: List[Character],
         project_id: str,
         db: AsyncSession
     ) -> List[CharacterRelationship]:
-        """创建角色关系"""
+        """
+        创建角色关系
+        
+        Args:
+            new_character_id: 新角色的ID
+            new_character_name: 新角色的名称（用于日志）
+            relationship_specs: 关系规格列表
+            project_id: 项目ID
+            db: 数据库会话
+        """
         
         if not relationship_specs:
             return []
@@ -533,33 +724,39 @@ class AutoCharacterService:
                 if not target_name:
                     continue
                 
-                # 查找目标角色
-                target_char = next(
-                    (c for c in existing_characters if c.name == target_name),
-                    None
+                # ⭐ 使用数据库查询查找目标角色，避免 Session 解绑问题
+                target_result = await db.execute(
+                    select(Character).where(
+                        Character.project_id == project_id,
+                        Character.name == target_name
+                    )
                 )
+                target_char = target_result.scalar_one_or_none()
                 
                 if not target_char:
                     logger.warning(f"    ⚠️ 目标角色不存在: {target_name}")
                     continue
                 
+                # 提取目标角色ID（避免后续访问时 Session 解绑）
+                target_char_id = target_char.id
+                
                 # 检查关系是否已存在
                 existing_rel = await db.execute(
                     select(CharacterRelationship).where(
                         CharacterRelationship.project_id == project_id,
-                        CharacterRelationship.character_from_id == new_character.id,
-                        CharacterRelationship.character_to_id == target_char.id
+                        CharacterRelationship.character_from_id == new_character_id,
+                        CharacterRelationship.character_to_id == target_char_id
                     )
                 )
                 if existing_rel.scalar_one_or_none():
-                    logger.debug(f"    ℹ️ 关系已存在: {new_character.name} -> {target_name}")
+                    logger.debug(f"    ℹ️ 关系已存在: {new_character_name} -> {target_name}")
                     continue
                 
                 # 创建关系
                 relationship = CharacterRelationship(
                     project_id=project_id,
-                    character_from_id=new_character.id,
-                    character_to_id=target_char.id,
+                    character_from_id=new_character_id,
+                    character_to_id=target_char_id,
                     relationship_name=rel_spec.get("relationship_type", "未知关系"),
                     intimacy_level=rel_spec.get("intimacy_level", 50),
                     description=rel_spec.get("description", ""),
@@ -583,7 +780,7 @@ class AutoCharacterService:
                 relationships.append(relationship)
                 
                 logger.info(
-                    f"    ✅ 创建关系: {new_character.name} -> {target_name} "
+                    f"    ✅ 创建关系: {new_character_name} -> {target_name} "
                     f"({rel_spec.get('relationship_type', '未知')})"
                 )
                 

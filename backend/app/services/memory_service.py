@@ -395,6 +395,55 @@ class MemoryService:
             logger.error(f"❌ 批量添加记忆失败: {str(e)}")
             return 0
     
+    def _sanitize_query(self, query: str) -> str:
+        """
+        清理和验证查询文本
+        
+        Args:
+            query: 原始查询文本
+        
+        Returns:
+            清理后的查询文本
+        """
+        if not query:
+            return ""
+        
+        import re
+        
+        # 移除控制字符（保留换行、制表符和空格）
+        cleaned = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', query)
+        
+        # 移除 NULL 字符
+        cleaned = cleaned.replace('\x00', '')
+        
+        # ⭐ 移除可能导致编码问题的特殊 Unicode 字符
+        # 移除代理对字符（surrogate pairs）
+        cleaned = re.sub(r'[\ud800-\udfff]', '', cleaned)
+        
+        # 移除私有使用区字符
+        cleaned = re.sub(r'[\ue000-\uf8ff]', '', cleaned)
+        
+        # 移除特殊格式字符
+        cleaned = re.sub(r'[\ufff0-\uffff]', '', cleaned)
+        
+        # ⭐ 确保文本是有效的 UTF-8
+        try:
+            # 尝试编码和解码来验证
+            cleaned = cleaned.encode('utf-8', errors='ignore').decode('utf-8', errors='ignore')
+        except Exception:
+            # 如果仍然失败，使用 ASCII 安全模式
+            cleaned = cleaned.encode('ascii', errors='ignore').decode('ascii')
+        
+        # 限制长度（避免过长的查询）
+        max_length = 10000
+        if len(cleaned) > max_length:
+            cleaned = cleaned[:max_length]
+        
+        # 确保至少有一些有效内容
+        cleaned = cleaned.strip()
+        
+        return cleaned
+    
     async def search_memories(
         self,
         user_id: str,
@@ -421,10 +470,22 @@ class MemoryService:
             相关记忆列表,按相似度排序
         """
         try:
+            # ⭐ 清理和验证查询文本
+            cleaned_query = self._sanitize_query(query)
+            
+            # 如果查询为空，返回空结果
+            if not cleaned_query:
+                logger.warning(f"⚠️ 搜索记忆: 查询文本为空或无效")
+                return []
+            
             collection = self.get_collection(user_id, project_id)
             
-            # 生成查询向量
-            query_embedding = self.embedding_model.encode(query).tolist()
+            # 生成查询向量（使用清理后的查询）
+            try:
+                query_embedding = self.embedding_model.encode(cleaned_query).tolist()
+            except Exception as encode_error:
+                logger.error(f"❌ 编码查询文本失败: {encode_error}, 查询长度: {len(cleaned_query)}")
+                return []
             
             # 构建过滤条件 - ChromaDB要求使用$and组合多个条件
             where_filter = None
@@ -465,11 +526,11 @@ class MemoryService:
                         "distance": results['distances'][0][i] if 'distances' in results else 0.0
                     })
             
-            logger.info(f"🔍 语义搜索完成: 查询='{query[:30]}...', 找到{len(memories)}条记忆")
+            logger.info(f"🔍 语义搜索完成: 查询='{cleaned_query[:30]}...', 找到{len(memories)}条记忆")
             return memories
             
         except Exception as e:
-            logger.error(f"❌ 搜索记忆失败: {str(e)}")
+            logger.error(f"❌ 搜索记忆失败: {str(e)}, 原始查询长度: {len(query) if query else 0}")
             return []
     
     async def get_recent_memories(

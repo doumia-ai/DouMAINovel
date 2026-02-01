@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+
+import axios from 'axios';
 import { Card, Table, Tag, Button, Space, message, Modal, Form, Select, Slider, Input, Tabs, AutoComplete } from 'antd';
 import { PlusOutlined, ApartmentOutlined, UserOutlined, EditOutlined } from '@ant-design/icons';
-import { useStore } from '../store';
-import axios from 'axios';
+import { useParams } from 'react-router-dom';
+
+import { useStore } from '../store/index.js';
 
 const { TextArea } = Input;
 
@@ -61,7 +63,6 @@ export default function Relationships() {
     if (projectId) {
       loadData();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
   const loadData = async () => {
@@ -384,7 +385,7 @@ export default function Relationships() {
                       key={category}
                       size="small"
                       title={categoryLabels[category] || category}
-                      headStyle={{ backgroundColor: '#f5f5f5' }}
+                      headStyle={{ backgroundColor: 'var(--color-bg-layout)' }}
                     >
                       <Space direction="vertical" style={{ width: '100%' }}>
                         {types.map(type => (

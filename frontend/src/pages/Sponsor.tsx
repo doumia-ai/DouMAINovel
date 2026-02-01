@@ -1,4 +1,5 @@
 import { useState } from 'react';
+
 import { Card, Row, Col, Typography, Image, Divider, Modal, Button } from 'antd';
 import {
     HeartOutlined,
@@ -21,7 +22,7 @@ interface SponsorOption {
 const sponsorOptions: SponsorOption[] = [
     { amount: 5, label: '🌶️ 一包辣条', image: '/5.png', description: '¥5' },
     { amount: 10, label: '🍱 一顿拼好饭', image: '/10.png', description: '¥10' },
-    { amount: 20, label: '☕ 一杯咖啡', image: '/20.png', description: '¥20' },
+    { amount: 20, label: '🧋 一杯咖啡', image: '/20.png', description: '¥20' },
     { amount: 50, label: '🍖 一次烧烤', image: '/50.png', description: '¥50' },
     { amount: 99, label: '🍲 一顿海底捞', image: '/99.png', description: '¥99' },
 ];
@@ -35,7 +36,7 @@ const benefits = [
     {
         icon: <RocketOutlined style={{ fontSize: '32px', color: 'var(--color-success)' }} />,
         title: 'Windows一键启动',
-        description: '获取免安装一键启动包，开箱即可使用'
+        description: '获取免安装EXE程序，双击即可使用'
     },
     {
         icon: <MessageOutlined style={{ fontSize: '32px', color: 'var(--color-warning)' }} />,
@@ -77,7 +78,7 @@ export default function Sponsor() {
                     {/* 头部标题区域 */}
                     <div style={{ textAlign: 'center', marginBottom: 'clamp(20px, 4vh, 32px)' }}>
                         <Title level={1} style={{ marginBottom: '8px', fontSize: 'clamp(24px, 5vw, 32px)', fontWeight: 'bold' }}>
-                            赞助 MuMuAINovel
+                            赞助 豆妙AI创作
                         </Title>
                         <Text type="secondary" style={{ fontSize: 'clamp(11px, 2vw, 13px)', letterSpacing: '2px' }}>
                             SUPPORT AI NOVEL CREATION
@@ -91,7 +92,7 @@ export default function Sponsor() {
                             color: '#fff'
                         }}>
                             <Title level={4} style={{ color: '#fff', marginBottom: '8px' }}>
-                                📚 MuMuAINovel - 基于 AI 的智能小说创作助手
+                                📚 豆妙AI创作 - 基于 AI 的智能小说创作助手
                             </Title>
                             <Paragraph style={{ color: '#fff', fontSize: '14px', margin: 0 }}>
                                 支持多AI模型、智能向导、角色管理、章节编辑等强大功能
@@ -125,7 +126,7 @@ export default function Sponsor() {
                                             {benefit.icon}
                                         </div>
                                         <Title level={5} style={{ marginBottom: '8px', fontSize: 'clamp(14px, 2.5vw, 16px)' }}>{benefit.title}</Title>
-                                        <Paragraph style={{ color: '#666', marginBottom: 0, fontSize: 'clamp(12px, 2vw, 13px)' }}>
+                                        <Paragraph style={{ color: 'var(--color-text-secondary)', marginBottom: 0, fontSize: 'clamp(12px, 2vw, 13px)' }}>
                                             {benefit.description}
                                         </Paragraph>
                                     </Card>
@@ -177,7 +178,7 @@ export default function Sponsor() {
                                         }}>
                                             {option.description}
                                         </Title>
-                                        <Text style={{ fontSize: 'clamp(12px, 2vw, 14px)', color: '#666' }}>
+                                        <Text style={{ fontSize: 'clamp(12px, 2vw, 14px)', color: 'var(--color-text-secondary)' }}>
                                             {option.label}
                                         </Text>
                                     </Card>
@@ -192,15 +193,16 @@ export default function Sponsor() {
                     <div style={{
                         textAlign: 'center',
                         padding: 'clamp(16px, 3vh, 24px) clamp(16px, 3vw, 20px)',
-                        background: '#f9f9f9',
+                        background: 'var(--color-bg-container)',
                         borderRadius: '10px',
-                        marginTop: 'auto'
+                        marginTop: 'auto',
+                        border: '1px solid var(--color-border)'
                     }}>
                         <Title level={4} style={{ marginBottom: '12px', fontSize: 'clamp(16px, 3vw, 20px)' }}>
-                            💖 感谢您对 MuMuAINovel 项目的支持
+                            💖 感谢您对 豆妙AI创作 项目的支持
                         </Title>
-                        <Paragraph style={{ fontSize: 'clamp(12px, 2vw, 14px)', color: '#666', marginBottom: '12px' }}>
-                            您的赞助将是我持续更新项目的动力，为大家提供更好的AI小说创作体验
+                        <Paragraph style={{ fontSize: 'clamp(12px, 2vw, 14px)', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>
+                            您的赞助将帮助我们持续改进产品，提供更好的AI小说创作体验
                         </Paragraph>
                         <div style={{ fontSize: 'clamp(18px, 3vw, 24px)' }}>
                             <StarOutlined style={{ color: '#faad14', margin: '0 4px' }} />

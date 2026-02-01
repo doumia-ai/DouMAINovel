@@ -4,9 +4,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, delete
 from typing import List, AsyncGenerator, Dict, Any
 import json
+import asyncio
 
 from app.database import get_db
-from app.api.common import verify_project_access
 from app.models.outline import Outline
 from app.models.project import Project
 from app.models.chapter import Chapter
@@ -35,11 +35,11 @@ from app.services.ai_service import AIService
 from app.services.prompt_service import prompt_service, PromptService
 from app.services.memory_service import memory_service
 from app.services.plot_expansion_service import PlotExpansionService
-from app.services.foreshadow_service import foreshadow_service
-from app.services.memory_service import memory_service
+from app.services.auto_character_service import CharacterAnalysisError
 from app.logger import get_logger
 from app.api.settings import get_user_ai_service
 from app.utils.sse_response import SSEResponse, create_sse_response, WizardProgressTracker
+from app.api.common import verify_project_access
 
 router = APIRouter(prefix="/outlines", tags=["大纲管理"])
 logger = get_logger(__name__)
@@ -263,7 +263,7 @@ async def delete_outline(
     request: Request,
     db: AsyncSession = Depends(get_db)
 ):
-    """删除大纲，同时删除该大纲对应的所有章节和相关的伏笔数据"""
+    """删除大纲，同时删除该大纲对应的所有章节"""
     result = await db.execute(
         select(Outline).where(Outline.id == outline_id)
     )
@@ -281,7 +281,6 @@ async def delete_outline(
     
     # 获取要删除的章节并计算总字数
     deleted_word_count = 0
-    deleted_foreshadow_count = 0
     if project.outline_mode == 'one-to-one':
         # one-to-one模式：通过chapter_number获取对应章节
         chapters_result = await db.execute(
@@ -293,33 +292,6 @@ async def delete_outline(
         chapters_to_delete = chapters_result.scalars().all()
         deleted_word_count = sum(ch.word_count or 0 for ch in chapters_to_delete)
         
-        # 🔮 清理章节相关的伏笔数据和向量记忆
-        for chapter in chapters_to_delete:
-            try:
-                # 清理向量数据库中的记忆数据
-                await memory_service.delete_chapter_memories(
-                    user_id=user_id,
-                    project_id=project_id,
-                    chapter_id=chapter.id
-                )
-                logger.info(f"✅ 已清理章节 {chapter.id[:8]} 的向量记忆数据")
-            except Exception as e:
-                logger.warning(f"⚠️ 清理章节 {chapter.id[:8]} 向量记忆失败: {str(e)}")
-            
-            try:
-                # 清理伏笔数据（分析来源的伏笔）
-                foreshadow_result = await foreshadow_service.delete_chapter_foreshadows(
-                    db=db,
-                    project_id=project_id,
-                    chapter_id=chapter.id,
-                    only_analysis_source=True
-                )
-                deleted_foreshadow_count += foreshadow_result.get('deleted_count', 0)
-                if foreshadow_result.get('deleted_count', 0) > 0:
-                    logger.info(f"🔮 已清理章节 {chapter.id[:8]} 的 {foreshadow_result['deleted_count']} 个伏笔数据")
-            except Exception as e:
-                logger.warning(f"⚠️ 清理章节 {chapter.id[:8]} 伏笔数据失败: {str(e)}")
-        
         # 删除章节
         delete_result = await db.execute(
             delete(Chapter).where(
@@ -328,7 +300,7 @@ async def delete_outline(
             )
         )
         deleted_chapters_count = delete_result.rowcount
-        logger.info(f"一对一模式：删除大纲 {outline_id}（序号{outline.order_index}），同时删除了第{outline.order_index}章（{deleted_chapters_count}个章节，{deleted_word_count}字，{deleted_foreshadow_count}个伏笔）")
+        logger.info(f"一对一模式：删除大纲 {outline_id}（序号{outline.order_index}），同时删除了第{outline.order_index}章（{deleted_chapters_count}个章节，{deleted_word_count}字）")
     else:
         # one-to-many模式：通过outline_id获取关联章节
         chapters_result = await db.execute(
@@ -337,39 +309,12 @@ async def delete_outline(
         chapters_to_delete = chapters_result.scalars().all()
         deleted_word_count = sum(ch.word_count or 0 for ch in chapters_to_delete)
         
-        # 🔮 清理章节相关的伏笔数据和向量记忆
-        for chapter in chapters_to_delete:
-            try:
-                # 清理向量数据库中的记忆数据
-                await memory_service.delete_chapter_memories(
-                    user_id=user_id,
-                    project_id=project_id,
-                    chapter_id=chapter.id
-                )
-                logger.info(f"✅ 已清理章节 {chapter.id[:8]} 的向量记忆数据")
-            except Exception as e:
-                logger.warning(f"⚠️ 清理章节 {chapter.id[:8]} 向量记忆失败: {str(e)}")
-            
-            try:
-                # 清理伏笔数据（分析来源的伏笔）
-                foreshadow_result = await foreshadow_service.delete_chapter_foreshadows(
-                    db=db,
-                    project_id=project_id,
-                    chapter_id=chapter.id,
-                    only_analysis_source=True
-                )
-                deleted_foreshadow_count += foreshadow_result.get('deleted_count', 0)
-                if foreshadow_result.get('deleted_count', 0) > 0:
-                    logger.info(f"🔮 已清理章节 {chapter.id[:8]} 的 {foreshadow_result['deleted_count']} 个伏笔数据")
-            except Exception as e:
-                logger.warning(f"⚠️ 清理章节 {chapter.id[:8]} 伏笔数据失败: {str(e)}")
-        
         # 删除章节
         delete_result = await db.execute(
             delete(Chapter).where(Chapter.outline_id == outline_id)
         )
         deleted_chapters_count = delete_result.rowcount
-        logger.info(f"一对多模式：删除大纲 {outline_id}，同时删除了 {deleted_chapters_count} 个关联章节（{deleted_word_count}字，{deleted_foreshadow_count}个伏笔）")
+        logger.info(f"一对多模式：删除大纲 {outline_id}，同时删除了 {deleted_chapters_count} 个关联章节（{deleted_word_count}字）")
     
     # 更新项目字数
     if deleted_word_count > 0:
@@ -410,8 +355,7 @@ async def delete_outline(
     
     return {
         "message": "大纲删除成功",
-        "deleted_chapters": deleted_chapters_count,
-        "deleted_foreshadows": deleted_foreshadow_count
+        "deleted_chapters": deleted_chapters_count
     }
 
 
@@ -672,12 +616,6 @@ async def _generate_new_outline(
     # 全新生成模式：删除旧大纲和关联的所有章节
     logger.info(f"全新生成：删除项目 {project.id} 的旧大纲和章节（outline_mode: {project.outline_mode}）")
     
-    # 清理伏笔数据
-    try:
-        await foreshadow_service.clear_project_foreshadows_for_reset(db, project.id)
-    except Exception as e:
-        logger.warning(f"清理伏笔数据失败（不影响主流程）: {str(e)}")
-
     from sqlalchemy import delete as sql_delete
     
     # 先获取所有旧章节并计算总字数
@@ -877,11 +815,26 @@ async def _continue_outline(
                             logger.warning(f"⚠️ 角色 '{char_name}' 已存在，跳过创建")
                             continue
                         
+                        # ⭐ 构建 project_info 字典，避免 Session 解绑问题
+                        project_info = {
+                            "id": project.id,
+                            "title": project.title,
+                            "theme": project.theme or "未设定",
+                            "genre": project.genre or "未设定",
+                            "world_time_period": project.world_time_period or "未设定",
+                            "world_location": project.world_location or "未设定",
+                            "world_atmosphere": project.world_atmosphere or "未设定",
+                            "world_rules": project.world_rules or "未设定",
+                        }
+                        
+                        # ⭐ 提取现有角色信息为字典列表，避免 Session 解绑问题
+                        existing_chars_info = auto_char_service._extract_character_info(list(characters))
+                        
                         # 生成角色详细信息
                         character_data = await auto_char_service._generate_character_details(
                             spec=char_data,
-                            project=project,
-                            existing_characters=list(characters),
+                            project_info=project_info,
+                            existing_chars_info=existing_chars_info,
                             db=db,
                             user_id=user_id,
                             enable_mcp=request.enable_mcp
@@ -897,10 +850,13 @@ async def _continue_outline(
                         # 建立关系
                         relationships_data = character_data.get("relationships") or character_data.get("relationships_array", [])
                         if relationships_data:
+                            # ⭐ 提取角色ID和名称，避免 Session 解绑问题
+                            character_id = character.id
+                            character_name = character.name
                             await auto_char_service._create_relationships(
-                                new_character=character,
+                                new_character_id=character_id,
+                                new_character_name=character_name,
                                 relationship_specs=relationships_data,
-                                existing_characters=list(characters),
                                 project_id=project.id,
                                 db=db
                             )
@@ -940,6 +896,7 @@ async def _continue_outline(
                     # 🔮 预测模式：仅预测角色，不自动创建，需要用户确认
                     logger.info(f"🔮 【预测模式】在生成大纲前预测是否需要新角色（需用户确认）")
                     
+                    # 直接调用，不使用heartbeat（在generator中处理）
                     auto_result = await auto_char_service.analyze_and_create_characters(
                         project_id=project.id,
                         outline_content="",  # 预测模式不需要大纲内容
@@ -979,6 +936,7 @@ async def _continue_outline(
                     # 🚀 直接创建模式：预测后自动创建，无需用户确认
                     logger.info(f"🚀 【直接创建模式】在生成大纲前预测并直接创建新角色（无需确认）")
                     
+                    # 直接调用，不使用heartbeat（在generator中处理）
                     auto_result = await auto_char_service.analyze_and_create_characters(
                         project_id=project.id,
                         outline_content="",
@@ -1029,49 +987,72 @@ async def _continue_outline(
                 
                 auto_org_service = get_auto_organization_service(user_ai_service)
                 
+                # ⭐ 重新查询角色列表，确保 Session 绑定
+                fresh_confirm_characters_result = await db.execute(
+                    select(Character).where(Character.project_id == project.id)
+                )
+                fresh_confirm_characters = list(fresh_confirm_characters_result.scalars().all())
+                
+                # ⭐ 构建 project_info 字典，避免 Session 解绑问题
+                project_info = {
+                    "id": project.id,
+                    "title": project.title,
+                    "theme": project.theme,
+                    "genre": project.genre,
+                    "world_time_period": project.world_time_period,
+                    "world_location": project.world_location,
+                    "world_atmosphere": project.world_atmosphere,
+                    "world_rules": project.world_rules
+                }
+                
+                # ⭐ 构建 existing_chars_info 列表，避免 Session 解绑问题
+                existing_chars_info = [
+                    {"id": c.id, "name": c.name, "role": c.role_type, "description": c.background}
+                    for c in fresh_confirm_characters
+                ]
+                logger.debug(f"  ✅ 已提取项目信息和 {len(existing_chars_info)} 个角色信息")
+                
                 for org_data in request.confirmed_organizations:
                     try:
                         # 生成组织详细信息
                         organization_data = await auto_org_service._generate_organization_details(
                             spec=org_data,
-                            project=project,
-                            existing_characters=list(characters),
+                            project_info=project_info,  # ⭐ 使用字典而非 ORM 对象
+                            existing_chars_info=existing_chars_info,  # ⭐ 使用字典列表而非 ORM 对象列表
                             existing_organizations=existing_organizations,
                             db=db,
                             user_id=user_id,
                             enable_mcp=request.enable_mcp
                         )
                         
-                        # 创建组织记录
-                        org_character, organization = await auto_org_service._create_organization_record(
+                        # 创建组织记录（返回信息字典，避免 Session 解绑问题）
+                        org_info = await auto_org_service._create_organization_record(
                             project_id=project.id,
                             organization_data=organization_data,
                             db=db
                         )
                         
-                        # 建立成员关系
+                        # 建立成员关系（使用组织 ID）
                         members_data = organization_data.get("initial_members", [])
                         if members_data:
                             await auto_org_service._create_member_relationships(
-                                organization=organization,
+                                organization_id=org_info["organization_id"],
                                 member_specs=members_data,
-                                existing_characters=list(characters),
                                 project_id=project.id,
                                 db=db
                             )
                         
-                        # 更新角色列表（组织也是Character）
-                        characters.append(org_character)
+                        # 更新组织列表（使用字典信息）
                         existing_organizations.append({
-                            "id": organization.id,
-                            "name": org_character.name,
-                            "organization_type": org_character.organization_type,
-                            "organization_purpose": org_character.organization_purpose,
-                            "power_level": organization.power_level,
-                            "location": organization.location,
-                            "motto": organization.motto
+                            "id": org_info["organization_id"],
+                            "name": org_info["character_name"],
+                            "organization_type": organization_data.get("organization_type"),
+                            "organization_purpose": organization_data.get("organization_purpose"),
+                            "power_level": organization_data.get("power_level", 50),
+                            "location": organization_data.get("location"),
+                            "motto": organization_data.get("motto")
                         })
-                        logger.info(f"✅ 创建确认的组织: {org_character.name}")
+                        logger.info(f"✅ 创建确认的组织: {org_info['character_name']}")
                         
                     except Exception as e:
                         logger.error(f"创建确认的组织失败: {e}", exc_info=True)
@@ -1097,14 +1078,22 @@ async def _continue_outline(
                 
                 auto_org_service = get_auto_organization_service(user_ai_service)
                 
+                # ⭐ 关键修复：在角色创建完成后，重新查询角色列表
+                # 因为角色创建服务会调用 db.commit()，导致之前查询的对象解绑
+                fresh_org_characters_result = await db.execute(
+                    select(Character).where(Character.project_id == project.id)
+                )
+                fresh_org_characters = list(fresh_org_characters_result.scalars().all())
+                
                 if request.require_organization_confirmation:
                     # 🔮 预测模式：仅预测组织，不自动创建，需要用户确认
                     logger.info(f"🔮 【预测模式】在生成大纲前预测是否需要新组织（需用户确认）")
                     
+                    # 直接调用，不使用heartbeat（在generator中处理）
                     auto_result = await auto_org_service.analyze_and_create_organizations(
                         project_id=project.id,
                         outline_content="",  # 预测模式不需要大纲内容
-                        existing_characters=list(characters),
+                        existing_characters=fresh_org_characters,  # ⭐ 使用重新查询的角色列表
                         existing_organizations=existing_organizations,
                         db=db,
                         user_id=user_id,
@@ -1141,10 +1130,11 @@ async def _continue_outline(
                     # 🚀 直接创建模式：预测后自动创建，无需用户确认
                     logger.info(f"🚀 【直接创建模式】在生成大纲前预测并直接创建新组织（无需确认）")
                     
+                    # 直接调用，不使用heartbeat（在generator中处理）
                     auto_result = await auto_org_service.analyze_and_create_organizations(
                         project_id=project.id,
                         outline_content="",
-                        existing_characters=list(characters),
+                        existing_characters=fresh_org_characters,  # ⭐ 使用重新查询的角色列表
                         existing_organizations=existing_organizations,
                         db=db,
                         user_id=user_id,
@@ -1157,20 +1147,16 @@ async def _continue_outline(
                         preview_only=False  # ✅ 直接创建组织
                     )
                     
-                    # 如果创建了新组织，更新角色列表
+                    # 如果创建了新组织，记录日志
                     if auto_result.get("new_organizations"):
                         new_count = len(auto_result["new_organizations"])
-                        logger.info(f"✅ 【直接创建模式】自动创建了 {new_count} 个新组织")
-                        
-                        # 提交组织到数据库
-                        await db.commit()
-                        
-                        # 更新角色信息（供后续大纲生成使用）
-                        for org_item in auto_result["new_organizations"]:
-                            org_char = org_item.get("character")
-                            if org_char:
-                                characters.append(org_char)
-                        characters_info = _build_characters_info(characters)
+                        # 新的返回格式是字典，使用 character_name 字段
+                        new_org_names = [
+                            org_item.get("character_name", "未知")
+                            for org_item in auto_result["new_organizations"]
+                        ]
+                        logger.info(f"✅ 【直接创建模式】自动创建了 {new_count} 个新组织: {', '.join(new_org_names)}")
+                        # 组织已经在 auto_organization_service 中提交，不需要再次 commit
                     else:
                         logger.info(f"✅ 【直接创建模式】AI判断无需引入新组织，继续生成大纲")
                     
@@ -1665,15 +1651,9 @@ async def new_outline_generator(
                 logger.info(f"🔄 重试生成完成，累计{len(ai_content)}字符")
         
         # 全新生成模式：删除旧大纲和关联的所有章节
-        yield await tracker.saving("清理旧大纲、章节和伏笔...", 0.2)
+        yield await tracker.saving("清理旧大纲和章节...", 0.2)
         logger.info(f"全新生成：删除项目 {project_id} 的旧大纲和章节（outline_mode: {project.outline_mode}）")
         
-        # 清理伏笔数据
-        try:
-            await foreshadow_service.clear_project_foreshadows_for_reset(db, project_id)
-        except Exception as e:
-            logger.warning(f"清理伏笔数据失败（不影响主流程）: {str(e)}")
-
         from sqlalchemy import delete as sql_delete
         
         # 先获取所有旧章节并计算总字数
@@ -1749,9 +1729,15 @@ async def new_outline_generator(
         
     except GeneratorExit:
         logger.warning("大纲生成器被提前关闭")
+        # 🔧 修复：SSE中断时尝试提交已完成的工作，而不是回滚
         if not db_committed and db.in_transaction():
-            await db.rollback()
-            logger.info("大纲生成事务已回滚（GeneratorExit）")
+            try:
+                await db.commit()
+                logger.info("大纲生成事务已提交（GeneratorExit - 保留已创建的数据）")
+            except Exception as commit_error:
+                logger.warning(f"GeneratorExit时提交失败，执行回滚: {commit_error}")
+                await db.rollback()
+                logger.info("大纲生成事务已回滚（GeneratorExit - 提交失败）")
     except Exception as e:
         logger.error(f"大纲生成失败: {str(e)}")
         if not db_committed and db.in_transaction():
@@ -1836,9 +1822,9 @@ async def continue_outline_generator(
         
         # === 角色引入阶段 ===
         # 🔧 判断：如果confirmed_organizations存在，说明已经是组织确认阶段，跳过角色处理
-        if enable_auto_characters and not confirmed_organizations:
-            # 检查是否有用户确认的角色列表
-            if confirmed_characters:
+        if enable_auto_characters and confirmed_organizations is None:
+            # 检查是否有用户确认的角色列表（注意：空列表也表示用户已确认，只是没有选择任何角色）
+            if confirmed_characters is not None:
                 # 直接使用用户确认的角色列表创建角色
                 try:
                     yield await tracker.preparing(
@@ -1869,18 +1855,42 @@ async def continue_outline_generator(
                                 )
                                 continue
                             
-                            # 生成角色详细信息
+                            # ⭐ 构建 project_info 字典，避免 Session 解绑问题
+                            project_info = {
+                                "id": project.id,
+                                "title": project.title,
+                                "theme": project.theme or "未设定",
+                                "genre": project.genre or "未设定",
+                                "world_time_period": project.world_time_period or "未设定",
+                                "world_location": project.world_location or "未设定",
+                                "world_atmosphere": project.world_atmosphere or "未设定",
+                                "world_rules": project.world_rules or "未设定",
+                            }
+                            
+                            # ⭐ 提取现有角色信息为字典列表，避免 Session 解绑问题
+                            existing_chars_info = auto_char_service._extract_character_info(list(characters))
+                            
+                            # 生成角色详细信息（使用心跳机制防止SSE超时）
                             yield await tracker.preparing(
-                                f"🤖 [{idx+1}/{len(confirmed_characters)}] AI生成角色详情：{char_name}..."
+                                f"🤖 [{idx+1}/{len(confirmed_characters)}] AI生成角色详情：{char_name}（可能需要1-5分钟）..."
                             )
-                            character_data = await auto_char_service._generate_character_details(
+                            
+                            # 🔧 使用heartbeat防止超时
+                            detail_task = asyncio.create_task(auto_char_service._generate_character_details(
                                 spec=char_data,
-                                project=project,
-                                existing_characters=list(characters),
+                                project_info=project_info,
+                                existing_chars_info=existing_chars_info,
                                 db=db,
                                 user_id=user_id,
                                 enable_mcp=data.get("enable_mcp", True)
-                            )
+                            ))
+                            
+                            while not detail_task.done():
+                                done, pending = await asyncio.wait([detail_task], timeout=5.0)
+                                if not done:
+                                    yield await tracker.heartbeat()
+                            
+                            character_data = await detail_task
                             
                             # 创建角色记录
                             yield await tracker.preparing(
@@ -1898,10 +1908,13 @@ async def continue_outline_generator(
                                 yield await tracker.preparing(
                                     f"🔗 [{idx+1}/{len(confirmed_characters)}] 建立 {len(relationships_data)} 个关系：{char_name}..."
                                 )
+                                # ⭐ 提取角色ID和名称，避免 Session 解绑问题
+                                character_id = character.id
+                                character_name = character.name
                                 await auto_char_service._create_relationships(
-                                    new_character=character,
+                                    new_character_id=character_id,
+                                    new_character_name=character_name,
                                     relationship_specs=relationships_data,
-                                    existing_characters=list(characters),
                                     project_id=project_id,
                                     db=db
                                 )
@@ -1921,13 +1934,13 @@ async def continue_outline_generator(
                             )
                             continue
                     
-                    # 提交角色到数据库
+                    # 刷新角色到数据库（不提交事务）
                     if actually_created_count > 0:
-                        await db.commit()
+                        await db.flush()  # 仅刷新，不提交
                         yield await tracker.preparing(
-                            f"✅ 【确认模式】实际创建了 {actually_created_count} 个新角色（跳过 {len(confirmed_characters) - actually_created_count} 个已存在）"
+                            f"✅ 【确认模式】实际创建了 {actually_created_count} 个新角色（待大纲生成成功后提交）"
                         )
-                        logger.info(f"✅ 【确认模式】实际创建了 {actually_created_count} 个新角色（跳过了 {len(confirmed_characters) - actually_created_count} 个已存在的角色）")
+                        logger.info(f"✅ 【确认模式】角色已创建（待大纲生成成功后提交）- 实际创建了 {actually_created_count} 个新角色（跳过了 {len(confirmed_characters) - actually_created_count} 个已存在的角色）")
                     else:
                         yield await tracker.preparing(
                             f"ℹ️ 【确认模式】所有角色均已存在，无需创建"
@@ -1954,21 +1967,41 @@ async def continue_outline_generator(
                         yield await tracker.preparing("🔮 【预测模式】开始分析角色需求...")
                         logger.info(f"🔮 【预测模式】在生成大纲前预测是否需要新角色")
                         
-                        # 进度消息不使用回调，因为在async generator中无法嵌套yield
-                        auto_result = await auto_char_service.analyze_and_create_characters(
-                            project_id=project_id,
-                            outline_content="",  # 预测模式不需要大纲内容
-                            existing_characters=list(characters),
-                            db=db,
-                            user_id=user_id,
-                            enable_mcp=data.get("enable_mcp", True),
-                            all_chapters_brief=all_chapters_brief_for_analysis,
-                            start_chapter=last_chapter_number + 1,
-                            chapter_count=total_chapters_to_generate,
-                            plot_stage=data.get("plot_stage", "development"),
-                            story_direction=data.get("story_direction", "自然延续"),
-                            preview_only=True  # ✅ 仅预测不创建
-                        )
+                        try:
+                            # 🔧 使用heartbeat防止超时
+                            analysis_task = asyncio.create_task(auto_char_service.analyze_and_create_characters(
+                                project_id=project_id,
+                                outline_content="",  # 预测模式不需要大纲内容
+                                existing_characters=list(characters),
+                                db=db,
+                                user_id=user_id,
+                                enable_mcp=data.get("enable_mcp", True),
+                                all_chapters_brief=all_chapters_brief_for_analysis,
+                                start_chapter=last_chapter_number + 1,
+                                chapter_count=total_chapters_to_generate,
+                                plot_stage=data.get("plot_stage", "development"),
+                                story_direction=data.get("story_direction", "自然延续"),
+                                preview_only=True  # ✅ 仅预测不创建
+                            ))
+                            
+                            # 等待任务完成，期间发送心跳和进度消息
+                            char_analysis_counter = 0
+                            while not analysis_task.done():
+                                done, pending = await asyncio.wait([analysis_task], timeout=5.0)
+                                if not done:
+                                    char_analysis_counter += 1
+                                    yield await tracker.heartbeat()
+                                    # 每30秒发送一次进度消息
+                                    if char_analysis_counter % 6 == 0:
+                                        yield await tracker.preparing(f"🔮 AI正在分析角色需求，请耐心等待...（已等待 {char_analysis_counter * 5} 秒）")
+                            
+                            auto_result = await analysis_task
+                        except CharacterAnalysisError as e:
+                            # 🚨 角色分析失败，发送明确的错误消息
+                            error_msg = f"角色需求分析失败: {str(e)}"
+                            logger.error(f"❌ {error_msg}")
+                            yield await tracker.error(error_msg)
+                            return
                         
                         yield await tracker.preparing("✅ 【预测模式】角色需求分析完成")
                         
@@ -1998,43 +2031,56 @@ async def continue_outline_generator(
                         yield await tracker.preparing("🚀 【直接创建模式】开始分析并创建角色...")
                         logger.info(f"🚀 【直接创建模式】在生成大纲前预测并直接创建新角色")
                         
-                        # 使用队列桥接回调和generator
-                        import asyncio
-                        progress_queue = asyncio.Queue()
-                        
-                        async def char_progress_callback(message):
-                            await progress_queue.put(message)
-                        
-                        # 启动服务任务
-                        char_task = asyncio.create_task(
-                            auto_char_service.analyze_and_create_characters(
-                                project_id=project_id,
-                                outline_content="",
-                                existing_characters=list(characters),
-                                db=db,
-                                user_id=user_id,
-                                enable_mcp=data.get("enable_mcp", True),
-                                all_chapters_brief=all_chapters_brief_for_analysis,
-                                start_chapter=last_chapter_number + 1,
-                                chapter_count=total_chapters_to_generate,
-                                plot_stage=data.get("plot_stage", "development"),
-                                story_direction=data.get("story_direction", "自然延续"),
-                                preview_only=False,
-                                progress_callback=char_progress_callback
+                        try:
+                            # 使用队列桥接回调和generator
+                            progress_queue = asyncio.Queue()
+                            
+                            async def char_progress_callback(message):
+                                await progress_queue.put(message)
+                            
+                            # 启动服务任务
+                            char_task = asyncio.create_task(
+                                auto_char_service.analyze_and_create_characters(
+                                    project_id=project_id,
+                                    outline_content="",
+                                    existing_characters=list(characters),
+                                    db=db,
+                                    user_id=user_id,
+                                    enable_mcp=data.get("enable_mcp", True),
+                                    all_chapters_brief=all_chapters_brief_for_analysis,
+                                    start_chapter=last_chapter_number + 1,
+                                    chapter_count=total_chapters_to_generate,
+                                    plot_stage=data.get("plot_stage", "development"),
+                                    story_direction=data.get("story_direction", "自然延续"),
+                                    preview_only=False,
+                                    progress_callback=char_progress_callback
+                                )
                             )
-                        )
-                        
-                        # 在等待任务完成的同时，消费队列中的进度消息
-                        char_progress_base = 14
-                        while not char_task.done():
-                            try:
-                                message = await asyncio.wait_for(progress_queue.get(), timeout=0.1)
-                                yield await tracker.preparing(message)
-                            except asyncio.TimeoutError:
-                                pass
-                        
-                        # 获取结果
-                        auto_result = await char_task
+                            
+                            # 在等待任务完成的同时，消费队列中的进度消息
+                            char_progress_base = 14
+                            heartbeat_counter = 0
+                            while not char_task.done():
+                                try:
+                                    message = await asyncio.wait_for(progress_queue.get(), timeout=5.0)
+                                    yield await tracker.preparing(message)
+                                    heartbeat_counter = 0  # 重置心跳计数器
+                                except asyncio.TimeoutError:
+                                    # 每5秒发送一次心跳，保持连接活跃
+                                    heartbeat_counter += 1
+                                    yield await tracker.heartbeat()
+                                    # 每30秒发送一次进度消息
+                                    if heartbeat_counter % 6 == 0:
+                                        yield await tracker.preparing(f"🤖 AI正在分析角色需求，请耐心等待...（已等待 {heartbeat_counter * 5} 秒）")
+                            
+                            # 获取结果（可能抛出CharacterAnalysisError）
+                            auto_result = await char_task
+                        except CharacterAnalysisError as e:
+                            # 🚨 角色分析失败，发送明确的错误消息
+                            error_msg = f"角色需求分析失败: {str(e)}"
+                            logger.error(f"❌ {error_msg}")
+                            yield await tracker.error(error_msg)
+                            return
                         
                         yield await tracker.preparing("✅ 【直接创建模式】角色分析和创建完成")
                         
@@ -2072,8 +2118,8 @@ async def continue_outline_generator(
             # 获取现有组织
             existing_organizations = await _get_existing_organizations(project_id, db)
             
-            # 检查是否有用户确认的组织列表
-            if confirmed_organizations:
+            # 检查是否有用户确认的组织列表（注意：空列表也表示用户已确认，只是没有选择任何组织）
+            if confirmed_organizations is not None:
                 # 直接使用用户确认的组织列表创建组织
                 try:
                     yield await tracker.preparing(
@@ -2086,6 +2132,31 @@ async def continue_outline_generator(
                     
                     auto_org_service = get_auto_organization_service(user_ai_service)
                     
+                    # ⭐ 重新查询角色列表，确保 Session 绑定
+                    fresh_gen_confirm_characters_result = await db.execute(
+                        select(Character).where(Character.project_id == project_id)
+                    )
+                    fresh_gen_confirm_characters = list(fresh_gen_confirm_characters_result.scalars().all())
+                    
+                    # ⭐ 构建 project_info 字典，避免 Session 解绑问题
+                    project_info = {
+                        "id": project.id,
+                        "title": project.title,
+                        "theme": project.theme,
+                        "genre": project.genre,
+                        "world_time_period": project.world_time_period,
+                        "world_location": project.world_location,
+                        "world_atmosphere": project.world_atmosphere,
+                        "world_rules": project.world_rules
+                    }
+                    
+                    # ⭐ 构建 existing_chars_info 列表，避免 Session 解绑问题
+                    existing_chars_info = [
+                        {"id": c.id, "name": c.name, "role": c.role_type, "description": c.background}
+                        for c in fresh_gen_confirm_characters
+                    ]
+                    logger.debug(f"  ✅ 已提取项目信息和 {len(existing_chars_info)} 个角色信息")
+                    
                     created_org_count = 0
                     for idx, org_data in enumerate(confirmed_organizations):
                         org_name = org_data.get("name", f"组织{idx+1}")  # 提前定义，避免异常处理中未定义
@@ -2093,59 +2164,66 @@ async def continue_outline_generator(
                             # 组织进度：21-29% (分配8%给组织创建)
                             org_progress = 21 + int((idx / max(len(confirmed_organizations), 1)) * 8)
                             
-                            # 生成组织详细信息
+                            # 生成组织详细信息（使用心跳机制防止SSE超时）
                             yield await tracker.preparing(
-                                f"🤖 [{idx+1}/{len(confirmed_organizations)}] AI生成组织详情：{org_name}..."
+                                f"🤖 [{idx+1}/{len(confirmed_organizations)}] AI生成组织详情：{org_name}（可能需要1-5分钟）..."
                             )
-                            organization_data = await auto_org_service._generate_organization_details(
+                            
+                            # 🔧 使用heartbeat防止超时
+                            org_detail_task = asyncio.create_task(auto_org_service._generate_organization_details(
                                 spec=org_data,
-                                project=project,
-                                existing_characters=list(characters),
+                                project_info=project_info,  # ⭐ 使用字典而非 ORM 对象
+                                existing_chars_info=existing_chars_info,  # ⭐ 使用字典列表而非 ORM 对象列表
                                 existing_organizations=existing_organizations,
                                 db=db,
                                 user_id=user_id,
                                 enable_mcp=data.get("enable_mcp", True)
-                            )
+                            ))
                             
-                            # 创建组织记录
+                            while not org_detail_task.done():
+                                done, pending = await asyncio.wait([org_detail_task], timeout=5.0)
+                                if not done:
+                                    yield await tracker.heartbeat()
+                            
+                            organization_data = await org_detail_task
+                            
+                            # 创建组织记录（返回信息字典，避免 Session 解绑问题）
                             yield await tracker.preparing(
                                 f"💾 [{idx+1}/{len(confirmed_organizations)}] 保存组织：{org_name}..."
                             )
-                            org_character, organization = await auto_org_service._create_organization_record(
+                            org_info = await auto_org_service._create_organization_record(
                                 project_id=project_id,
                                 organization_data=organization_data,
                                 db=db
                             )
                             
-                            # 建立成员关系
+                            # 建立成员关系（使用组织 ID）
                             members_data = organization_data.get("initial_members", [])
                             if members_data:
                                 yield await tracker.preparing(
                                     f"🔗 [{idx+1}/{len(confirmed_organizations)}] 建立 {len(members_data)} 个成员关系：{org_name}..."
                                 )
                                 await auto_org_service._create_member_relationships(
-                                    organization=organization,
+                                    organization_id=org_info["organization_id"],
                                     member_specs=members_data,
-                                    existing_characters=list(characters),
                                     project_id=project_id,
                                     db=db
                                 )
                             
-                            # 更新角色列表（组织也是Character）
-                            characters.append(org_character)
+                            # 更新组织列表（使用字典信息）
                             existing_organizations.append({
-                                "id": organization.id,
-                                "name": org_character.name,
-                                "organization_type": org_character.organization_type,
-                                "organization_purpose": org_character.organization_purpose,
-                                "power_level": organization.power_level,
-                                "location": organization.location,
-                                "motto": organization.motto
+                                "id": org_info["organization_id"],
+                                "name": org_info["character_name"],
+                                "organization_type": organization_data.get("organization_type"),
+                                "organization_purpose": organization_data.get("organization_purpose"),
+                                "power_level": organization_data.get("power_level", 50),
+                                "location": organization_data.get("location"),
+                                "motto": organization_data.get("motto")
                             })
                             created_org_count += 1
-                            logger.info(f"✅ 创建确认的组织: {org_character.name}")
+                            logger.info(f"✅ 创建确认的组织: {org_info['character_name']}")
                             yield await tracker.preparing(
-                                f"✅ [{idx+1}/{len(confirmed_organizations)}] 组织创建成功：{org_character.name}"
+                                f"✅ [{idx+1}/{len(confirmed_organizations)}] 组织创建成功：{org_info['character_name']}"
                             )
                             
                         except Exception as e:
@@ -2155,13 +2233,13 @@ async def continue_outline_generator(
                             )
                             continue
                     
-                    # 提交组织到数据库
-                    await db.commit()
+                    # 刷新组织到数据库（不提交事务）
+                    await db.flush()  # 仅刷新，不提交
                     
                     yield await tracker.preparing(
-                        f"✅ 【确认模式】成功创建 {created_org_count} 个组织"
+                        f"✅ 【确认模式】成功创建 {created_org_count} 个组织（待大纲生成成功后提交）"
                     )
-                    logger.info(f"✅ 【确认模式】成功创建 {created_org_count} 个用户确认的组织")
+                    logger.info(f"✅ 【确认模式】组织已创建（待大纲生成成功后提交）- 成功创建 {created_org_count} 个用户确认的组织")
                     
                 except Exception as e:
                     logger.error(f"⚠️ 【确认模式】创建确认组织失败: {e}", exc_info=True)
@@ -2178,26 +2256,49 @@ async def continue_outline_generator(
 
                     auto_org_service = get_auto_organization_service(user_ai_service)
                     
+                    # ⭐ 关键修复：在角色创建完成后，重新查询角色列表
+                    # 因为角色创建服务会调用 db.commit()，导致之前查询的对象解绑
+                    fresh_gen_org_characters_result = await db.execute(
+                        select(Character).where(Character.project_id == project_id)
+                    )
+                    fresh_gen_org_characters = list(fresh_gen_org_characters_result.scalars().all())
+                    
                     if require_org_confirmation:
                         # 🔮 预测模式：仅预测组织，不自动创建，需要用户确认
                         yield await tracker.preparing("🔮 【预测模式】开始分析组织需求...")
                         logger.info(f"🔮 【预测模式】在生成大纲前预测是否需要新组织")
                         
-                        auto_result = await auto_org_service.analyze_and_create_organizations(
-                            project_id=project_id,
-                            outline_content="",  # 预测模式不需要大纲内容
-                            existing_characters=list(characters),
-                            existing_organizations=existing_organizations,
-                            db=db,
-                            user_id=user_id,
-                            enable_mcp=data.get("enable_mcp", True),
-                            all_chapters_brief=all_chapters_brief_for_org_analysis,
-                            start_chapter=last_chapter_number + 1,
-                            chapter_count=total_chapters_to_generate,
-                            plot_stage=data.get("plot_stage", "development"),
-                            story_direction=data.get("story_direction", "自然延续"),
-                            preview_only=True  # ✅ 仅预测不创建
+                        # 使用 asyncio.create_task 并发执行，同时发送心跳
+                        org_analysis_task = asyncio.create_task(
+                            auto_org_service.analyze_and_create_organizations(
+                                project_id=project_id,
+                                outline_content="",  # 预测模式不需要大纲内容
+                                existing_characters=fresh_gen_org_characters,  # ⭐ 使用重新查询的角色列表
+                                existing_organizations=existing_organizations,
+                                db=db,
+                                user_id=user_id,
+                                enable_mcp=data.get("enable_mcp", True),
+                                all_chapters_brief=all_chapters_brief_for_org_analysis,
+                                start_chapter=last_chapter_number + 1,
+                                chapter_count=total_chapters_to_generate,
+                                plot_stage=data.get("plot_stage", "development"),
+                                story_direction=data.get("story_direction", "自然延续"),
+                                preview_only=True  # ✅ 仅预测不创建
+                            )
                         )
+                        
+                        # 等待任务完成，期间发送心跳和进度消息
+                        org_analysis_counter = 0
+                        while not org_analysis_task.done():
+                            done, pending = await asyncio.wait([org_analysis_task], timeout=5.0)
+                            if not done:
+                                org_analysis_counter += 1
+                                yield await tracker.heartbeat()
+                                # 每30秒发送一次进度消息
+                                if org_analysis_counter % 6 == 0:
+                                    yield await tracker.preparing(f"🔮 AI正在分析组织需求，请耐心等待...（已等待 {org_analysis_counter * 5} 秒）")
+                        
+                        auto_result = await org_analysis_task
                         
                         yield await tracker.preparing("✅ 【预测模式】组织需求分析完成")
                         
@@ -2228,7 +2329,6 @@ async def continue_outline_generator(
                         logger.info(f"🚀 【直接创建模式】在生成大纲前预测并直接创建新组织")
                         
                         # 使用队列桥接回调和generator
-                        import asyncio
                         org_progress_queue = asyncio.Queue()
                         
                         async def org_progress_callback(message):
@@ -2239,7 +2339,7 @@ async def continue_outline_generator(
                             auto_org_service.analyze_and_create_organizations(
                                 project_id=project_id,
                                 outline_content="",
-                                existing_characters=list(characters),
+                                existing_characters=fresh_gen_org_characters,  # ⭐ 使用重新查询的角色列表
                                 existing_organizations=existing_organizations,
                                 db=db,
                                 user_id=user_id,
@@ -2256,12 +2356,19 @@ async def continue_outline_generator(
                         
                         # 在等待任务完成的同时，消费队列中的进度消息
                         org_progress_base = 24
+                        org_heartbeat_counter = 0
                         while not org_task.done():
                             try:
-                                message = await asyncio.wait_for(org_progress_queue.get(), timeout=0.1)
+                                message = await asyncio.wait_for(org_progress_queue.get(), timeout=5.0)
                                 yield await tracker.preparing(message)
+                                org_heartbeat_counter = 0  # 重置心跳计数器
                             except asyncio.TimeoutError:
-                                pass
+                                # 每5秒发送一次心跳，保持连接活跃
+                                org_heartbeat_counter += 1
+                                yield await tracker.heartbeat()
+                                # 每30秒发送一次进度消息
+                                if org_heartbeat_counter % 6 == 0:
+                                    yield await tracker.preparing(f"🏛️ AI正在分析组织需求，请耐心等待...（已等待 {org_heartbeat_counter * 5} 秒）")
                         
                         # 获取结果
                         auto_result = await org_task
@@ -2271,26 +2378,20 @@ async def continue_outline_generator(
                         # 如果创建了新组织，更新角色列表
                         if auto_result.get("new_organizations"):
                             new_count = len(auto_result["new_organizations"])
-                            new_org_names = []
-                            for org_item in auto_result["new_organizations"]:
-                                org_char = org_item.get("character")
-                                if org_char:
-                                    new_org_names.append(org_char.name)
+                            # 新的返回格式是字典，使用 character_name 字段
+                            new_org_names = [
+                                org_item.get("character_name", "未知")
+                                for org_item in auto_result["new_organizations"]
+                            ]
                             logger.info(f"✅ 【直接创建模式】自动创建了 {new_count} 个新组织")
                             
                             yield await tracker.preparing(
                                 f"✅ 【直接创建模式】成功创建 {new_count} 个新组织：{', '.join(new_org_names[:3])}{'...' if new_count > 3 else ''}"
                             )
                             
-                            # 提交组织到数据库
-                            await db.commit()
-                            
-                            # 更新角色信息（供后续大纲生成使用）
-                            for org_item in auto_result["new_organizations"]:
-                                org_char = org_item.get("character")
-                                if org_char:
-                                    characters.append(org_char)
-                            characters_info = _build_characters_info(characters)
+                            # 🔧 修复：使用 flush 而不是 commit，等待大纲生成成功后统一提交
+                            await db.flush()  # 仅刷新，不提交
+                            logger.info("✅ 组织已创建（待大纲生成成功后提交）")
                         else:
                             yield await tracker.preparing("✅ 【直接创建模式】无需引入新组织，继续生成大纲")
                             logger.info(f"✅ 【直接创建模式】AI判断无需引入新组织")
@@ -2300,7 +2401,38 @@ async def continue_outline_generator(
                     yield await tracker.warning("组织预测失败，继续生成大纲")
                     # 不阻断大纲生成流程
         
+        # 🔧 关键修复：发送心跳消息，防止 SSE 连接超时
+        yield await tracker.heartbeat()
+        logger.info("💓 角色/组织引入阶段完成，发送心跳消息")
+        
         # === 批次生成阶段 ===
+        # 🔧 关键修复：重新查询 project 对象，避免 Session 解绑问题
+        # 因为角色/组织创建服务会调用 db.commit()，导致之前查询的 project 对象解绑
+        logger.info("🔄 重新查询 project 对象...")
+        try:
+            project_result = await db.execute(
+                select(Project).where(Project.id == project_id)
+            )
+            project = project_result.scalar_one_or_none()
+            if not project:
+                yield await tracker.error("项目不存在", 404)
+                return
+            
+            # 🔧 同时重新查询角色列表
+            characters_result = await db.execute(
+                select(Character).where(Character.project_id == project_id)
+            )
+            characters = list(characters_result.scalars().all())
+            characters_info = _build_characters_info(characters)
+            
+            logger.info(f"✅ 重新查询完成: project={project.title}, characters={len(characters)}")
+        except Exception as e:
+            logger.error(f"❌ 重新查询 project/characters 失败: {e}", exc_info=True)
+            yield await tracker.error(f"数据库查询失败: {str(e)}")
+            return
+        
+        yield await tracker.heartbeat()  # 发送心跳，防止超时
+        
         all_new_outlines = []
         current_start_chapter = last_chapter_number + 1
         
@@ -2567,9 +2699,10 @@ async def continue_outline_generator(
         
     except GeneratorExit:
         logger.warning("大纲续写生成器被提前关闭")
+        # 🔧 修复：SSE中断时回滚事务，清理未完成的角色/组织
         if not db_committed and db.in_transaction():
             await db.rollback()
-            logger.info("大纲续写事务已回滚（GeneratorExit）")
+            logger.info("大纲续写事务已回滚（GeneratorExit - 清理未完成的角色/组织）")
     except Exception as e:
         logger.error(f"大纲续写失败: {str(e)}")
         if not db_committed and db.in_transaction():

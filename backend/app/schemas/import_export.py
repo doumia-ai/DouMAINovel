@@ -124,53 +124,34 @@ class GenerationHistoryExportData(BaseModel):
 class CareerExportData(BaseModel):
     """职业导出数据"""
     name: str
-    type: str  # main/sub
     description: Optional[str] = None
     category: Optional[str] = None
-    stages: str  # JSON格式的阶段列表
-    max_stage: int = 10
-    requirements: Optional[str] = None
-    special_abilities: Optional[str] = None
-    worldview_rules: Optional[str] = None
-    attribute_bonuses: Optional[str] = None
-    source: str = "ai"
+    stages: Optional[List[Dict[str, Any]]] = None
     created_at: Optional[str] = None
 
 
 class CharacterCareerExportData(BaseModel):
     """角色职业关联导出数据"""
-    character_name: str  # 通过名称关联
-    career_name: str  # 通过名称关联
-    career_type: str  # main/sub
+    character_name: str
+    career_name: str
     current_stage: int = 1
-    stage_progress: int = 0
-    started_at: Optional[str] = None
-    reached_current_stage_at: Optional[str] = None
+    is_main_career: bool = False
     notes: Optional[str] = None
 
 
 class StoryMemoryExportData(BaseModel):
     """故事记忆导出数据"""
-    chapter_title: Optional[str] = None  # 通过章节标题关联
+    chapter_title: Optional[str] = None
     memory_type: str
-    title: Optional[str] = None
     content: str
-    full_context: Optional[str] = None
-    related_characters: Optional[List[str]] = None  # 角色名称列表
-    related_locations: Optional[List[str]] = None
-    tags: Optional[List[str]] = None
-    importance_score: float = 0.5
-    story_timeline: int
-    chapter_position: int = 0
-    text_length: int = 0
-    is_foreshadow: int = 0
-    foreshadow_strength: Optional[float] = None
+    importance: int = 50
+    related_characters: Optional[List[str]] = None
     created_at: Optional[str] = None
 
 
 class PlotAnalysisExportData(BaseModel):
     """剧情分析导出数据"""
-    chapter_title: str  # 通过章节标题关联
+    chapter_title: str
     plot_stage: Optional[str] = None
     conflict_level: Optional[int] = None
     conflict_types: Optional[List[str]] = None
@@ -202,7 +183,7 @@ class PlotAnalysisExportData(BaseModel):
 
 class ProjectDefaultStyleExportData(BaseModel):
     """项目默认风格导出数据"""
-    style_name: str  # 通过风格名称关联
+    style_name: str
 
 
 class ProjectExportData(BaseModel):

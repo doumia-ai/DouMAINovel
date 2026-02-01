@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+
+import axios from 'axios';
 import { Card, Table, Tag, Button, Space, message, Modal, Form, Select, InputNumber, Input, Descriptions, Drawer } from 'antd';
 import { PlusOutlined, UserOutlined, EditOutlined, DeleteOutlined, UnorderedListOutlined, BankOutlined } from '@ant-design/icons';
-import { useStore } from '../store';
-import { useCharacterSync } from '../store/hooks';
-import axios from 'axios';
+import { useParams } from 'react-router-dom';
+
+import { useCharacterSync } from '../store/hooks.js';
+import { useStore } from '../store/index.js';
 
 interface Organization {
   id: string;
@@ -59,6 +61,13 @@ export default function Organizations() {
   const [modal, contextHolder] = Modal.useModal();
   const [orgListVisible, setOrgListVisible] = useState(false);
 
+  // Helper function for power level color
+  const getPowerLevelColor = (powerLevel: number): string => {
+    if (powerLevel >= 70) return 'red';
+    if (powerLevel >= 50) return 'orange';
+    return 'default';
+  };
+
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth <= 768);
@@ -83,7 +92,6 @@ export default function Organizations() {
     } finally {
       setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
   const loadCharacters = useCallback(async () => {
@@ -235,11 +243,19 @@ export default function Organizations() {
       title: '忠诚度',
       dataIndex: 'loyalty',
       key: 'loyalty',
-      render: (loyalty: number) => (
-        <span style={{ color: loyalty >= 70 ? 'green' : loyalty >= 40 ? 'orange' : 'red' }}>
-          {loyalty}%
-        </span>
-      ),
+      render: (loyalty: number) => {
+        const getLoyaltyColor = (value: number): string => {
+          if (value >= 70) return 'green';
+          if (value >= 40) return 'orange';
+          return 'red';
+        };
+
+        return (
+          <span style={{ color: getLoyaltyColor(loyalty) }}>
+            {loyalty}%
+          </span>
+        );
+      },
       width: isMobile ? 80 : undefined,
     },
     {
@@ -310,7 +326,7 @@ export default function Organizations() {
         <div style={{
           padding: '16px 0',
           marginBottom: 16,
-          borderBottom: '1px solid #f0f0f0'
+          borderBottom: '1px solid var(--color-border-secondary)'
         }}>
           <h2 style={{ margin: 0, fontSize: 24 }}>
             <BankOutlined style={{ marginRight: 8 }} />
@@ -335,7 +351,7 @@ export default function Organizations() {
           loading={loading}
         >
           {organizations.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px 20px', color: '#999' }}>
+            <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--color-text-tertiary)' }}>
               暂无组织
             </div>
           ) : (
@@ -347,8 +363,8 @@ export default function Organizations() {
                   hoverable
                   style={{
                     cursor: 'pointer',
-                    border: selectedOrg?.id === org.id ? '2px solid #1890ff' : '1px solid #d9d9d9',
-                    background: selectedOrg?.id === org.id ? '#e6f7ff' : 'transparent'
+                    border: selectedOrg?.id === org.id ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+                    background: selectedOrg?.id === org.id ? 'var(--color-primary-bg)' : 'transparent'
                   }}
                   onClick={() => handleSelectOrganization(org)}
                 >
@@ -377,7 +393,7 @@ export default function Organizations() {
           styles={{ body: { padding: 0 } }}
         >
           {organizations.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px 20px', color: '#999' }}>
+            <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--color-text-tertiary)' }}>
               暂无组织
             </div>
           ) : (
@@ -389,8 +405,8 @@ export default function Organizations() {
                   hoverable
                   style={{
                     cursor: 'pointer',
-                    border: selectedOrg?.id === org.id ? '2px solid #1890ff' : '1px solid #d9d9d9',
-                    background: selectedOrg?.id === org.id ? '#e6f7ff' : 'transparent'
+                    border: selectedOrg?.id === org.id ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+                    background: selectedOrg?.id === org.id ? 'var(--color-primary-bg)' : 'transparent'
                   }}
                   onClick={() => {
                     handleSelectOrganization(org);
@@ -400,7 +416,7 @@ export default function Organizations() {
                   <Space direction="vertical" size="small" style={{ width: '100%' }}>
                     <strong style={{ fontSize: 14 }}>{org.name}</strong>
                     <Tag color="blue">{org.type}</Tag>
-                    <div style={{ fontSize: '12px', color: '#666' }}>
+                    <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
                       成员: {org.member_count} | 势力: {org.power_level}
                     </div>
                   </Space>
@@ -492,7 +508,7 @@ export default function Organizations() {
                     <Descriptions.Item label="类型">{selectedOrg.type}</Descriptions.Item>
                     <Descriptions.Item label="成员数量">{selectedOrg.member_count}</Descriptions.Item>
                     <Descriptions.Item label="势力等级">
-                      <Tag color={selectedOrg.power_level >= 70 ? 'red' : selectedOrg.power_level >= 50 ? 'orange' : 'default'}>
+                      <Tag color={getPowerLevelColor(selectedOrg.power_level)}>
                         {selectedOrg.power_level}
                       </Tag>
                     </Descriptions.Item>

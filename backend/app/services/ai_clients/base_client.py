@@ -112,6 +112,18 @@ class BaseAIClient(ABC):
                     return response.json()
 
                 except httpx.HTTPStatusError as e:
+                    # 尝试获取详细错误信息
+                    error_detail = ""
+                    try:
+                        error_body = e.response.json()
+                        error_detail = f" - {error_body}"
+                    except:
+                        try:
+                            error_detail = f" - {e.response.text}"
+                        except:
+                            pass
+                    logger.error(f"HTTP 错误 {e.response.status_code}: {e}{error_detail}")
+                    
                     if e.response.status_code in retry_cfg.non_retryable_status_codes:
                         raise
                     if attempt == retry_cfg.max_retries - 1:

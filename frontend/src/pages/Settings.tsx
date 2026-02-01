@@ -1,16 +1,24 @@
 import { useState, useEffect } from 'react';
-import { Card, Form, Input, Button, Select, Slider, InputNumber, message, Space, Typography, Spin, Modal, Alert, Grid, Tabs, List, Tag, Popconfirm, Empty, Row, Col } from 'antd';
-import { SaveOutlined, DeleteOutlined, ReloadOutlined, InfoCircleOutlined, CheckCircleOutlined, CloseCircleOutlined, ThunderboltOutlined, PlusOutlined, EditOutlined, CopyOutlined, WarningOutlined } from '@ant-design/icons';
-import { settingsApi, mcpPluginApi } from '../services/api';
-import type { SettingsUpdate, APIKeyPreset, PresetCreateRequest, APIKeyPresetConfig } from '../types';
-import { eventBus, EventNames } from '../store/eventBus';
 
-const { Title, Text } = Typography;
+import { Card, Form, Input, Button, Select, Slider, InputNumber, message, Space, Typography, Spin, Modal, Alert, Grid, Tabs, List, Tag, Popconfirm, Empty, ConfigProvider, theme } from 'antd';
+import { SettingOutlined, SaveOutlined, DeleteOutlined, ReloadOutlined, ArrowLeftOutlined, InfoCircleOutlined, CheckCircleOutlined, CloseCircleOutlined, ThunderboltOutlined, PlusOutlined, EditOutlined, CopyOutlined, WarningOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
+
+import type { SettingsUpdate, APIKeyPreset, PresetCreateRequest, APIKeyPresetConfig } from '../types/index.js';
+
+import KeyPoolManager from '../components/KeyPoolManager.js';
+import { PageHeader } from '../components/PageHeader.js';
+import { ThemedModal } from '../components/ThemedModal.js';
+import { settingsApi, mcpPluginApi } from '../services/api/index.js';
+import { useTheme } from '../contexts/ThemeContext.js';
+
+const { Text } = Typography;
 const { Option } = Select;
 const { useBreakpoint } = Grid;
 const { TextArea } = Input;
 
 export default function SettingsPage() {
+  const navigate = useNavigate();
   const screens = useBreakpoint();
   const isMobile = !screens.md; // md断点是768px
   const [form] = Form.useForm();
@@ -33,6 +41,7 @@ export default function SettingsPage() {
     suggestions?: string[];
   } | null>(null);
   const [showTestResult, setShowTestResult] = useState(false);
+  const { actualTheme } = useTheme();
 
   // 预设相关状态
   const [activeTab, setActiveTab] = useState('current');
@@ -48,26 +57,20 @@ export default function SettingsPage() {
   const [presetModelOptions, setPresetModelOptions] = useState<Array<{ value: string; label: string; description: string }>>([]);
   const [fetchingPresetModels, setFetchingPresetModels] = useState(false);
   const [presetModelsFetched, setPresetModelsFetched] = useState(false);
+  const [modelSearchValue, setModelSearchValue] = useState('');
+  const [presetModelSearchValue, setPresetModelSearchValue] = useState('');
 
   useEffect(() => {
     loadSettings();
     if (activeTab === 'presets') {
       loadPresets();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (activeTab === 'presets') {
       loadPresets();
-    } else if (activeTab === 'current') {
-      // 切换到当前配置Tab时，刷新设置以获取最新数据
-      loadSettings();
-      // 清除旧的测试结果，因为可能是其他配置的测试结果
-      setTestResult(null);
-      setShowTestResult(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
   const loadSettings = async () => {
@@ -84,7 +87,6 @@ export default function SettingsPage() {
         setIsDefaultSettings(false);
         setHasSettings(true);
       }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       // 如果404表示还没有设置，使用默认值
       if (error?.response?.status === 404) {
@@ -128,36 +130,13 @@ export default function SettingsPage() {
       message.success('设置已保存');
       setHasSettings(true);
       setIsDefaultSettings(false);
-      
+
       // 保存后清除测试结果，因为配置可能已变更
       setTestResult(null);
       setShowTestResult(false);
       
       // 手动保存配置后，需要同步更新预设激活状态
-      // 因为用户手动修改的配置可能与之前激活的预设不一致了
-      // 重新加载预设列表以确保状态正确（后端在save时会自动取消激活状态）
-      if (activePresetId) {
-        // 检查当前保存的配置是否与激活预设一致
-        const activePreset = presets.find(p => p.id === activePresetId);
-        if (activePreset) {
-          const presetConfig = activePreset.config;
-          const configMismatch =
-            presetConfig.api_provider !== values.api_provider ||
-            presetConfig.api_key !== values.api_key ||
-            presetConfig.api_base_url !== values.api_base_url ||
-            presetConfig.llm_model !== values.llm_model ||
-            presetConfig.temperature !== values.temperature ||
-            presetConfig.max_tokens !== values.max_tokens;
-          
-          if (configMismatch) {
-            // 配置已变更，清除前端的激活状态标记
-            setActivePresetId(undefined);
-            message.info('配置已更改，预设激活状态已取消');
-            // 刷新预设列表以同步后端取消激活的状态
-            loadPresets();
-          }
-        }
-      }
+      loadPresets();
       
       // 如果配置发生变化，需要处理 MCP 插件
       if (configChanged) {
@@ -210,7 +189,7 @@ export default function SettingsPage() {
               okText: '前往 MCP 页面',
               cancelText: '稍后处理',
               onOk: () => {
-                eventBus.emit(EventNames.SWITCH_TO_MCP_VIEW);
+                navigate('/mcp-plugins');
               },
             });
           }
@@ -218,7 +197,7 @@ export default function SettingsPage() {
           console.error('Failed to disable MCP plugins:', err);
         }
       }
-    } catch {
+    } catch (error) {
       message.error('保存设置失败');
     } finally {
       setLoading(false);
@@ -261,7 +240,7 @@ export default function SettingsPage() {
           message.success('设置已删除');
           setHasSettings(false);
           form.resetFields();
-        } catch {
+        } catch (error) {
           message.error('删除设置失败');
         } finally {
           setLoading(false);
@@ -284,6 +263,7 @@ export default function SettingsPage() {
     // 清空模型列表，需要重新获取
     setModelOptions([]);
     setModelsFetched(false);
+    setModelSearchValue('');
   };
 
   const handleFetchModels = async (silent: boolean = false) => {
@@ -311,7 +291,6 @@ export default function SettingsPage() {
       if (!silent) {
         message.success(`成功获取 ${response.count || response.models.length} 个可用模型`);
       }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       const errorMsg = error?.response?.data?.detail || '获取模型列表失败';
       if (!silent) {
@@ -336,8 +315,6 @@ export default function SettingsPage() {
     const apiBaseUrl = form.getFieldValue('api_base_url');
     const provider = form.getFieldValue('api_provider');
     const modelName = form.getFieldValue('llm_model');
-    const temperature = form.getFieldValue('temperature');
-    const maxTokens = form.getFieldValue('max_tokens');
 
     if (!apiKey || !apiBaseUrl || !provider || !modelName) {
       message.warning('请先填写完整的配置信息');
@@ -352,9 +329,7 @@ export default function SettingsPage() {
         api_key: apiKey,
         api_base_url: apiBaseUrl,
         provider: provider,
-        llm_model: modelName,
-        temperature: temperature,
-        max_tokens: maxTokens
+        llm_model: modelName
       });
 
       setTestResult(result);
@@ -365,7 +340,6 @@ export default function SettingsPage() {
       } else {
         message.error('API 测试失败，请查看详细信息');
       }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       const errorMsg = error?.response?.data?.detail || '测试请求失败';
       message.error(errorMsg);
@@ -402,7 +376,8 @@ export default function SettingsPage() {
     // 重置预设模型列表状态
     setPresetModelOptions([]);
     setPresetModelsFetched(false);
-    
+    setPresetModelSearchValue('');
+
     if (preset) {
       setEditingPreset(preset);
       presetForm.setFieldsValue({
@@ -415,7 +390,6 @@ export default function SettingsPage() {
       presetForm.resetFields();
       presetForm.setFieldsValue({
         api_provider: 'openai',
-        api_base_url: 'https://api.openai.com/v1',
         temperature: 0.7,
         max_tokens: 2000,
       });
@@ -430,6 +404,7 @@ export default function SettingsPage() {
     // 清除预设模型列表状态
     setPresetModelOptions([]);
     setPresetModelsFetched(false);
+    setPresetModelSearchValue('');
   };
 
   // 预设编辑窗口：获取模型列表
@@ -458,7 +433,6 @@ export default function SettingsPage() {
       if (!silent) {
         message.success(`成功获取 ${response.count || response.models.length} 个可用模型`);
       }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       const errorMsg = error?.response?.data?.detail || '获取模型列表失败';
       if (!silent) {
@@ -487,6 +461,7 @@ export default function SettingsPage() {
     // 清空模型列表，需要重新获取
     setPresetModelOptions([]);
     setPresetModelsFetched(false);
+    setPresetModelSearchValue('');
   };
 
   const handlePresetSave = async () => {
@@ -530,7 +505,6 @@ export default function SettingsPage() {
       await settingsApi.deletePreset(presetId);
       message.success('预设已删除');
       loadPresets();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       message.error(error.response?.data?.detail || '删除失败');
       console.error(error);
@@ -544,6 +518,8 @@ export default function SettingsPage() {
       
       await settingsApi.activatePreset(presetId);
       message.success(`已激活预设: ${presetName}`);
+      loadPresets();
+      loadSettings(); // 重新加载当前配置
       
       // 激活预设后清除当前配置Tab的测试结果
       setTestResult(null);
@@ -552,9 +528,6 @@ export default function SettingsPage() {
       // 清除模型列表缓存，因为API配置可能已变更
       setModelOptions([]);
       setModelsFetched(false);
-      
-      loadPresets();
-      loadSettings(); // 重新加载当前配置
       
       // 检查是否与 MCP 缓存的配置不一致
       if (preset) {
@@ -627,7 +600,7 @@ export default function SettingsPage() {
                 okText: '前往 MCP 页面',
                 cancelText: '稍后处理',
                 onOk: () => {
-                  eventBus.emit(EventNames.SWITCH_TO_MCP_VIEW);
+                  navigate('/mcp-plugins');
                 },
               });
             }
@@ -768,8 +741,6 @@ export default function SettingsPage() {
     switch (provider) {
       case 'openai':
         return 'blue';
-      // case 'anthropic':
-      //   return 'purple';
       case 'gemini':
         return 'green';
       default:
@@ -813,10 +784,10 @@ export default function SettingsPage() {
                 <List.Item
                   key={preset.id}
                   style={{
-                    background: isActive ? '#f0f5ff' : 'transparent',
+                    background: isActive ? 'var(--color-info-bg)' : 'var(--color-bg-container)',
                     padding: '16px',
                     marginBottom: '8px',
-                    border: isActive ? '2px solid #1890ff' : '1px solid #f0f0f0',
+                    border: isActive ? '2px solid var(--color-primary)' : `1px solid var(--color-border-secondary)`,
                     borderRadius: '8px',
                   }}
                   actions={[
@@ -866,7 +837,7 @@ export default function SettingsPage() {
                     avatar={
                       isActive && (
                         <CheckCircleOutlined
-                          style={{ fontSize: '24px', color: '#52c41a' }}
+                          style={{ fontSize: '24px', color: 'var(--color-success)' }}
                         />
                       )
                     }
@@ -879,7 +850,7 @@ export default function SettingsPage() {
                     description={
                       <Space direction="vertical" size="small" style={{ width: '100%' }}>
                         {preset.description && (
-                          <div style={{ color: '#666' }}>{preset.description}</div>
+                          <div style={{ color: 'var(--color-text-secondary)' }}>{preset.description}</div>
                         )}
                         <Space wrap>
                           <Tag color={getProviderColor(preset.config.api_provider)}>
@@ -889,7 +860,7 @@ export default function SettingsPage() {
                           <Tag>温度: {preset.config.temperature}</Tag>
                           <Tag>Tokens: {preset.config.max_tokens}</Tag>
                         </Space>
-                        <div style={{ fontSize: '12px', color: '#999' }}>
+                        <div style={{ fontSize: '12px', color: 'var(--color-text-tertiary)' }}>
                           创建于: {new Date(preset.created_at).toLocaleString()}
                         </div>
                       </Space>
@@ -905,12 +876,16 @@ export default function SettingsPage() {
   );
 
   return (
-    <>
+    <ConfigProvider
+      theme={{
+        algorithm: actualTheme === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm,
+      }}
+    >
       {contextHolder}
       <div style={{
-        minHeight: '90vh',
-        background: 'linear-gradient(180deg, var(--color-bg-base) 0%, #EEF2F3 100%)',
-        padding: isMobile ? '20px 16px 70px' : '24px 24px 70px',
+        minHeight: '100vh',
+        background: 'var(--color-bg-base)',
+        padding: isMobile ? '20px 16px' : '40px 24px',
         display: 'flex',
         flexDirection: 'column',
       }}>
@@ -923,47 +898,48 @@ export default function SettingsPage() {
           flexDirection: 'column',
         }}>
           {/* 顶部导航卡片 */}
-          <Card
-            variant="borderless"
-            style={{
-              background: 'linear-gradient(135deg, var(--color-primary) 0%, #5A9BA5 50%, var(--color-primary-hover) 100%)',
-              borderRadius: isMobile ? 16 : 24,
-              boxShadow: '0 12px 40px rgba(77, 128, 136, 0.25), 0 4px 12px rgba(0, 0, 0, 0.06)',
-              marginBottom: isMobile ? 20 : 24,
-              border: 'none',
-              position: 'relative',
-              overflow: 'hidden'
-            }}
-          >
-            {/* 装饰性背景元素 */}
-            <div style={{ position: 'absolute', top: -60, right: -60, width: 200, height: 200, borderRadius: '50%', background: 'rgba(255, 255, 255, 0.08)', pointerEvents: 'none' }} />
-            <div style={{ position: 'absolute', bottom: -40, left: '30%', width: 120, height: 120, borderRadius: '50%', background: 'rgba(255, 255, 255, 0.05)', pointerEvents: 'none' }} />
-            <div style={{ position: 'absolute', top: '50%', right: '15%', width: 80, height: 80, borderRadius: '50%', background: 'rgba(255, 255, 255, 0.06)', pointerEvents: 'none' }} />
-
-            <Row align="middle" justify="space-between" gutter={[16, 16]} style={{ position: 'relative', zIndex: 1 }}>
-              <Col xs={24} sm={12}>
-                <Space direction="vertical" size={4}>
-                  <Title level={isMobile ? 3 : 2} style={{ margin: 0, color: '#fff', textShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-                    AI API 设置
-                  </Title>
-                  <Text style={{ fontSize: isMobile ? 12 : 14, color: 'rgba(255,255,255,0.85)', marginLeft: isMobile ? 40 : 48 }}>
-                    配置AI接口参数，管理多个API配置预设
-                  </Text>
+          <div style={{ marginBottom: isMobile ? 20 : 24 }}>
+            <PageHeader
+              title="AI API 设置"
+              icon={<SettingOutlined style={{ color: 'rgba(255,255,255,0.9)' }} />}
+              description="配置AI接口参数，管理多个API配置预设"
+              actions={
+                <Space size={12} style={{ display: 'flex', justifyContent: isMobile ? 'flex-start' : 'flex-end', width: '100%' }}>
+                  <Button
+                    icon={<ArrowLeftOutlined />}
+                    onClick={() => navigate('/')}
+                    style={{
+                      borderRadius: 12,
+                      background: 'rgba(255, 255, 255, 0.15)',
+                      border: '1px solid rgba(255, 255, 255, 0.3)',
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                      color: '#fff',
+                      backdropFilter: 'blur(10px)',
+                      transition: 'all 0.3s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)';
+                      e.currentTarget.style.transform = 'translateY(-1px)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                      e.currentTarget.style.transform = 'none';
+                    }}
+                  >
+                    返回主页
+                  </Button>
                 </Space>
-              </Col>
-              <Col xs={24} sm={12}>
-                {/* 按钮区域预留 */}
-              </Col>
-            </Row>
-          </Card>
+              }
+            />
+          </div>
 
           {/* 主内容卡片 */}
           <Card
             variant="borderless"
             style={{
-              background: 'rgba(255, 255, 255, 0.95)',
+              background: 'var(--color-bg-container)',
               borderRadius: isMobile ? 12 : 16,
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+              boxShadow: 'var(--shadow-card)',
               flex: 1,
             }}
             styles={{
@@ -1171,16 +1147,22 @@ export default function SettingsPage() {
                                   </div>
                                 ) : undefined
                               }
-                              options={modelOptions.map(model => ({
-                                value: model.value,
-                                label: model.label,
-                                description: model.description
-                              }))}
+                              onSearch={(val) => setModelSearchValue(val)}
+                              options={[
+                                ...modelOptions.map(model => ({
+                                  value: model.value,
+                                  label: model.label,
+                                  description: model.description
+                                })),
+                                ...(modelSearchValue && !modelOptions.find(m => m.value === modelSearchValue || m.label === modelSearchValue) 
+                                  ? [{ value: modelSearchValue, label: modelSearchValue, description: '手动输入' }] 
+                                  : [])
+                              ]}
                               optionRender={(option) => (
                                 <div>
                                   <div style={{ fontWeight: 500, fontSize: isMobile ? '13px' : '14px' }}>{option.data.label}</div>
                                   {option.data.description && (
-                                    <div style={{ fontSize: isMobile ? '11px' : '12px', color: '#8c8c8c', marginTop: '2px' }}>
+                                    <div style={{ fontSize: isMobile ? '11px' : '12px', color: 'var(--color-text-tertiary)', marginTop: '2px' }}>
                                       {option.data.description}
                                     </div>
                                   )}
@@ -1287,13 +1269,13 @@ export default function SettingsPage() {
                                         <div style={{
                                           fontSize: isMobile ? '12px' : '13px',
                                           padding: '8px 12px',
-                                          background: '#f6ffed',
+                                          background: 'var(--color-success-bg)',
                                           borderRadius: '4px',
-                                          border: '1px solid #b7eb8f',
+                                          border: '1px solid var(--color-success-border)',
                                           marginTop: '8px'
                                         }}>
                                           <div style={{ marginBottom: '4px', fontWeight: 500 }}>AI 响应预览:</div>
-                                          <div style={{ color: '#595959' }}>{testResult.response_preview}</div>
+                                          <div style={{ color: 'var(--color-text-secondary)' }}>{testResult.response_preview}</div>
                                         </div>
                                       )}
                                       <div style={{ color: 'var(--color-success)', fontSize: isMobile ? '12px' : '13px', marginTop: '4px' }}>
@@ -1306,10 +1288,10 @@ export default function SettingsPage() {
                                         <div style={{
                                           fontSize: isMobile ? '12px' : '13px',
                                           padding: '8px 12px',
-                                          background: '#fff2e8',
+                                          background: 'var(--color-error-bg)',
                                           borderRadius: '4px',
-                                          border: '1px solid #ffbb96',
-                                          color: '#d4380d'
+                                          border: '1px solid var(--color-error-border)',
+                                          color: 'var(--color-error)'
                                         }}>
                                           <strong>错误信息:</strong> {testResult.error}
                                         </div>
@@ -1328,7 +1310,7 @@ export default function SettingsPage() {
                                             margin: 0,
                                             paddingLeft: isMobile ? '16px' : '20px',
                                             fontSize: isMobile ? '12px' : '13px',
-                                            color: '#595959'
+                                            color: 'var(--color-text-secondary)'
                                           }}>
                                             {testResult.suggestions.map((suggestion, index) => (
                                               <li key={index} style={{ marginBottom: '4px' }}>{suggestion}</li>
@@ -1487,248 +1469,214 @@ export default function SettingsPage() {
                   label: '配置预设',
                   children: renderPresetsList(),
                 },
+                {
+                  key: 'keypool',
+                  label: 'Key 池轮询',
+                  children: <KeyPoolManager isMobile={isMobile} />,
+                },
               ]}
             />
           </Card>
         </div>
 
         {/* 预设编辑对话框 */}
-        <Modal
+        <ThemedModal
           title={editingPreset ? '编辑预设' : '创建预设'}
           open={isPresetModalVisible}
           onOk={handlePresetSave}
           onCancel={handlePresetCancel}
-          width={isMobile ? '95%' : 640}
+          width={isMobile ? '90%' : 600}
           centered
           okText="保存"
           cancelText="取消"
-          styles={{
-            body: {
-              padding: isMobile ? '16px' : '20px 24px'
-            }
-          }}
         >
           <Form
             form={presetForm}
             layout="vertical"
-            size={isMobile ? 'middle' : 'large'}
           >
-            {/* 基本信息 */}
-            <Row gutter={16}>
-              <Col xs={24} sm={16}>
-                <Form.Item
-                  name="name"
-                  label="预设名称"
-                  rules={[
-                    { required: true, message: '请输入预设名称' },
-                    { max: 50, message: '名称不能超过50个字符' },
-                  ]}
-                  style={{ marginBottom: 16 }}
-                >
-                  <Input placeholder="例如：工作账号-GPT4" />
-                </Form.Item>
-              </Col>
-              <Col xs={24} sm={8}>
-                <Form.Item
-                  name="api_provider"
-                  label="API 提供商"
-                  rules={[{ required: true, message: '请选择' }]}
-                  style={{ marginBottom: 16 }}
-                >
-                  <Select placeholder="选择提供商" onChange={handlePresetProviderChange}>
-                    <Select.Option value="openai">OpenAI</Select.Option>
-                    <Select.Option value="gemini">Google Gemini</Select.Option>
-                  </Select>
-                </Form.Item>
-              </Col>
-            </Row>
+            <Form.Item
+              name="name"
+              label="预设名称"
+              rules={[
+                { required: true, message: '请输入预设名称' },
+                { max: 50, message: '名称不能超过50个字符' },
+              ]}
+            >
+              <Input placeholder="例如：工作账号-GPT4" />
+            </Form.Item>
 
             <Form.Item
               name="description"
               label="预设描述"
               rules={[{ max: 200, message: '描述不能超过200个字符' }]}
-              style={{ marginBottom: 16 }}
             >
-              <Input placeholder="例如：用于日常写作任务（可选）" />
+              <TextArea rows={2} placeholder="例如：用于日常写作任务（可选）" />
             </Form.Item>
 
-            {/* API 配置 */}
-            <Row gutter={16}>
-              <Col xs={24} sm={12}>
-                <Form.Item
-                  name="api_key"
-                  label="API Key"
-                  rules={[{ required: true, message: '请输入API Key' }]}
-                  style={{ marginBottom: 16 }}
-                >
-                  <Input.Password placeholder="sk-..." />
-                </Form.Item>
-              </Col>
-              <Col xs={24} sm={12}>
-                <Form.Item
-                  name="api_base_url"
-                  label="API Base URL"
-                  style={{ marginBottom: 16 }}
-                >
-                  <Input placeholder="https://api.openai.com/v1" />
-                </Form.Item>
-              </Col>
-            </Row>
+            <Form.Item
+              name="api_provider"
+              label="API 提供商"
+              rules={[{ required: true, message: '请选择API提供商' }]}
+            >
+              <Select onChange={handlePresetProviderChange}>
+                <Select.Option value="openai">OpenAI Compatible</Select.Option>
+                <Select.Option value="gemini">Google Gemini</Select.Option>
+              </Select>
+            </Form.Item>
 
-            {/* 模型配置 */}
-            <Row gutter={16}>
-              <Col xs={24} sm={12}>
-                <Form.Item
-                  name="llm_model"
-                  label={
-                    <Space size={4}>
-                      <span>模型名称</span>
-                      <InfoCircleOutlined
-                        title="AI模型的名称，点击下拉框自动获取可用模型"
-                        style={{ color: 'var(--color-text-secondary)', fontSize: '12px' }}
-                      />
-                    </Space>
-                  }
-                  rules={[{ required: true, message: '请选择或输入模型名称' }]}
-                  style={{ marginBottom: 16 }}
-                >
-                  <Select
-                    showSearch
-                    placeholder="点击获取模型列表或直接输入"
-                    optionFilterProp="label"
-                    loading={fetchingPresetModels}
-                    onFocus={handlePresetModelSelectFocus}
-                    filterOption={(input, option) =>
-                      (option?.label ?? '').toLowerCase().includes(input.toLowerCase()) ||
-                      (option?.description ?? '').toLowerCase().includes(input.toLowerCase())
-                    }
-                    dropdownRender={(menu) => (
-                      <>
-                        {menu}
-                        {fetchingPresetModels && (
-                          <div style={{ padding: '8px 12px', color: 'var(--color-text-secondary)', textAlign: 'center', fontSize: '12px' }}>
-                            <Spin size="small" /> 正在获取模型列表...
-                          </div>
-                        )}
-                        {!fetchingPresetModels && presetModelOptions.length === 0 && presetModelsFetched && (
-                          <div style={{ padding: '8px 12px', color: '#ff4d4f', textAlign: 'center', fontSize: '12px' }}>
-                            未能获取到模型列表，请检查 API 配置
-                          </div>
-                        )}
-                        {!fetchingPresetModels && presetModelOptions.length === 0 && !presetModelsFetched && (
-                          <div style={{ padding: '8px 12px', color: 'var(--color-text-secondary)', textAlign: 'center', fontSize: '12px' }}>
-                            点击输入框自动获取模型列表
-                          </div>
-                        )}
-                      </>
-                    )}
-                    notFoundContent={
-                      fetchingPresetModels ? (
-                        <div style={{ padding: '8px 12px', textAlign: 'center', fontSize: '12px' }}>
-                          <Spin size="small" /> 加载中...
-                        </div>
-                      ) : (
-                        <div style={{ padding: '8px 12px', color: 'var(--color-text-secondary)', textAlign: 'center', fontSize: '12px' }}>
-                          未找到匹配的模型
-                        </div>
-                      )
-                    }
-                    suffixIcon={
-                      <div
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (!fetchingPresetModels) {
-                            setPresetModelsFetched(false);
-                            handleFetchPresetModels(false);
-                          }
-                        }}
-                        style={{
-                          cursor: fetchingPresetModels ? 'not-allowed' : 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          padding: '0 4px',
-                          height: '100%',
-                          marginRight: -8
-                        }}
-                        title="获取模型列表"
-                      >
-                        <Button
-                          type="text"
-                          size="small"
-                          icon={<ReloadOutlined />}
-                          loading={fetchingPresetModels}
-                          style={{ pointerEvents: 'none' }}
-                        >
-                          获取
-                        </Button>
-                      </div>
-                    }
-                    options={presetModelOptions.map(model => ({
-                      value: model.value,
-                      label: model.label,
-                      description: model.description
-                    }))}
-                    optionRender={(option) => (
-                      <div>
-                        <div style={{ fontWeight: 500, fontSize: '13px' }}>{option.data.label}</div>
-                        {option.data.description && (
-                          <div style={{ fontSize: '11px', color: '#8c8c8c', marginTop: '2px' }}>
-                            {option.data.description}
-                          </div>
-                        )}
+            <Form.Item
+              name="api_key"
+              label="API Key"
+              rules={[{ required: true, message: '请输入API Key' }]}
+            >
+              <Input.Password placeholder="sk-..." />
+            </Form.Item>
+
+            <Form.Item name="api_base_url" label="API Base URL">
+              <Input placeholder="https://api.openai.com/v1（可选）" />
+            </Form.Item>
+
+            <Form.Item
+              name="llm_model"
+              label="模型名称"
+              rules={[{ required: true, message: '请输入或选择模型名称' }]}
+            >
+              <Select
+                showSearch
+                placeholder="输入模型名称或点击获取"
+                optionFilterProp="label"
+                loading={fetchingPresetModels}
+                onFocus={handlePresetModelSelectFocus}
+                filterOption={(input, option) =>
+                  (option?.label ?? '').toLowerCase().includes(input.toLowerCase()) ||
+                  (option?.description ?? '').toLowerCase().includes(input.toLowerCase())
+                }
+                dropdownRender={(menu) => (
+                  <>
+                    {menu}
+                    {fetchingPresetModels && (
+                      <div style={{ padding: '8px 12px', color: 'var(--color-text-secondary)', textAlign: 'center', fontSize: '14px' }}>
+                        <Spin size="small" /> 正在获取模型列表...
                       </div>
                     )}
-                  />
-                </Form.Item>
-              </Col>
-              <Col xs={12} sm={6}>
-                <Form.Item
-                  name="temperature"
-                  label="温度"
-                  rules={[{ required: true, message: '必填' }]}
-                  style={{ marginBottom: 16 }}
-                >
-                  <InputNumber
-                    min={0}
-                    max={2}
-                    step={0.1}
-                    style={{ width: '100%' }}
-                    placeholder="0.7"
-                  />
-                </Form.Item>
-              </Col>
-              <Col xs={12} sm={6}>
-                <Form.Item
-                  name="max_tokens"
-                  label="最大Tokens"
-                  rules={[{ required: true, message: '必填' }]}
-                  style={{ marginBottom: 16 }}
-                >
-                  <InputNumber
-                    min={1}
-                    max={100000}
-                    style={{ width: '100%' }}
-                    placeholder="2000"
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
+                    {!fetchingPresetModels && presetModelOptions.length === 0 && presetModelsFetched && (
+                      <div style={{ padding: '8px 12px', color: '#ff4d4f', textAlign: 'center', fontSize: '14px' }}>
+                        未能获取到模型列表，请检查 API 配置
+                      </div>
+                    )}
+                    {!fetchingPresetModels && presetModelOptions.length === 0 && !presetModelsFetched && (
+                      <div style={{ padding: '8px 12px', color: 'var(--color-text-secondary)', textAlign: 'center', fontSize: '14px' }}>
+                        点击输入框自动获取模型列表
+                      </div>
+                    )}
+                  </>
+                )}
+                notFoundContent={
+                  fetchingPresetModels ? (
+                    <div style={{ padding: '8px 12px', textAlign: 'center', fontSize: '14px' }}>
+                      <Spin size="small" /> 加载中...
+                    </div>
+                  ) : (
+                    <div style={{ padding: '8px 12px', color: 'var(--color-text-secondary)', textAlign: 'center', fontSize: '14px' }}>
+                      未找到匹配的模型
+                    </div>
+                  )
+                }
+                suffixIcon={
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!fetchingPresetModels) {
+                        setPresetModelsFetched(false);
+                        handleFetchPresetModels(false);
+                      }
+                    }}
+                    style={{
+                      cursor: fetchingPresetModels ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '0 4px',
+                      height: '100%',
+                      marginRight: -8
+                    }}
+                    title="重新获取模型列表"
+                  >
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<ReloadOutlined />}
+                      loading={fetchingPresetModels}
+                      style={{ pointerEvents: 'none' }}
+                    >
+                      刷新
+                    </Button>
+                  </div>
+                }
+                onSearch={(val) => setPresetModelSearchValue(val)}
+                options={[
+                  ...presetModelOptions.map(model => ({
+                    value: model.value,
+                    label: model.label,
+                    description: model.description
+                  })),
+                  ...(presetModelSearchValue && !presetModelOptions.find(m => m.value === presetModelSearchValue || m.label === presetModelSearchValue)
+                    ? [{ value: presetModelSearchValue, label: presetModelSearchValue, description: '手动输入' }]
+                    : [])
+                ]}
+                optionRender={(option) => (
+                  <div>
+                    <div style={{ fontWeight: 500, fontSize: '14px' }}>{option.data.label}</div>
+                    {option.data.description && (
+                      <div style={{ fontSize: '12px', color: 'var(--color-text-tertiary)', marginTop: '2px' }}>
+                        {option.data.description}
+                      </div>
+                    )}
+                  </div>
+                )}
+              />
+            </Form.Item>
+
+            <Form.Item
+              name="temperature"
+              label="温度参数"
+              rules={[{ required: true, message: '请输入温度参数' }]}
+            >
+              <InputNumber
+                min={0}
+                max={2}
+                step={0.1}
+                style={{ width: '100%' }}
+                placeholder="0.7"
+              />
+            </Form.Item>
+
+            <Form.Item
+              name="max_tokens"
+              label="最大 Tokens"
+              rules={[{ required: true, message: '请输入最大tokens' }]}
+            >
+              <InputNumber
+                min={1}
+                max={100000}
+                style={{ width: '100%' }}
+                placeholder="2000"
+              />
+            </Form.Item>
 
             <Form.Item
               name="system_prompt"
               label="系统提示词"
-              style={{ marginBottom: 0 }}
             >
               <TextArea
-                rows={isMobile ? 2 : 3}
+                rows={3}
                 placeholder="例如：你是一个专业的小说创作助手...（可选）"
                 maxLength={10000}
                 showCount
               />
             </Form.Item>
           </Form>
-        </Modal>
+        </ThemedModal>
       </div>
-    </>
+    </ConfigProvider>
   );
 }

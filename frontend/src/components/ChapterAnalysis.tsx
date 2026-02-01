@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+
 import { Modal, Spin, Alert, Tabs, Card, Tag, List, Empty, Statistic, Row, Col, Button } from 'antd';
 import {
   ThunderboltOutlined,
@@ -55,7 +56,6 @@ export default function ChapterAnalysis({ chapterId, visible, onClose }: Chapter
       window.removeEventListener('resize', handleResize);
       // 清除可能存在的轮询
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, chapterId]);
 
   // 🔧 新增：独立的章节信息加载函数
@@ -503,7 +503,10 @@ export default function ChapterAnalysis({ chapterId, visible, onClose }: Chapter
                 <Card size={isMobile ? 'small' : 'default'}>
                   {analysis_data.emotional_tone ? (
                     <div>
-                      <Row gutter={isMobile ? 8 : 16} style={{ marginBottom: isMobile ? 16 : 24 }}>
+                      <Row 
+                        gutter={isMobile ? 8 : 16} 
+                        style={{ marginBottom: isMobile ? 16 : 24 }}
+                      >
                         <Col span={isMobile ? 24 : 12}>
                           <Statistic
                             title="主导情绪"
@@ -635,19 +638,21 @@ export default function ChapterAnalysis({ chapterId, visible, onClose }: Chapter
       title="章节分析"
       open={visible}
       onCancel={onClose}
-      width={isMobile ? 'calc(100vw - 32px)' : '90%'}
-      centered
+      width={isMobile ? '100%' : '90%'}
+      centered={!isMobile}
       style={{
-        maxWidth: isMobile ? 'calc(100vw - 32px)' : '1400px',
-        margin: isMobile ? '0 auto' : undefined,
-        padding: isMobile ? '0 16px' : undefined
+        maxWidth: isMobile ? '100%' : '1400px',
+        paddingBottom: 0,
+        top: isMobile ? 0 : undefined,
+        margin: isMobile ? 0 : undefined,
+        maxHeight: isMobile ? '100vh' : undefined
       }}
       styles={{
         body: {
           padding: isMobile ? '12px' : '24px',
           paddingBottom: 0,
-          maxHeight: isMobile ? 'calc(100vh - 200px)' : 'calc(90vh - 150px)',
-          overflowY: 'auto'
+          maxHeight: isMobile ? 'calc(100vh - 110px)' : undefined,
+          overflowY: isMobile ? 'auto' : undefined
         }
       }}
       footer={[

@@ -1,4 +1,7 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+// SSE 基础 URL 配置
+// 优先使用环境变量，如果未设置则使用当前域名
+const SSE_BASE_URL = (import.meta as any).env?.VITE_SSE_API_URL || '';
+
 export interface SSEMessage {
   type: 'progress' | 'chunk' | 'result' | 'error' | 'done';
   message?: string;
@@ -19,7 +22,10 @@ export interface SSEClientOptions {
   onComplete?: () => void;
   onConnectionError?: (error: Event) => void;
   onCharacterConfirmation?: (data: any) => void;  // 新增：角色确认回调
-  onOrganizationConfirmation?: (data: any) => void; // 新增：组织确认回调
+  onOrganizationConfirmation?: (data: any) => void;  // 新增：组织确认回调
+  timeout?: number;      // 超时时间（毫秒），默认 300000（5分钟）
+  maxRetries?: number;   // 最大重试次数，默认 3
+  retryDelay?: number;   // 重试延迟（毫秒），默认 2000
 }
 
 export class SSEClient {
@@ -62,7 +68,7 @@ export class SSEClient {
     });
   }
 
-  private handleMessage(message: SSEMessage, resolve: (value: any) => void, reject: (reason?: any) => void) {
+  private handleMessage(message: SSEMessage, resolve: Function, reject: Function) {
     switch (message.type) {
       case 'progress':
         if (this.options.onProgress && message.progress !== undefined) {
@@ -130,23 +136,74 @@ export class SSEPostClient {
   private options: SSEClientOptions;
   private abortController: AbortController | null = null;
   private accumulatedContent: string = '';
-  private resultData: any = null;
+  private timeout: number;
+  private maxRetries: number;
+  private retryDelay: number;
+  // ✅ 新增：标记是否因为确认事件而暂停（不应该重试）
+  private pausedForConfirmation: boolean = false;
 
   constructor(url: string, data: any, options: SSEClientOptions = {}) {
     this.url = url;
     this.data = data;
     this.options = options;
+    // 🔧 修复：增加超时时间到10分钟，防止长时间AI调用（如角色/组织分析）导致超时
+    this.timeout = options.timeout || 600000; // 10分钟
+    this.maxRetries = options.maxRetries || 3;
+    this.retryDelay = options.retryDelay || 2000;
   }
 
   async connect(): Promise<any> {
-    return new Promise((resolve, reject) => {
-      this.connectInternal(resolve, reject);
-    });
+    let lastError: Error | null = null;
+    
+    for (let attempt = 0; attempt < this.maxRetries; attempt++) {
+      try {
+        return await this.attemptConnect(attempt);
+      } catch (error: any) {
+        lastError = error;
+        
+        // ✅ 如果是因为确认事件暂停，不重试
+        if (this.pausedForConfirmation) {
+          console.log('SSE 因确认事件暂停，不重试');
+          return { paused: true, reason: 'confirmation_required' };
+        }
+        
+        // 如果是用户取消或服务器明确错误（4xx），不重试
+        if (error.name === 'AbortError' || 
+            (error.code && error.code >= 400 && error.code < 500)) {
+          throw error;
+        }
+        
+        // 网络错误或服务器错误（5xx），尝试重试
+        if (attempt < this.maxRetries - 1) {
+          console.log(`SSE 连接失败，${this.retryDelay/1000}秒后重试 (${attempt + 1}/${this.maxRetries})`);
+          if (this.options.onProgress) {
+            this.options.onProgress(
+              `连接中断，正在重试 (${attempt + 1}/${this.maxRetries})...`,
+              0,
+              'warning'
+            );
+          }
+          await this.delay(this.retryDelay);
+        }
+      }
+    }
+    
+    throw lastError || new Error('SSE 连接失败');
   }
 
-  private async connectInternal(resolve: (value: any) => void, reject: (reason?: any) => void) {
+  private async attemptConnect(_attempt: number): Promise<any> {
+    return new Promise(async (resolve, reject) => {
+      let timeoutId: number | null = null;
+      
       try {
         this.abortController = new AbortController();
+        
+        // 设置超时
+        timeoutId = window.setTimeout(() => {
+          console.log(`SSE 请求超时 (${this.timeout/1000}秒)`);
+          this.abortController?.abort();
+          reject(new Error('请求超时'));
+        }, this.timeout);
 
         const response = await fetch(this.url, {
           method: 'POST',
@@ -158,7 +215,9 @@ export class SSEPostClient {
         });
 
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+          const error: any = new Error(`HTTP error! status: ${response.status}`);
+          error.code = response.status;
+          throw error;
         }
 
         const reader = response.body?.getReader();
@@ -185,6 +244,7 @@ export class SSEPostClient {
 
           for (const line of lines) {
             if (line.trim() === '' || line.startsWith(':')) {
+              // 心跳消息，忽略
               continue;
             }
 
@@ -202,19 +262,35 @@ export class SSEPostClient {
 
                 // 根据事件类型处理
                 if (currentEvent === 'character_confirmation_required') {
-                  // 处理角色确认事件
+                  // ✅ 处理角色确认事件 - 标记为暂停状态
+                  console.log('收到角色确认事件，暂停SSE流程');
+                  this.pausedForConfirmation = true;
                   if (this.options.onCharacterConfirmation) {
                     this.options.onCharacterConfirmation(data);
                   }
                   currentEvent = '';  // 重置事件类型
-                  return;  // 暂停流程，等待用户确认
+                  // 清除超时
+                  if (timeoutId !== null) {
+                    window.clearTimeout(timeoutId);
+                  }
+                  // ✅ 正确 resolve，而不是 return（避免 Promise 悬挂）
+                  resolve({ paused: true, reason: 'character_confirmation_required', data });
+                  return;
                 } else if (currentEvent === 'organization_confirmation_required') {
-                  // 处理组织确认事件
+                  // ✅ 处理组织确认事件 - 标记为暂停状态
+                  console.log('收到组织确认事件，暂停SSE流程');
+                  this.pausedForConfirmation = true;
                   if (this.options.onOrganizationConfirmation) {
                     this.options.onOrganizationConfirmation(data);
                   }
                   currentEvent = '';  // 重置事件类型
-                  return;  // 暂停流程，等待用户确认
+                  // 清除超时
+                  if (timeoutId !== null) {
+                    window.clearTimeout(timeoutId);
+                  }
+                  // ✅ 正确 resolve，而不是 return（避免 Promise 悬挂）
+                  resolve({ paused: true, reason: 'organization_confirmation_required', data });
+                  return;
                 } else {
                   // 标准消息处理
                   const message: SSEMessage = data;
@@ -228,9 +304,19 @@ export class SSEPostClient {
           }
         }
 
+        // 清除超时
+        if (timeoutId !== null) {
+          window.clearTimeout(timeoutId);
+        }
+
       } catch (error: any) {
+        // 清除超时
+        if (timeoutId !== null) {
+          window.clearTimeout(timeoutId);
+        }
+        
         if (error.name === 'AbortError') {
-          console.log('请求已取消');
+          reject(new Error('请求超时或已取消'));
         } else {
           console.error('SSE POST请求失败:', error);
           if (this.options.onError) {
@@ -239,9 +325,10 @@ export class SSEPostClient {
           reject(error);
         }
       }
+    });
   }
 
-  private async handleMessage(message: SSEMessage, resolve: (value: any) => void, reject: (reason?: any) => void) {
+  private async handleMessage(message: SSEMessage, resolve: Function, reject: Function) {
     switch (message.type) {
       case 'progress':
         if (this.options.onProgress && message.progress !== undefined) {
@@ -267,7 +354,7 @@ export class SSEPostClient {
         if (this.options.onResult && message.data) {
           this.options.onResult(message.data);
         }
-        this.resultData = message.data;
+        (this as any).resultData = message.data;
         break;
 
       case 'error':
@@ -281,8 +368,8 @@ export class SSEPostClient {
         if (this.options.onComplete) {
           this.options.onComplete();
         }
-        if (this.resultData) {
-          resolve(this.resultData);
+        if ((this as any).resultData) {
+          resolve((this as any).resultData);
         } else if (this.accumulatedContent) {
           resolve({ content: this.accumulatedContent });
         } else {
@@ -290,6 +377,10 @@ export class SSEPostClient {
         }
         break;
     }
+  }
+
+  private delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   abort() {
@@ -303,12 +394,28 @@ export class SSEPostClient {
   }
 }
 
+/**
+ * 构建完整的 SSE URL
+ * 如果配置了 SSE_BASE_URL，则使用它；否则使用相对路径
+ */
+function buildSSEUrl(path: string): string {
+  if (SSE_BASE_URL) {
+    // 移除路径开头的 /api，因为 SSE_BASE_URL 应该已经包含了完整的基础路径
+    const cleanPath = path.startsWith('/api') ? path.substring(4) : path;
+    return `${SSE_BASE_URL}${cleanPath}`;
+  }
+  return path;
+}
+
 export async function ssePost<T = any>(
   url: string,
   data: any,
   options: SSEClientOptions = {}
 ): Promise<T> {
-  const client = new SSEPostClient(url, data, options);
+  const fullUrl = buildSSEUrl(url);
+  console.log(`SSE 请求: ${url} -> ${fullUrl}`);
+  
+  const client = new SSEPostClient(fullUrl, data, options);
   try {
     return await client.connect();
   } finally {

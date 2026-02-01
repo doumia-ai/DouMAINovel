@@ -1,8 +1,11 @@
+import { useState, useEffect } from 'react';
+
 import { Modal, Form, Input, InputNumber, Select, Tag, Space, Button, message, Divider } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
-import { useState, useEffect, useCallback } from 'react';
-import type { ExpansionPlanData, Character } from '../types';
-import { characterApi } from '../services/api';
+
+import type { ExpansionPlanData, Character } from '../types/index.js';
+
+import { characterApi } from '../services/api/index.js';
 
 const { TextArea } = Input;
 
@@ -36,7 +39,13 @@ export default function ExpansionPlanEditor({
   const [loadingCharacters, setLoadingCharacters] = useState(false);
 
   // 加载项目角色列表
-  const loadCharacters = useCallback(async () => {
+  useEffect(() => {
+    if (visible && projectId) {
+      loadCharacters();
+    }
+  }, [visible, projectId]);
+
+  const loadCharacters = async () => {
     try {
       setLoadingCharacters(true);
       setAvailableCharacters([]); // 重置为空数组
@@ -47,11 +56,8 @@ export default function ExpansionPlanEditor({
       let chars: Character[] = [];
       if (Array.isArray(response)) {
         chars = response;
-      } else if (response && typeof response === 'object' && 'items' in response) {
-        const responseObj = response as { items?: Character[] };
-        if (Array.isArray(responseObj.items)) {
-          chars = responseObj.items;
-        }
+      } else if (response && typeof response === 'object' && 'items' in response && Array.isArray((response as any).items)) {
+        chars = (response as any).items;
       } else {
         console.error('角色API返回格式异常:', response);
         message.warning('角色数据格式异常');
@@ -59,21 +65,14 @@ export default function ExpansionPlanEditor({
       
       setAvailableCharacters(chars);
       console.log('设置的角色列表:', chars);
-    } catch (error: unknown) {
+    } catch (error: any) {
       console.error('加载角色列表失败:', error);
       setAvailableCharacters([]);
-      const err = error as Error;
-      message.error('加载角色列表失败: ' + (err?.message || '未知错误'));
+      message.error('加载角色列表失败: ' + (error?.message || '未知错误'));
     } finally {
       setLoadingCharacters(false);
     }
-  }, [projectId]);
-
-  useEffect(() => {
-    if (visible && projectId) {
-      loadCharacters();
-    }
-  }, [visible, projectId, loadCharacters]);
+  };
 
   // 当planData或chapterSummary变化时更新状态
   useEffect(() => {
@@ -329,7 +328,7 @@ export default function ExpansionPlanEditor({
             step={100}
             style={{ width: '100%' }}
             formatter={(value) => `${value} 字`}
-            parser={(value) => Number(value?.replace(' 字', '')) as 500 | 10000}
+            parser={(value) => value?.replace(' 字', '') as any}
           />
         </Form.Item>
 

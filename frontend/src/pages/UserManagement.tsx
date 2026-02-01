@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+
 import { useNavigate } from 'react-router-dom';
 import {
   Table,
@@ -33,9 +34,10 @@ import {
   SearchOutlined,
   MoreOutlined,
 } from '@ant-design/icons';
-import { adminApi } from '../services/api';
+import { adminApi } from '../services/api/index.js';
 import type { User } from '../types';
 import UserMenu from '../components/UserMenu';
+import { useTheme } from '../contexts/ThemeContext';
 
 const { Title, Text } = Typography;
 
@@ -45,6 +47,7 @@ interface UserWithStatus extends User {
 
 export default function UserManagement() {
   const navigate = useNavigate();
+  const { actualTheme } = useTheme();
   const [users, setUsers] = useState<UserWithStatus[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -90,16 +93,7 @@ export default function UserManagement() {
   }, []);
 
   // 添加用户
-  interface CreateUserValues {
-    username: string;
-    display_name: string;
-    password?: string;
-    avatar_url?: string;
-    trust_level?: number;
-    is_admin?: boolean;
-  }
-
-  const handleCreate = async (values: CreateUserValues) => {
+  const handleCreate = async (values: any) => {
     try {
       const res = await adminApi.createUser(values);
       message.success('用户创建成功');
@@ -143,14 +137,7 @@ export default function UserManagement() {
     setEditModalVisible(true);
   };
 
-  interface UpdateUserValues {
-    display_name: string;
-    avatar_url?: string;
-    trust_level?: number;
-    is_admin?: boolean;
-  }
-
-  const handleUpdate = async (values: UpdateUserValues) => {
+  const handleUpdate = async (values: any) => {
     if (!currentUser) return;
 
     try {
@@ -281,11 +268,24 @@ export default function UserManagement() {
       dataIndex: 'trust_level',
       key: 'trust_level',
       width: 100,
-      render: (level: number) => (
-        <Tag color={level === -1 ? 'default' : level >= 5 ? 'green' : 'blue'}>
-          {level === -1 ? '已禁用' : `Level ${level}`}
-        </Tag>
-      ),
+      render: (level: number) => {
+        const getTrustLevelColor = (trustLevel: number): string => {
+          if (trustLevel === -1) return 'default';
+          if (trustLevel >= 5) return 'green';
+          return 'blue';
+        };
+
+        const getTrustLevelText = (trustLevel: number): string => {
+          if (trustLevel === -1) return '已禁用';
+          return `Level ${trustLevel}`;
+        };
+
+        return (
+          <Tag color={getTrustLevelColor(level)}>
+            {getTrustLevelText(level)}
+          </Tag>
+        );
+      },
     },
     {
       title: '创建时间',
@@ -306,7 +306,7 @@ export default function UserManagement() {
       key: 'action',
       width: isMobile ? 80 : 300,
       fixed: 'right' as const,
-      render: (_: unknown, record: UserWithStatus) => {
+      render: (_: any, record: UserWithStatus) => {
         const isActive = record.is_active !== false;
 
         // 移动端：使用下拉菜单
@@ -426,7 +426,7 @@ export default function UserManagement() {
   return (
     <div style={{
       height: '100vh',
-      background: 'linear-gradient(180deg, var(--color-bg-base) 0%, #EEF2F3 100%)',
+      background: 'linear-gradient(180deg, var(--color-bg-base) 0%, var(--color-bg-layout) 100%)',
       padding: isMobile ? '20px 16px' : '40px 24px',
       display: 'flex',
       flexDirection: 'column',
@@ -522,9 +522,9 @@ export default function UserManagement() {
         <Card
           variant="borderless"
           style={{
-            background: 'rgba(255, 255, 255, 0.7)',
+            background: actualTheme === 'dark' ? 'rgba(36, 36, 56, 0.7)' : 'rgba(255, 255, 255, 0.7)',
             borderRadius: isMobile ? 16 : 24,
-            border: '1px solid rgba(255, 255, 255, 0.4)',
+            border: actualTheme === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(255, 255, 255, 0.4)',
             backdropFilter: 'blur(20px)',
             boxShadow: '0 4px 24px rgba(0, 0, 0, 0.04)',
             flex: 1,
@@ -685,9 +685,7 @@ export default function UserManagement() {
               size={isMobile ? 'small' : 'default'}
               style={{
                 flexShrink: 0,
-                height: isMobile ? 16 : 22,
-                minHeight: isMobile ? 16 : 22,
-                lineHeight: isMobile ? '16px' : '22px'
+                minWidth: '44px'
               }}
             />
           </Form.Item>
@@ -747,9 +745,7 @@ export default function UserManagement() {
               size={isMobile ? 'small' : 'default'}
               style={{
                 flexShrink: 0,
-                height: isMobile ? 16 : 22,
-                minHeight: isMobile ? 16 : 22,
-                lineHeight: isMobile ? '16px' : '22px'
+                minWidth: '44px'
               }}
             />
           </Form.Item>

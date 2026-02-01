@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Card, Input, Button, message, Space } from 'antd';
 import { ThunderboltOutlined } from '@ant-design/icons';
-import { polishApi } from '../services/api';
+import { polishApi } from '../services/api/index.js';
 
 const { TextArea } = Input;
 

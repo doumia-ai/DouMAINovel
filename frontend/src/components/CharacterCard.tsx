@@ -1,7 +1,9 @@
 import { Card, Space, Tag, Typography, Popconfirm } from 'antd';
 import { EditOutlined, DeleteOutlined, UserOutlined, BankOutlined, ExportOutlined } from '@ant-design/icons';
-import { cardStyles } from './CardStyles';
-import type { Character } from '../types';
+
+import type { Character } from '../types/index.js';
+
+import { cardStyles } from './CardStyles.js';
 
 const { Text, Paragraph } = Typography;
 
@@ -65,9 +67,9 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({ character, onEdit,
       <Card.Meta
         avatar={
           isOrganization ? (
-            <BankOutlined style={{ fontSize: 32, color: '#52c41a' }} />
+            <BankOutlined style={{ fontSize: 32, color: 'var(--color-success)' }} />
           ) : (
-            <UserOutlined style={{ fontSize: 32, color: '#1890ff' }} />
+            <UserOutlined style={{ fontSize: 32, color: 'var(--color-info)' }} />
           )
         }
         title={
@@ -127,7 +129,11 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({ character, onEdit,
                 {character.power_level !== undefined && character.power_level !== null && (
                   <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center' }}>
                     <Text type="secondary" style={{ flexShrink: 0 }}>势力等级：</Text>
-                    <Tag color={character.power_level >= 70 ? 'red' : character.power_level >= 50 ? 'orange' : 'default'}>
+                    <Tag color={(() => {
+                      if (character.power_level >= 70) return 'red';
+                      if (character.power_level >= 50) return 'orange';
+                      return 'default';
+                    })()}>
                       {character.power_level}
                     </Tag>
                   </div>

@@ -36,7 +36,6 @@ env/
 *.swo
 *~
 .DS_Store
-.kilocode/
 
 # Environment variables
 .env
@@ -109,9 +108,6 @@ launcher.py
 launcher.spec
 mumuainovel.md
 logo.ico
-.embed_cache
-dist_embed/
-embed_build.py
 
 
 data/
@@ -121,3 +117,6 @@ backend/migrate_all_databases.py
 test_api.py
 # Embedding models (downloaded from HuggingFace at runtime)
 backend/embedding/
+
+# ChromaDB vector database
+backend/data/chroma_db/

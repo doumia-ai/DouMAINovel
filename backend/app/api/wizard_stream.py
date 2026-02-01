@@ -62,13 +62,18 @@ async def world_building_generator(
         
         # 获取基础提示词（支持自定义）
         yield await tracker.preparing("准备AI提示词...")
+
+        # 获取类型指导配置
+        genre_guide = await PromptService.get_genre_guide(genre, db)
+
         template = await PromptService.get_template("WORLD_BUILDING", user_id, db)
         base_prompt = PromptService.format_prompt(
             template,
             title=title,
             theme=theme,
             genre=genre or "通用类型",
-            description=description or "暂无简介"
+            description=description or "暂无简介",
+            genre_guide=genre_guide
         )
         
         # 设置用户信息以启用MCP
@@ -1521,13 +1526,18 @@ async def world_building_regenerate_generator(
         
         # 获取基础提示词（支持自定义）
         yield await tracker.preparing("准备AI提示词...")
+
+        # 获取类型指导配置
+        genre_guide = await PromptService.get_genre_guide(project.genre, db)
+
         template = await PromptService.get_template("WORLD_BUILDING", user_id, db)
         base_prompt = PromptService.format_prompt(
             template,
             title=project.title,
             theme=project.theme or "未设定",
             genre=project.genre or "通用",
-            description=project.description or "暂无简介"
+            description=project.description or "暂无简介",
+            genre_guide=genre_guide
         )
         
         # 设置用户信息以启用MCP

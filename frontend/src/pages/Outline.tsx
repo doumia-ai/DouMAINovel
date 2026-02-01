@@ -1,13 +1,16 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+
 import { Button, List, Modal, Form, Input, message, Empty, Space, Popconfirm, Card, Select, Radio, Tag, InputNumber, Tabs } from 'antd';
 import { EditOutlined, DeleteOutlined, ThunderboltOutlined, BranchesOutlined, AppstoreAddOutlined, CheckCircleOutlined, ExclamationCircleOutlined, PlusOutlined, FileTextOutlined } from '@ant-design/icons';
-import { useStore } from '../store';
-import { useOutlineSync } from '../store/hooks';
-import { cardStyles } from '../components/CardStyles';
-import { SSEPostClient } from '../utils/sseClient';
-import { SSEProgressModal } from '../components/SSEProgressModal';
-import { outlineApi, chapterApi, projectApi } from '../services/api';
-import type { OutlineExpansionResponse, BatchOutlineExpansionResponse, ChapterPlanItem, ApiError } from '../types';
+
+import type { OutlineExpansionResponse, BatchOutlineExpansionResponse, ApiError } from '../types/index.js';
+
+import { SSEPostClient } from '../utils/sseClient.js';
+import { SSEProgressModal } from '../components/SSEProgressModal.js';
+import { cardStyles } from '../components/CardStyles.js';
+import { outlineApi, chapterApi, projectApi } from '../services/api/index.js';
+import { useOutlineSync } from '../store/hooks.js';
+import { useStore } from '../store/index.js';
 
 // 角色预测数据类型
 interface PredictedCharacter {
@@ -86,19 +89,12 @@ interface OutlineGenerateRequestData {
   confirmed_organizations?: PredictedOrganization[];
 }
 
-// 跳过的大纲信息类型
-interface SkippedOutlineInfo {
-  outline_id: string;
-  outline_title: string;
-  reason: string;
-}
-
-// 场景类型
-interface SceneInfo {
-  location: string;
-  characters: string[];
-  purpose: string;
-}
+// 场景类型（未使用，保留供将来扩展）
+// interface SceneInfo {
+//   location: string;
+//   characters: string[];
+//   purpose: string;
+// }
 
 const { TextArea } = Input;
 
@@ -113,6 +109,9 @@ export default function Outline() {
   const [manualCreateForm] = Form.useForm();
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [isExpanding, setIsExpanding] = useState(false);
+  
+  // 🔧 使用 ref 来跟踪请求状态，避免 React 状态更新延迟导致的重复请求
+  const isGeneratingRef = useRef(false);
 
   // ✅ 新增：记录每个大纲的展开状态
   const [outlineExpandStatus, setOutlineExpandStatus] = useState<Record<string, boolean>>({});
@@ -292,11 +291,21 @@ export default function Outline() {
   }
 
   const handleGenerate = async (values: GenerateFormValues) => {
+    // 🔧 使用 ref 防止重复请求（比 state 更可靠，因为 state 更新是异步的）
+    if (isGeneratingRef.current) {
+      console.warn('[Outline] 已经在生成中（ref检查），忽略重复请求');
+      return;
+    }
+    
+    // 立即设置 ref，防止并发请求
+    isGeneratingRef.current = true;
+    
     try {
       setIsGenerating(true);
 
       // 添加详细的调试日志
       console.log('=== 大纲生成调试信息 ===');
+      console.log('[Outline] handleGenerate 被调用，时间戳:', Date.now());
       console.log('1. Form values 原始数据:', values);
       console.log('2. values.model:', values.model);
       console.log('3. values.provider:', values.provider);
@@ -310,7 +319,7 @@ export default function Outline() {
       setSSEModalVisible(true);
 
       // 准备请求数据
-      const requestData: OutlineGenerateRequestData = {
+      const requestData: any = {
         project_id: currentProject.id,
         genre: currentProject.genre || '通用',
         theme: values.theme || currentProject.theme || '',
@@ -347,19 +356,21 @@ export default function Outline() {
       // 使用SSE客户端
       const apiUrl = `/api/outlines/generate-stream`;
       const client = new SSEPostClient(apiUrl, requestData, {
+        maxRetries: 1,  // 🔧 禁用重试，避免重复请求
         onProgress: (msg: string, progress: number) => {
           setSSEMessage(msg);
           setSSEProgress(progress);
         },
-        onResult: (data: unknown) => {
+        onResult: (data: any) => {
           console.log('生成完成，结果:', data);
         },
-        onCharacterConfirmation: (data: CharacterConfirmationData) => {
+        onCharacterConfirmation: (data: any) => {
           // ✨ 新增：处理角色确认事件
           console.log('收到角色确认请求:', data);
           // 关闭SSE进度Modal
           setSSEModalVisible(false);
           setIsGenerating(false);
+          isGeneratingRef.current = false;  // 重置 ref
 
           // 保存待处理的生成数据
           setPendingGenerateData(requestData);
@@ -368,12 +379,13 @@ export default function Outline() {
           setCharacterConfirmData(data);
           setCharacterConfirmVisible(true);
         },
-        onOrganizationConfirmation: (data: OrganizationConfirmationData) => {
+        onOrganizationConfirmation: (data: any) => {
           // ✨ 新增：处理组织确认事件
           console.log('收到组织确认请求:', data);
           // 关闭SSE进度Modal
           setSSEModalVisible(false);
           setIsGenerating(false);
+          isGeneratingRef.current = false;  // 重置 ref
 
           // 保存待处理的生成数据
           setPendingGenerateData(requestData);
@@ -387,11 +399,13 @@ export default function Outline() {
           message.error(`生成失败: ${error}`);
           setSSEModalVisible(false);
           setIsGenerating(false);
+          isGeneratingRef.current = false;  // 重置 ref
         },
         onComplete: () => {
           message.success('大纲生成完成！');
           setSSEModalVisible(false);
           setIsGenerating(false);
+          isGeneratingRef.current = false;  // 重置 ref
           // 刷新大纲列表
           refreshOutlines();
         }
@@ -405,10 +419,18 @@ export default function Outline() {
       message.error('AI生成失败');
       setSSEModalVisible(false);
       setIsGenerating(false);
+      isGeneratingRef.current = false;  // 重置 ref
     }
   };
 
   const showGenerateModal = async () => {
+    // 🔧 防止在生成中打开Modal
+    if (isGeneratingRef.current || isGenerating) {
+      console.warn('[Outline] 正在生成中，忽略打开Modal请求');
+      message.warning('正在生成中，请稍候...');
+      return;
+    }
+    
     const hasOutlines = outlines.length > 0;
     const initialMode = hasOutlines ? 'continue' : 'new';
 
@@ -432,7 +454,7 @@ export default function Outline() {
             defaultModel = settings.llm_model;
           }
         }
-      } catch {
+      } catch (error) {
         console.log('获取模型列表失败，将使用默认模型');
       }
     }
@@ -1053,11 +1075,12 @@ export default function Outline() {
       title: (
         <Space style={{ flexWrap: 'wrap' }}>
           <CheckCircleOutlined style={{ color: 'var(--color-success)' }} />
-          <span>《{outlineTitle}》展开信息</span>
+          <span>已存在的展开章节</span>
         </Space>
       ),
       width: isMobile ? '95%' : 900,
       centered: true,
+      okText: '关闭',
       style: isMobile ? {
         top: 20,
         maxWidth: 'calc(100vw - 16px)',
@@ -1065,12 +1088,11 @@ export default function Outline() {
       } : undefined,
       styles: {
         body: {
-          maxHeight: isMobile ? 'calc(100vh - 200px)' : 'calc(80vh - 60px)',
-          overflowY: 'auto',
-          overflowX: 'hidden'
+          maxHeight: isMobile ? 'calc(100vh - 150px)' : 'calc(80vh - 110px)',
+          overflowY: 'auto'
         }
       },
-      footer: (
+      footer: (_: any, { OkBtn }: any) => (
         <Space wrap style={{ width: '100%', justifyContent: isMobile ? 'center' : 'flex-end' }}>
           <Button
             danger
@@ -1087,7 +1109,7 @@ export default function Outline() {
                     <p style={{ color: 'var(--color-primary)', marginTop: 8 }}>
                       📝 注意：大纲本身会保留，您可以重新展开
                     </p>
-                    <p style={{ color: '#ff4d4f', marginTop: 8 }}>
+                    <p style={{ color: 'var(--color-error)', marginTop: 8 }}>
                       ⚠️ 警告：章节内容将永久删除且无法恢复！
                     </p>
                   </div>
@@ -1103,9 +1125,7 @@ export default function Outline() {
           >
             删除所有展开的章节 ({data.chapter_count}章)
           </Button>
-          <Button onClick={() => Modal.destroyAll()}>
-            关闭
-          </Button>
+          <OkBtn />
         </Space>
       ),
       content: (
@@ -1244,7 +1264,7 @@ export default function Outline() {
                               key={sceneIdx}
                               size="small"
                               style={{
-                                backgroundColor: '#fafafa',
+                                backgroundColor: 'var(--color-bg-layout)',
                                 maxWidth: '100%',
                                 overflow: 'hidden'
                               }}
@@ -1387,7 +1407,7 @@ export default function Outline() {
   // 确认创建章节 - 使用缓存的规划数据，避免重复AI调用
   const handleConfirmCreateChapters = async (
     outlineId: string,
-    cachedPlans: ChapterPlanItem[]
+    cachedPlans: any[]
   ) => {
     try {
       setIsExpanding(true);
@@ -1432,7 +1452,7 @@ export default function Outline() {
       content: (
         <div>
           <div style={{ marginBottom: 16, padding: 12, background: 'var(--color-warning-bg)', borderRadius: 4 }}>
-            <div style={{ color: '#856404' }}>
+            <div style={{ color: 'var(--color-warning)' }}>
               ⚠️ 将对当前项目的所有 {outlines.length} 个大纲进行展开
             </div>
           </div>
@@ -1501,7 +1521,7 @@ export default function Outline() {
               setSSEMessage(msg);
               setSSEProgress(progress);
             },
-            onResult: (data: BatchOutlineExpansionResponse) => {
+            onResult: (data: any) => {
               console.log('批量展开完成，结果:', data);
               // 缓存AI生成的规划数据
               setCachedBatchExpansionResponse(data);
@@ -1567,8 +1587,8 @@ export default function Outline() {
               ⚠️ 以下大纲已展开过，已自动跳过：
             </div>
             <Space direction="vertical" size="small" style={{ width: '100%' }}>
-              {batchPreviewData.skipped_outlines.map((skipped: SkippedOutlineInfo, idx: number) => (
-                <div key={idx} style={{ fontSize: 13, color: '#666' }}>
+              {batchPreviewData.skipped_outlines.map((skipped: any, idx: number) => (
+                <div key={idx} style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>
                   • {skipped.outline_title} <Tag color="default" style={{ fontSize: 11 }}>{skipped.reason}</Tag>
                 </div>
               ))}
@@ -1581,11 +1601,11 @@ export default function Outline() {
           {/* 左栏：大纲列表 */}
           <div style={{
             width: 280,
-            borderRight: '1px solid #f0f0f0',
+            borderRight: '1px solid var(--color-border-secondary)',
             paddingRight: 12,
             overflowY: 'auto'
           }}>
-            <div style={{ fontWeight: 500, marginBottom: 8, color: '#666' }}>大纲列表</div>
+            <div style={{ fontWeight: 500, marginBottom: 8, color: 'var(--color-text-secondary)' }}>大纲列表</div>
             <List
               size="small"
               dataSource={batchPreviewData.expansion_results}
@@ -1622,18 +1642,18 @@ export default function Outline() {
           {/* 中栏：章节列表 */}
           <div style={{
             width: 320,
-            borderRight: '1px solid #f0f0f0',
+            borderRight: '1px solid var(--color-border-secondary)',
             paddingRight: 12,
             overflowY: 'auto'
           }}>
-            <div style={{ fontWeight: 500, marginBottom: 8, color: '#666' }}>
+            <div style={{ fontWeight: 500, marginBottom: 8, color: 'var(--color-text-secondary)' }}>
               章节列表 ({batchPreviewData.expansion_results[selectedOutlineIdx]?.actual_chapter_count || 0} 章)
             </div>
             {batchPreviewData.expansion_results[selectedOutlineIdx] && (
               <List
                 size="small"
                 dataSource={batchPreviewData.expansion_results[selectedOutlineIdx].chapter_plans}
-                renderItem={(plan: ChapterPlanItem, idx: number) => (
+                renderItem={(plan: any, idx: number) => (
                   <List.Item
                     key={idx}
                     onClick={() => setSelectedChapterIdx(idx)}
@@ -1664,7 +1684,7 @@ export default function Outline() {
 
           {/* 右栏：章节详情 */}
           <div style={{ flex: 1, overflowY: 'auto', paddingLeft: 12 }}>
-            <div style={{ fontWeight: 500, marginBottom: 12, color: '#666' }}>章节详情</div>
+            <div style={{ fontWeight: 500, marginBottom: 12, color: 'var(--color-text-secondary)' }}>章节详情</div>
             {batchPreviewData.expansion_results[selectedOutlineIdx]?.chapter_plans[selectedChapterIdx] ? (
               <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                 <Card size="small" title="情节概要" bordered={false}>
@@ -1677,7 +1697,7 @@ export default function Outline() {
 
                 <Card size="small" title="关键事件" bordered={false}>
                   <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                    {(batchPreviewData.expansion_results[selectedOutlineIdx].chapter_plans[selectedChapterIdx].key_events as string[]).map((event: string, eventIdx: number) => (
+                    {batchPreviewData.expansion_results[selectedOutlineIdx].chapter_plans[selectedChapterIdx].key_events.map((event: string, eventIdx: number) => (
                       <div key={eventIdx}>• {event}</div>
                     ))}
                   </Space>
@@ -1685,7 +1705,7 @@ export default function Outline() {
 
                 <Card size="small" title="涉及角色" bordered={false}>
                   <Space wrap>
-                    {(batchPreviewData.expansion_results[selectedOutlineIdx].chapter_plans[selectedChapterIdx].character_focus as string[]).map((char: string, charIdx: number) => (
+                    {batchPreviewData.expansion_results[selectedOutlineIdx].chapter_plans[selectedChapterIdx].character_focus.map((char: string, charIdx: number) => (
                       <Tag key={charIdx} color="purple">{char}</Tag>
                     ))}
                   </Space>
@@ -1694,7 +1714,7 @@ export default function Outline() {
                 {batchPreviewData.expansion_results[selectedOutlineIdx].chapter_plans[selectedChapterIdx].scenes && batchPreviewData.expansion_results[selectedOutlineIdx].chapter_plans[selectedChapterIdx].scenes!.length > 0 && (
                   <Card size="small" title="场景" bordered={false}>
                     <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                      {batchPreviewData.expansion_results[selectedOutlineIdx].chapter_plans[selectedChapterIdx].scenes!.map((scene: SceneInfo, sceneIdx: number) => (
+                      {batchPreviewData.expansion_results[selectedOutlineIdx].chapter_plans[selectedChapterIdx].scenes!.map((scene: any, sceneIdx: number) => (
                         <Card key={sceneIdx} size="small" style={{ backgroundColor: '#fafafa' }}>
                           <div><strong>地点：</strong>{scene.location}</div>
                           <div><strong>角色：</strong>{scene.characters.join('、')}</div>
@@ -1752,10 +1772,8 @@ export default function Outline() {
             result.chapter_plans
           );
           totalCreated += response.chapters_created;
-        } catch (error: unknown) {
-          const apiError = error as ApiError;
-          const err = error as Error;
-          const errorMsg = apiError.response?.data?.detail || err.message || '未知错误';
+        } catch (error: any) {
+          const errorMsg = error.response?.data?.detail || error.message || '未知错误';
           errors.push(`${result.outline_title}: ${errorMsg}`);
           console.error(`创建大纲 ${result.outline_title} 的章节失败:`, error);
         }
@@ -1820,7 +1838,7 @@ export default function Outline() {
           setSSEMessage(msg);
           setSSEProgress(progress);
         },
-        onResult: (data: unknown) => {
+        onResult: (data: any) => {
           console.log('生成完成，结果:', data);
         },
         onError: (error: string) => {
@@ -1838,7 +1856,7 @@ export default function Outline() {
           // 刷新大纲列表
           refreshOutlines();
         },
-        onOrganizationConfirmation: (data: OrganizationConfirmationData) => {
+        onOrganizationConfirmation: (data: any) => {
           // 处理可能的后续组织确认
           console.log('收到组织确认请求:', data);
           setSSEModalVisible(false);
@@ -1890,10 +1908,10 @@ export default function Outline() {
           setSSEMessage(msg);
           setSSEProgress(progress);
         },
-        onResult: (data: unknown) => {
+        onResult: (data: any) => {
           console.log('生成完成，结果:', data);
         },
-        onOrganizationConfirmation: (data: OrganizationConfirmationData) => {
+        onOrganizationConfirmation: (data: any) => {
           // 处理可能的后续组织确认
           console.log('收到组织确认请求:', data);
           setSSEModalVisible(false);
@@ -1947,8 +1965,7 @@ export default function Outline() {
 
       // 准备请求数据，添加确认的组织
       // ⚠️ 移除 confirmed_characters，避免重复创建角色
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { confirmed_characters: _unusedChars, ...baseData } = pendingGenerateData;
+      const { confirmed_characters, ...baseData } = pendingGenerateData;
       const requestData = {
         ...baseData,
         confirmed_organizations: selectedOrganizations
@@ -1963,7 +1980,7 @@ export default function Outline() {
           setSSEMessage(msg);
           setSSEProgress(progress);
         },
-        onResult: (data: unknown) => {
+        onResult: (data: any) => {
           console.log('生成完成，结果:', data);
         },
         onError: (error: string) => {
@@ -2010,8 +2027,7 @@ export default function Outline() {
       setSSEModalVisible(true);
 
       // 准备请求数据，禁用自动组织引入
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { confirmed_characters: _unusedChars, ...baseData } = pendingGenerateData;
+      const { confirmed_characters, ...baseData } = pendingGenerateData;
       const requestData = {
         ...baseData,
         enable_auto_organizations: false  // 禁用自动组织引入
@@ -2026,7 +2042,7 @@ export default function Outline() {
           setSSEMessage(msg);
           setSSEProgress(progress);
         },
-        onResult: (data: unknown) => {
+        onResult: (data: any) => {
           console.log('生成完成，结果:', data);
         },
         onError: (error: string) => {
@@ -2091,10 +2107,10 @@ export default function Outline() {
       >
         <div>
           <div style={{ marginBottom: 16, padding: 12, background: 'var(--color-warning-bg)', borderRadius: 4, border: '1px solid var(--color-warning-border)' }}>
-            <div style={{ fontWeight: 500, marginBottom: 8, color: '#d48806' }}>
+            <div style={{ fontWeight: 500, marginBottom: 8, color: 'var(--color-warning)' }}>
               AI 分析结果
             </div>
-            <div style={{ color: '#666', marginBottom: 8 }}>
+            <div style={{ color: 'var(--color-text-secondary)', marginBottom: 8 }}>
               {characterConfirmData.reason}
             </div>
             <Tag color="blue">{characterConfirmData.chapter_range}</Tag>
@@ -2159,7 +2175,7 @@ export default function Outline() {
                     <Tag>第{character.appearance_chapter}章登场</Tag>
                   </div>
 
-                  <div style={{ marginBottom: 8, color: '#666' }}>
+                  <div style={{ marginBottom: 8, color: 'var(--color-text-secondary)' }}>
                     <strong>剧情作用：</strong>{character.plot_function}
                   </div>
 
@@ -2230,10 +2246,10 @@ export default function Outline() {
       >
         <div>
           <div style={{ marginBottom: 16, padding: 12, background: 'var(--color-warning-bg)', borderRadius: 4, border: '1px solid var(--color-warning-border)' }}>
-            <div style={{ fontWeight: 500, marginBottom: 8, color: '#d48806' }}>
+            <div style={{ fontWeight: 500, marginBottom: 8, color: 'var(--color-warning)' }}>
               AI 分析结果
             </div>
-            <div style={{ color: '#666', marginBottom: 8 }}>
+            <div style={{ color: 'var(--color-text-secondary)', marginBottom: 8 }}>
               {organizationConfirmData.reason}
             </div>
             <Tag color="blue">{organizationConfirmData.chapter_range}</Tag>
@@ -2298,7 +2314,7 @@ export default function Outline() {
                     <Tag>第{org.appearance_chapter}章登场</Tag>
                   </div>
 
-                  <div style={{ marginBottom: 8, color: '#666' }}>
+                  <div style={{ marginBottom: 8, color: 'var(--color-text-secondary)' }}>
                     <strong>剧情作用：</strong>{org.plot_function}
                   </div>
 
@@ -2374,7 +2390,7 @@ export default function Outline() {
           backgroundColor: 'var(--color-bg-container)',
           padding: isMobile ? '12px 0' : '16px 0',
           marginBottom: isMobile ? 12 : 16,
-          borderBottom: '1px solid #f0f0f0',
+          borderBottom: '1px solid var(--color-border-secondary)',
           display: 'flex',
           flexDirection: isMobile ? 'column' : 'row',
           gap: isMobile ? 12 : 0,

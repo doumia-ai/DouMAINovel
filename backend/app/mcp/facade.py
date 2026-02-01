@@ -41,6 +41,7 @@ from mcp.client.sse import sse_client
 from anyio import ClosedResourceError
 
 from app.mcp.config import mcp_config
+from app.mcp.http_tool_client import HTTPToolClient, HTTPToolError
 from app.logger import get_logger
 
 logger = get_logger(__name__)
@@ -67,9 +68,12 @@ class MCPPluginConfig:
     plugin_name: str
     url: str
     plugin_type: str = "streamable_http"  # streamable_http, sse, http
+    provider_type: str = "mcp"  # mcp, http (mcp=MCP协议, http=普通HTTP API)
     headers: Optional[Dict[str, str]] = None
     env: Optional[Dict[str, str]] = None
     timeout: float = 60.0
+    openapi_path: str = "/openapi.json"  # HTTP Tool Provider专用
+    tool_endpoint_template: Optional[str] = None  # HTTP Tool Provider专用
 
 
 @dataclass
@@ -78,6 +82,7 @@ class SessionInfo:
     session: ClientSession
     url: str
     plugin_type: str = "streamable_http"
+    provider_type: str = "mcp"  # mcp, http
     created_at: float = field(default_factory=time.time)
     last_access: float = field(default_factory=time.time)
     request_count: int = 0
@@ -85,6 +90,7 @@ class SessionInfo:
     status: str = "active"  # active, degraded, error
     _context_stack: List = field(default_factory=list)
     _expiry_warned: bool = False
+    _http_client: Optional['HTTPToolClient'] = None  # HTTP Tool Provider专用
     
     @property
     def error_rate(self) -> float:
@@ -307,71 +313,114 @@ class MCPClientFacade:
             是否注册成功
         """
         self._ensure_background_tasks()
-
+        
         key = self._get_key(config.user_id, config.plugin_name)
         user_lock = await self._get_user_lock(config.user_id)
-
+        
         async with user_lock:
             # 如果已存在，先关闭
             if key in self._sessions:
                 await self._close_session_unsafe(key)
-
+            
             try:
-                logger.info(f"🔗 连接MCP服务器: {config.plugin_name} -> {config.url} (类型: {config.plugin_type})")
-
-                # 根据类型选择客户端
-                if config.plugin_type == "sse":
-                    # SSE 客户端 - 返回 2 个值
-                    stream_ctx = sse_client(
-                        url=config.url,
-                        headers=config.headers,
-                        timeout=config.timeout
-                    )
-                    read, write = await stream_ctx.__aenter__()
+                # 根据provider_type选择客户端类型
+                if config.provider_type == "http":
+                    # HTTP Tool Provider - 使用HTTPToolClient
+                    return await self._register_http_tool_provider(config, key)
                 else:
-                    # streamable_http 客户端（默认，也用于 http 类型）- 返回 3 个值
-                    stream_ctx = streamablehttp_client(
-                        url=config.url,
-                        headers=config.headers,
-                        timeout=config.timeout
-                    )
-                    read, write, _ = await stream_ctx.__aenter__()
+                    # MCP协议 - 使用MCP客户端
+                    return await self._register_mcp_provider(config, key)
                 
-                session = ClientSession(read, write)
-                await session.__aenter__()
-                await session.initialize()
-                
-                now = time.time()
-                info = SessionInfo(
-                    session=session,
-                    url=config.url,
-                    plugin_type=config.plugin_type,
-                    created_at=now,
-                    last_access=now,
-                    _context_stack=[('stream', stream_ctx), ('session', session)]
-                )
-                
-                async with self._session_lock:
-                    self._sessions[key] = info
-                
-                logger.info(f"✅ MCP会话建立成功: {key}")
-                await self._emit_status_change(config.user_id, config.plugin_name, "inactive", "active", "连接成功")
-                return True
-
-            except ExceptionGroup as eg:
-                # 处理 TaskGroup 的异常组，提取详细错误信息
-                error_details = []
-                for exc in eg.exceptions:
-                    error_details.append(f"{type(exc).__name__}: {exc}")
-                error_msg = "; ".join(error_details)
-                logger.error(f"❌ MCP连接失败 {key}: TaskGroup异常 - {error_msg}")
-                await self._emit_status_change(config.user_id, config.plugin_name, "inactive", "error", error_msg)
-                return False
-
             except Exception as e:
-                logger.error(f"❌ MCP连接失败 {key}: {type(e).__name__}: {e}")
+                logger.error(f"❌ 连接失败 {key}: {e}")
                 await self._emit_status_change(config.user_id, config.plugin_name, "inactive", "error", str(e))
                 return False
+    
+    async def _register_http_tool_provider(self, config: MCPPluginConfig, key: str) -> bool:
+        """注册HTTP Tool Provider（普通HTTP API）"""
+        logger.info(f"🔗 连接HTTP Tool Provider: {config.plugin_name} -> {config.url}")
+        
+        try:
+            # 创建HTTP Tool Client
+            http_client = HTTPToolClient(
+                url=config.url,
+                headers=config.headers,
+                env=config.env,
+                timeout=config.timeout,
+                openapi_path=config.openapi_path,
+                tool_endpoint_template=config.tool_endpoint_template
+            )
+            
+            # 初始化（获取OpenAPI schema）
+            await http_client.initialize()
+            
+            now = time.time()
+            info = SessionInfo(
+                session=None,  # HTTP Tool Provider不使用MCP Session
+                url=config.url,
+                plugin_type=config.plugin_type,
+                provider_type="http",
+                created_at=now,
+                last_access=now,
+                _context_stack=[],
+                _http_client=http_client
+            )
+            
+            async with self._session_lock:
+                self._sessions[key] = info
+            
+            logger.info(f"✅ HTTP Tool Provider连接成功: {key}")
+            await self._emit_status_change(config.user_id, config.plugin_name, "inactive", "active", "连接成功")
+            return True
+            
+        except HTTPToolError as e:
+            logger.error(f"❌ HTTP Tool Provider连接失败 {key}: {e}")
+            await self._emit_status_change(config.user_id, config.plugin_name, "inactive", "error", str(e))
+            return False
+    
+    async def _register_mcp_provider(self, config: MCPPluginConfig, key: str) -> bool:
+        """注册MCP协议Provider"""
+        logger.info(f"🔗 连接MCP服务器: {config.plugin_name} -> {config.url} (类型: {config.plugin_type})")
+        
+        # 根据类型选择客户端
+        if config.plugin_type == "sse":
+            # SSE 客户端 - 返回 2 个值
+            stream_ctx = sse_client(
+                url=config.url,
+                headers=config.headers,
+                timeout=config.timeout
+            )
+            read, write = await stream_ctx.__aenter__()
+        else:
+            # streamable_http 客户端（默认，也用于 http 类型）- 返回 3 个值
+            stream_ctx = streamablehttp_client(
+                url=config.url,
+                headers=config.headers,
+                timeout=config.timeout
+            )
+            read, write, _ = await stream_ctx.__aenter__()
+        
+        session = ClientSession(read, write)
+        await session.__aenter__()
+        await session.initialize()
+        
+        now = time.time()
+        info = SessionInfo(
+            session=session,
+            url=config.url,
+            plugin_type=config.plugin_type,
+            provider_type="mcp",
+            created_at=now,
+            last_access=now,
+            _context_stack=[('stream', stream_ctx), ('session', session)]
+        )
+        
+        async with self._session_lock:
+            self._sessions[key] = info
+        
+        logger.info(f"✅ MCP会话建立成功: {key}")
+        await self._emit_status_change(config.user_id, config.plugin_name, "inactive", "active", "连接成功")
+        return True
     
     async def unregister(self, user_id: str, plugin_name: str):
         """
@@ -398,7 +447,14 @@ class MCPClientFacade:
             info = self._sessions.pop(key, None)
         
         if info:
-            # 按LIFO顺序清理上下文
+            # 如果是HTTP Tool Provider，关闭HTTP客户端
+            if info._http_client:
+                try:
+                    await info._http_client.close()
+                except Exception as e:
+                    logger.debug(f"关闭HTTP客户端: {e}")
+            
+            # 按LIFO顺序清理上下文（MCP协议）
             for ctx_type, ctx in reversed(info._context_stack):
                 try:
                     await ctx.__aexit__(None, None, None)
@@ -410,7 +466,7 @@ class MCPClientFacade:
                 except Exception as e:
                     logger.debug(f"清理{ctx_type}上下文: {e}")
             
-            logger.info(f"🗑️ 关闭MCP会话: {key}")
+            logger.info(f"🗑️ 关闭会话: {key}")
     
     async def _get_session(self, user_id: str, plugin_name: str) -> ClientSession:
         """
@@ -438,44 +494,17 @@ class MCPClientFacade:
         info.last_access = time.time()
         info.request_count += 1
         return info.session
-
-    def is_registered(self, user_id: str, plugin_name: str) -> bool:
-        """
-        检查插件是否已注册（同步方法，仅检查内存状态）
-
-        Args:
-            user_id: 用户ID
-            plugin_name: 插件名称
-
-        Returns:
-            是否已注册且状态正常
-        """
-        key = self._get_key(user_id, plugin_name)
-        info = self._sessions.get(key)
-        return info is not None and info.status != "error"
-
-    def get_session_status(self, user_id: str, plugin_name: str) -> Optional[str]:
-        """
-        获取会话状态（同步方法）
-
-        Args:
-            user_id: 用户ID
-            plugin_name: 插件名称
-
-        Returns:
-            会话状态，如果不存在返回 None
-        """
-        key = self._get_key(user_id, plugin_name)
-        info = self._sessions.get(key)
-        return info.status if info else None
-
+    
     async def ensure_registered(
         self,
         user_id: str,
         plugin_name: str,
         url: str,
         plugin_type: str = "streamable_http",
-        headers: Optional[Dict[str, str]] = None
+        provider_type: str = "mcp",
+        headers: Optional[Dict[str, str]] = None,
+        openapi_path: str = "/openapi.json",
+        tool_endpoint_template: Optional[str] = None
     ) -> bool:
         """
         确保插件已注册（如果未注册则自动注册）
@@ -485,7 +514,10 @@ class MCPClientFacade:
             plugin_name: 插件名称
             url: 服务器URL
             plugin_type: 插件类型 (streamable_http, sse, http)
+            provider_type: Provider类型 (mcp, http)
             headers: HTTP头
+            openapi_path: OpenAPI schema路径（HTTP Tool Provider专用）
+            tool_endpoint_template: 工具调用URL模板（HTTP Tool Provider专用）
             
         Returns:
             是否成功
@@ -494,8 +526,11 @@ class MCPClientFacade:
         
         if key in self._sessions:
             info = self._sessions[key]
-            # 检查URL和类型是否变化
-            if info.url == url and info.plugin_type == plugin_type and info.status != "error":
+            # 检查URL、类型和provider_type是否变化
+            if (info.url == url and
+                info.plugin_type == plugin_type and
+                info.provider_type == provider_type and
+                info.status != "error"):
                 return True
         
         # 注册
@@ -504,7 +539,10 @@ class MCPClientFacade:
             plugin_name=plugin_name,
             url=url,
             plugin_type=plugin_type,
-            headers=headers
+            provider_type=provider_type,
+            headers=headers,
+            openapi_path=openapi_path,
+            tool_endpoint_template=tool_endpoint_template
         ))
     
     async def test_connection(self, user_id: str, plugin_name: str) -> Dict[str, Any]:
@@ -519,23 +557,36 @@ class MCPClientFacade:
             测试结果字典
         """
         start = time.time()
+        key = self._get_key(user_id, plugin_name)
         
         try:
-            session = await self._get_session(user_id, plugin_name)
-            result = await session.list_tools()
+            info = self._sessions.get(key)
+            if not info:
+                raise ValueError(f"会话不存在: {plugin_name}")
             
-            tools = [
-                {"name": t.name, "description": t.description or ""}
-                for t in result.tools
-            ]
-            
-            return {
-                "success": True,
-                "message": "连接成功",
-                "response_time_ms": round((time.time() - start) * 1000, 2),
-                "tools_count": len(tools),
-                "tools": tools
-            }
+            # 根据provider_type选择测试方法
+            if info.provider_type == "http" and info._http_client:
+                # HTTP Tool Provider
+                test_result = await info._http_client.test_connection()
+                return test_result
+            else:
+                # MCP协议
+                session = await self._get_session(user_id, plugin_name)
+                result = await session.list_tools()
+                
+                tools = [
+                    {"name": t.name, "description": t.description or ""}
+                    for t in result.tools
+                ]
+                
+                return {
+                    "success": True,
+                    "message": "连接成功",
+                    "provider_type": "mcp",
+                    "response_time_ms": round((time.time() - start) * 1000, 2),
+                    "tools_count": len(tools),
+                    "tools": tools
+                }
         except Exception as e:
             return {
                 "success": False,
@@ -547,8 +598,8 @@ class MCPClientFacade:
     # ==================== 工具操作 ====================
     
     async def get_tools(
-        self, 
-        user_id: str, 
+        self,
+        user_id: str,
         plugin_name: str,
         use_cache: bool = True
     ) -> List[Dict[str, Any]]:
@@ -577,18 +628,29 @@ class MCPClientFacade:
                 del self._tool_cache[cache_key]
                 logger.debug(f"⏰ 工具缓存过期: {cache_key}")
         
-        # 从服务器获取
-        session = await self._get_session(user_id, plugin_name)
-        result = await session.list_tools()
+        # 获取会话信息
+        key = self._get_key(user_id, plugin_name)
+        info = self._sessions.get(key)
+        if not info:
+            raise ValueError(f"MCP会话不存在: {plugin_name}，请先调用register()")
         
-        tools = [
-            {
-                "name": t.name,
-                "description": t.description or "",
-                "inputSchema": t.inputSchema
-            }
-            for t in result.tools
-        ]
+        # 根据provider_type选择获取方法
+        if info.provider_type == "http" and info._http_client:
+            # HTTP Tool Provider
+            tools = await info._http_client.list_tools()
+        else:
+            # MCP协议
+            session = await self._get_session(user_id, plugin_name)
+            result = await session.list_tools()
+            
+            tools = [
+                {
+                    "name": t.name,
+                    "description": t.description or "",
+                    "inputSchema": t.inputSchema
+                }
+                for t in result.tools
+            ]
         
         # 更新缓存
         self._tool_cache[cache_key] = ToolCacheEntry(
@@ -626,6 +688,17 @@ class MCPClientFacade:
         start_time = time.time()
         actual_timeout = timeout or mcp_config.TOOL_CALL_TIMEOUT_SECONDS
         
+        # 获取会话信息，判断provider_type
+        key = self._get_key(user_id, plugin_name)
+        info = self._sessions.get(key)
+        
+        # 如果是HTTP Tool Provider，使用HTTPToolClient
+        if info and info.provider_type == "http" and info._http_client:
+            return await self._call_http_tool(
+                info._http_client, tool_key, tool_name, arguments, actual_timeout, start_time
+            )
+        
+        # MCP协议
         for attempt in range(max_reconnect_attempts + 1):
             try:
                 session = await self._get_session(user_id, plugin_name)
@@ -760,6 +833,50 @@ class MCPClientFacade:
                 raise MCPError(f"工具调用失败: {error_msg}")
         
         raise MCPError("工具调用失败: 未知错误")
+    
+    async def _call_http_tool(
+        self,
+        http_client: HTTPToolClient,
+        tool_key: str,
+        tool_name: str,
+        arguments: Dict[str, Any],
+        timeout: float,
+        start_time: float
+    ) -> Any:
+        """调用HTTP Tool Provider的工具"""
+        try:
+            logger.info(f"调用HTTP工具: {tool_key}")
+            logger.debug(f"  参数: {arguments}")
+            
+            # 带超时调用
+            result = await asyncio.wait_for(
+                http_client.call_tool(tool_name, arguments),
+                timeout=timeout
+            )
+            
+            # 记录成功指标
+            duration_ms = (time.time() - start_time) * 1000
+            self._metrics[tool_key].record_success(duration_ms)
+            
+            logger.info(f"✅ HTTP工具调用成功: {tool_key} ({duration_ms:.2f}ms)")
+            return result
+            
+        except asyncio.TimeoutError:
+            duration_ms = (time.time() - start_time) * 1000
+            self._metrics[tool_key].record_failure(duration_ms)
+            raise MCPError(f"工具调用超时（>{timeout}秒）")
+            
+        except HTTPToolError as e:
+            duration_ms = (time.time() - start_time) * 1000
+            self._metrics[tool_key].record_failure(duration_ms)
+            logger.error(f"❌ HTTP工具调用失败: {tool_key}: {e}")
+            raise MCPError(f"工具调用失败: {str(e)}")
+            
+        except Exception as e:
+            duration_ms = (time.time() - start_time) * 1000
+            self._metrics[tool_key].record_failure(duration_ms)
+            logger.error(f"❌ HTTP工具调用失败: {tool_key}: {e}")
+            raise MCPError(f"工具调用失败: {str(e)}")
     
     def _extract_tool_result(self, result) -> Any:
         """从MCP结果中提取实际内容"""

@@ -1,33 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Button, Modal, Form, Input, Select, message, Row, Col, Empty, Tabs, Card, Tag, Space, Divider, Typography, InputNumber } from 'antd';
 import { ThunderboltOutlined, PlusOutlined, EditOutlined, DeleteOutlined, TrophyOutlined } from '@ant-design/icons';
 import { useParams } from 'react-router-dom';
-import api from '../services/api';
-import SSEProgressModal from '../components/SSEProgressModal';
+
+import SSEProgressModal from '../components/SSEProgressModal.js';
+import { careerApi } from '../services/api/index.js';
+import type { Career, CareerStage } from '../services/api/career.api.js';
 
 const { TextArea } = Input;
 const { Title, Text, Paragraph } = Typography;
-
-interface CareerStage {
-    level: number;
-    name: string;
-    description?: string;
-}
-
-interface Career {
-    id: string;
-    project_id: string;
-    name: string;
-    type: 'main' | 'sub';
-    description?: string;
-    category?: string;
-    stages: CareerStage[];
-    max_stage: number;
-    requirements?: string;
-    special_abilities?: string;
-    worldview_rules?: string;
-    source: string;
-}
 
 export default function Careers() {
     const { projectId } = useParams<{ projectId: string }>();
@@ -46,26 +27,53 @@ export default function Careers() {
     const [aiProgress, setAiProgress] = useState(0);
     const [aiMessage, setAiMessage] = useState('');
 
-    const fetchCareers = useCallback(async () => {
-        try {
-            setLoading(true);
-            const response = await api.get('/careers', {
-                params: { project_id: projectId }
-            }) as { main_careers?: Career[]; sub_careers?: Career[] };
-            setMainCareers(response.main_careers || []);
-            setSubCareers(response.sub_careers || []);
-        } catch (error: unknown) {
-            console.error('获取职业列表失败:', error);
-        } finally {
-            setLoading(false);
-        }
-    }, [projectId]);
-
     useEffect(() => {
         if (projectId) {
             fetchCareers();
         }
-    }, [projectId, fetchCareers]);
+    }, [projectId]);
+
+    const fetchCareers = async () => {
+        try {
+            setLoading(true);
+            const response = await careerApi.getCareers(projectId!);
+            console.log('✅ 职业列表响应:', response);
+            console.log('主职业数量:', response.main_careers?.length);
+            console.log('副职业数量:', response.sub_careers?.length);
+            setMainCareers(response.main_careers || []);
+            setSubCareers(response.sub_careers || []);
+        } catch (error: any) {
+            console.error('❌ 获取职业列表失败:', error);
+            console.error('错误详情:', {
+                status: error.response?.status,
+                statusText: error.response?.statusText,
+                data: error.response?.data,
+                message: error.message
+            });
+            
+            // Handle specific error codes
+            if (error.response?.status === 401) {
+                message.error('登录已过期，请重新登录');
+                // Redirect to login after a short delay
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 1500);
+            } else if (error.response?.status === 404) {
+                message.error('项目不存在或无权访问');
+            } else if (error.response?.status === 500) {
+                const errorDetail = error.response?.data?.detail || '服务器错误，请稍后重试';
+                message.error(errorDetail);
+                console.error('服务器错误详情:', errorDetail);
+            } else if (error.message === 'Network Error') {
+                message.error('网络连接失败，请检查网络设置');
+            } else {
+                const errorMsg = error.response?.data?.detail || '获取职业列表失败';
+                message.error(errorMsg);
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleOpenModal = (career?: Career) => {
         if (career) {
@@ -81,18 +89,7 @@ export default function Careers() {
         setIsModalOpen(true);
     };
 
-    interface CareerFormValues {
-        name: string;
-        type: 'main' | 'sub';
-        description?: string;
-        category?: string;
-        stages?: string;
-        requirements?: string;
-        special_abilities?: string;
-        worldview_rules?: string;
-    }
-
-    const handleSubmit = async (values: CareerFormValues) => {
+    const handleSubmit = async (values: any) => {
         try {
             // 解析阶段数据
             const stagesText = values.stages || '';
@@ -121,12 +118,12 @@ export default function Careers() {
             };
 
             if (editingCareer) {
-                await api.put(`/careers/${editingCareer.id}`, data);
+                await careerApi.updateCareer(editingCareer.id, data);
                 message.success('职业更新成功');
             } else {
-                await api.post('/careers', {
+                await careerApi.createCareer({
                     ...data,
-                    project_id: projectId,
+                    project_id: projectId!,
                     source: 'manual'
                 });
                 message.success('职业创建成功');
@@ -135,9 +132,8 @@ export default function Careers() {
             setIsModalOpen(false);
             form.resetFields();
             fetchCareers();
-        } catch (error: unknown) {
-            const axiosError = error as { response?: { data?: { detail?: string } } };
-            message.error(axiosError.response?.data?.detail || '操作失败');
+        } catch (error: any) {
+            message.error(error.response?.data?.detail || '操作失败');
         }
     };
 
@@ -148,18 +144,17 @@ export default function Careers() {
             centered: true,
             onOk: async () => {
                 try {
-                    await api.delete(`/careers/${id}`);
+                    await careerApi.deleteCareer(id);
                     message.success('职业删除成功');
                     fetchCareers();
-                } catch (error: unknown) {
-                    const axiosError = error as { response?: { data?: { detail?: string } } };
-                    message.error(axiosError.response?.data?.detail || '删除失败');
+                } catch (error: any) {
+                    message.error(error.response?.data?.detail || '删除失败');
                 }
             }
         });
     };
 
-    const handleAIGenerate = async (values: { main_career_count: number; sub_career_count: number }) => {
+    const handleAIGenerate = async (values: any) => {
         setIsAIModalOpen(false);
         setAiGenerating(true);
         setAiProgress(0);
@@ -206,10 +201,9 @@ export default function Careers() {
                 setAiGenerating(false);
                 message.error('连接中断，生成失败');
             };
-        } catch (err: unknown) {
+        } catch (err: any) {
             setAiGenerating(false);
-            const error = err as Error;
-            message.error(error.message || '启动生成失败');
+            message.error(err.message || '启动生成失败');
         }
     };
 

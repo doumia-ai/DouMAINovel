@@ -1,6 +1,7 @@
 import React from 'react';
-import { Modal, Spin, Button } from 'antd';
+
 import { LoadingOutlined, StopOutlined } from '@ant-design/icons';
+import { Modal, Spin, Button } from 'antd';
 
 interface SSEProgressModalProps {
   visible: boolean;

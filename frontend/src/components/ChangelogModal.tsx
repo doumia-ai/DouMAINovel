@@ -1,5 +1,6 @@
-import { Modal, Timeline, Tag, Avatar, Empty, Spin, Button, Space } from 'antd';
 import { useState, useEffect } from 'react';
+
+import { Modal, Timeline, Tag, Avatar, Empty, Spin, Button, Space } from 'antd';
 import {
   BugOutlined,
   StarOutlined,
@@ -19,6 +20,9 @@ import {
   groupChangelogByDate,
   cacheChangelog,
   clearChangelogCache,
+  getCachedChangelog,
+  shouldFetchChangelog,
+  markChangelogFetched,
   type ChangelogEntry,
 } from '../services/changelogService';
 
@@ -47,15 +51,15 @@ export default function ChangelogModal({ visible, onClose }: ChangelogModalProps
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [usingCache, setUsingCache] = useState(false);
 
-  // 加载更新日志
-  // 每次用户打开窗口时才同步获取最新数据，不自动刷新
-  const loadChangelog = async (pageNum: number = 1, append: boolean = false) => {
+  // 从网络加载更新日志
+  const loadFromNetwork = async (pageNum: number = 1, append: boolean = false) => {
     setLoading(true);
     setError(null);
+    setUsingCache(false);
 
     try {
-      // 每次打开都从网络获取最新数据
       const entries = await fetchChangelog(pageNum, 30);
 
       if (entries.length === 0) {
@@ -65,23 +69,61 @@ export default function ChangelogModal({ visible, onClose }: ChangelogModalProps
           setChangelog(prev => [...prev, ...entries]);
         } else {
           setChangelog(entries);
-          // 缓存第一页数据（用于分页加载时的数据持久化）
+          // 缓存第一页数据并记录获取时间
           if (pageNum === 1) {
             cacheChangelog(entries);
+            markChangelogFetched();
           }
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : '获取更新日志失败');
+      const errorMessage = err instanceof Error ? err.message : '获取更新日志失败';
+      // 错误信息已由后端 API 提供，直接显示
+      setError(errorMessage);
+      
+      // 如果网络请求失败，尝试使用缓存数据
+      if (!append) {
+        const cached = getCachedChangelog();
+        if (cached && cached.length > 0) {
+          setChangelog(cached);
+          setUsingCache(true);
+        }
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  // 加载更新日志（优先使用缓存）
+  const loadChangelog = async (pageNum: number = 1, append: boolean = false, forceRefresh: boolean = false) => {
+    // 如果是第一页且不是强制刷新，先检查缓存
+    if (pageNum === 1 && !append && !forceRefresh) {
+      const cached = getCachedChangelog();
+      
+      // 如果有缓存且未过期，直接使用缓存
+      if (cached && cached.length > 0 && !shouldFetchChangelog()) {
+        setChangelog(cached);
+        setUsingCache(true);
+        setLoading(false);
+        setError(null);
+        return;
+      }
+      
+      // 如果有缓存但已过期，先显示缓存，然后尝试更新
+      if (cached && cached.length > 0) {
+        setChangelog(cached);
+        setUsingCache(true);
+      }
+    }
+    
+    // 从网络加载
+    await loadFromNetwork(pageNum, append);
+  };
+
   // 初始加载
   useEffect(() => {
     if (visible) {
-      loadChangelog(1, false);
+      loadChangelog(1, false, false);
       setPage(1);
       setHasMore(true);
     }
@@ -91,7 +133,7 @@ export default function ChangelogModal({ visible, onClose }: ChangelogModalProps
   const handleLoadMore = () => {
     const nextPage = page + 1;
     setPage(nextPage);
-    loadChangelog(nextPage, true);
+    loadFromNetwork(nextPage, true);
   };
 
   // 刷新（清除缓存并重新加载）
@@ -99,7 +141,8 @@ export default function ChangelogModal({ visible, onClose }: ChangelogModalProps
     clearChangelogCache();
     setPage(1);
     setHasMore(true);
-    loadChangelog(1, false);
+    setUsingCache(false);
+    loadFromNetwork(1, false);
   };
 
   // 按日期分组
@@ -293,13 +336,17 @@ export default function ChangelogModal({ visible, onClose }: ChangelogModalProps
       <div style={{
         marginTop: '24px',
         padding: '12px',
-        background: 'var(--color-info-bg)',
+        background: usingCache ? 'var(--color-warning-bg)' : 'var(--color-info-bg)',
         borderRadius: '4px',
-        border: '1px solid var(--color-info-border)',
+        border: `1px solid ${usingCache ? 'var(--color-warning-border)' : 'var(--color-info-border)'}`,
         fontSize: '13px',
-        color: 'var(--color-primary)',
+        color: usingCache ? 'var(--color-warning)' : 'var(--color-primary)',
       }}>
-        💡 提示：每次打开窗口时自动获取最新更新日志，数据来源于 GitHub 提交历史
+        {usingCache ? (
+          <>📦 当前显示的是缓存数据。点击刷新按钮可尝试获取最新数据</>
+        ) : (
+          <>💡 提示：数据来源于 GitHub 提交历史，后端已配置 Token 认证，每 24 小时自动更新一次</>
+        )}
       </div>
     </Modal >
   );

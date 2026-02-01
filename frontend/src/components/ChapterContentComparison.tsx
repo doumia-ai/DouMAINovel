@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Modal, Button, Card, Statistic, Row, Col, message } from 'antd';
-import { CheckOutlined, CloseOutlined, SwapOutlined } from '@ant-design/icons';
+
 import ReactDiffViewer from 'react-diff-viewer-continued';
+import { CheckOutlined, CloseOutlined, SwapOutlined } from '@ant-design/icons';
+import { Modal, Button, Card, Statistic, Row, Col, message } from 'antd';
 
 interface ChapterContentComparisonProps {
   visible: boolean;
@@ -78,9 +79,8 @@ const ChapterContentComparison: React.FC<ChapterContentComparisonProps> = ({
       }, 500);
 
       onClose();
-    } catch (error: unknown) {
-      const err = error as Error;
-      message.error(err.message || '应用失败');
+    } catch (error: any) {
+      message.error(error.message || '应用失败');
     } finally {
       setApplying(false);
     }

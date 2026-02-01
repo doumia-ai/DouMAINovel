@@ -1,5 +1,6 @@
-import { authApi } from '../services/api';
 import { message } from 'antd';
+
+import { authApi } from '../services/api/index.js';
 
 /**
  * 会话管理工具
@@ -113,7 +114,7 @@ class SessionManager {
           await this.refreshSession();
         }
       }
-    } catch {
+    } catch (error) {
       // 静默处理错误
     }
   }
@@ -231,7 +232,7 @@ class SessionManager {
     try {
       await this.refreshSession();
       return true;
-    } catch {
+    } catch (error) {
       return false;
     }
   }

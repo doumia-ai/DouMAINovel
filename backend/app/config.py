@@ -24,12 +24,17 @@ class Settings(BaseSettings):
     """应用配置"""
     
     # 应用配置
-    app_name: str = "MuMuAINovel"
-    app_version: str = "1.0.0"
+    app_name: str = "DouMAINovel"
+    app_version: str = "1.3.0-e"
     app_host: str = "0.0.0.0"
     app_port: int = 8000
     debug: bool = True
     
+    # 设置 Cookie 域名（主域名）
+    # 从环境变量 COOKIE_DOMAIN 读取，如果未设置则为 None（不限制域名）
+    # 生产环境建议设置为主域名，如 ".example.com"（注意前面的点，表示包含所有子域名）
+    COOKIE_DOMAIN: Optional[str] = None
+
     # 日志配置
     log_level: str = "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
     log_to_file: bool = True  # 是否输出到文件
@@ -105,6 +110,12 @@ class Settings(BaseSettings):
     # 会话配置
     SESSION_EXPIRE_MINUTES: int = 120  # 会话过期时间（分钟），默认2小时
     SESSION_REFRESH_THRESHOLD_MINUTES: int = 30  # 会话刷新阈值（分钟），剩余时间少于此值时可刷新
+    
+    # GitHub API 配置
+    GITHUB_TOKEN: Optional[str] = None  # GitHub Personal Access Token，可将 API 限制从 60 次/小时提升到 5000 次/小时
+    
+    # AIGC 检测服务配置
+    aigc_detect_url: str = "http://aigc-text-detector:8080"  # AIGC 检测服务地址（Docker 网络内部地址）
     
     class Config:
         env_file = ".env"

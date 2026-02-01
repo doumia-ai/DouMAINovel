@@ -1,7 +1,7 @@
 """记忆管理API - 提供记忆的查询、分析等接口"""
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, desc, delete
+from sqlalchemy import select, and_, desc
 from typing import List, Optional
 from app.database import get_db
 from app.models.memory import StoryMemory, PlotAnalysis
@@ -9,7 +9,6 @@ from app.models.chapter import Chapter
 from app.models.project import Project
 from app.services.memory_service import memory_service
 from app.services.plot_analyzer import get_plot_analyzer
-from app.services.foreshadow_service import foreshadow_service
 from app.services.ai_service import create_user_ai_service
 from app.models.settings import Settings
 from app.logger import get_logger
@@ -72,14 +71,29 @@ async def analyze_chapter(
             max_tokens=settings.max_tokens
         )
         
-        # 获取已埋入的伏笔列表（用于回收匹配）
-        existing_foreshadows = await foreshadow_service.get_planted_foreshadows_for_analysis(
-            db=db,
-            project_id=project_id
-        )
-        logger.info(f"📋 已获取{len(existing_foreshadows)}个已埋入伏笔用于分析匹配")
+        # 获取已埋入的伏笔列表（用于分析时的伏笔追踪）
+        from app.services.foreshadow_service import foreshadow_service
+        existing_foreshadows = []
+        try:
+            planted_foreshadows = await foreshadow_service.get_planted_foreshadows_for_analysis(
+                db=db,
+                project_id=project_id,
+                current_chapter_number=chapter.chapter_number
+            )
+            # 格式化为提示词需要的格式
+            if planted_foreshadows:
+                existing_foreshadows = [
+                    f"ID: {f['id']}\n标题: {f['title']}\n内容: {f['content']}\n埋入章节: 第{f['plant_chapter_number']}章\n"
+                    f"计划回收: 第{f.get('target_resolve_chapter_number', '未设定')}章\n"
+                    f"分类: {f.get('category', '未分类')}\n"
+                    f"{'[' + f.get('resolve_hint', '') + ']' if f.get('resolve_hint') else ''}"
+                    for f in planted_foreshadows
+                ]
+            logger.info(f"  📋 获取到{len(existing_foreshadows)}个已埋入伏笔")
+        except Exception as e:
+            logger.warning(f"⚠️ 获取已埋入伏笔失败，继续分析: {str(e)}")
         
-        # 执行剧情分析（传入已有伏笔列表）
+        # 执行剧情分析
         analyzer = get_plot_analyzer(ai_service)
         analysis_result = await analyzer.analyze_chapter(
             chapter_number=chapter.chapter_number,
@@ -88,7 +102,7 @@ async def analyze_chapter(
             word_count=chapter.word_count or len(chapter.content),
             user_id=user_id,
             db=db,
-            existing_foreshadows=existing_foreshadows
+            existing_foreshadows="\n\n".join(existing_foreshadows) if existing_foreshadows else "暂无已埋入伏笔"
         )
         
         if not analysis_result:
@@ -127,14 +141,16 @@ async def analyze_chapter(
             word_count=chapter.word_count
         )
         
-        # 检查是否已存在分析记录，如有则删除
-        existing_result = await db.execute(
+        # 检查是否已存在分析记录
+        existing = await db.execute(
             select(PlotAnalysis).where(PlotAnalysis.chapter_id == chapter_id)
         )
-        existing_analysis = existing_result.scalar_one_or_none()
-        if existing_analysis:
-            await db.delete(existing_analysis)
-            await db.flush()
+        if existing.scalar_one_or_none():
+            # 删除旧记录
+            await db.execute(
+                select(PlotAnalysis).where(PlotAnalysis.chapter_id == chapter_id)
+            )
+            await db.delete(existing.scalar_one())
         
         db.add(plot_analysis)
         await db.commit()
@@ -178,31 +194,13 @@ async def analyze_chapter(
         
         await db.commit()
         
-        # 【新增】自动更新伏笔状态
-        foreshadow_stats = {"planted_count": 0, "resolved_count": 0, "created_count": 0}
-        analysis_foreshadows = analysis_result.get('foreshadows', [])
-        
-        if analysis_foreshadows:
-            try:
-                foreshadow_stats = await foreshadow_service.auto_update_from_analysis(
-                    db=db,
-                    project_id=project_id,
-                    chapter_id=chapter_id,
-                    chapter_number=chapter.chapter_number,
-                    analysis_foreshadows=analysis_foreshadows
-                )
-                logger.info(f"📊 伏笔自动更新: 埋入{foreshadow_stats['planted_count']}个, 回收{foreshadow_stats['resolved_count']}个")
-            except Exception as fs_error:
-                logger.error(f"⚠️ 伏笔自动更新失败（不影响分析结果）: {str(fs_error)}")
-        
         logger.info(f"✅ 章节分析完成: 保存{saved_count}条记忆")
         
         return {
             "success": True,
             "message": f"分析完成,提取了{saved_count}条记忆",
             "analysis": plot_analysis.to_dict(),
-            "memories_count": saved_count,
-            "foreshadow_stats": foreshadow_stats
+            "memories_count": saved_count
         }
         
     except HTTPException:

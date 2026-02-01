@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useParams, useNavigate, Outlet, Link, useLocation } from 'react-router-dom';
+
 import { Layout, Menu, Spin, Button, Drawer } from 'antd';
+import { useParams, useNavigate, Outlet, Link, useLocation } from 'react-router-dom';
 import {
   ArrowLeftOutlined,
   FileTextOutlined,
@@ -20,7 +21,7 @@ import {
 } from '@ant-design/icons';
 import { useStore } from '../store';
 import { useCharacterSync, useOutlineSync, useChapterSync } from '../store/hooks';
-import { projectApi } from '../services/api';
+import { projectApi } from '../services/api/index.js';
 
 const { Header, Sider, Content } = Layout;
 
@@ -137,14 +138,14 @@ export default function ProjectDetail() {
       label: <Link to={`/project/${projectId}/chapters`}>章节管理</Link>,
     },
     {
-      key: 'chapter-analysis',
-      icon: <FundOutlined />,
-      label: <Link to={`/project/${projectId}/chapter-analysis`}>剧情分析</Link>,
-    },
-    {
       key: 'foreshadows',
       icon: <BulbOutlined />,
       label: <Link to={`/project/${projectId}/foreshadows`}>伏笔管理</Link>,
+    },
+    {
+      key: 'chapter-analysis',
+      icon: <FundOutlined />,
+      label: <Link to={`/project/${projectId}/chapter-analysis`}>剧情分析</Link>,
     },
     {
       key: 'writing-styles',
@@ -167,12 +168,11 @@ export default function ProjectDetail() {
     if (path.includes('/organizations')) return 'organizations';
     if (path.includes('/outline')) return 'outline';
     if (path.includes('/characters')) return 'characters';
-    if (path.includes('/chapter-analysis')) return 'chapter-analysis';
     if (path.includes('/foreshadows')) return 'foreshadows';
+    if (path.includes('/chapter-analysis')) return 'chapter-analysis';
     if (path.includes('/chapters')) return 'chapters';
     if (path.includes('/writing-styles')) return 'writing-styles';
     if (path.includes('/sponsor')) return 'sponsor';
-    // if (path.includes('/polish')) return 'polish';
     return 'sponsor'; // 默认选中赞助支持
   }, [location.pathname]);
 
@@ -224,7 +224,10 @@ export default function ProjectDetail() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', zIndex: 1 }}>
           <Button
             type="text"
-            icon={mobile ? <MenuUnfoldOutlined /> : (collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />)}
+            icon={(() => {
+              if (mobile) return <MenuUnfoldOutlined />;
+              return collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />;
+            })()}
             onClick={() => mobile ? setDrawerVisible(true) : setCollapsed(!collapsed)}
             style={{
               fontSize: mobile ? '18px' : '20px',
@@ -389,7 +392,10 @@ export default function ProjectDetail() {
         )}
 
         <Layout style={{
-          marginLeft: mobile ? 0 : (collapsed ? 60 : 220),
+          marginLeft: (() => {
+            if (mobile) return 0;
+            return collapsed ? 60 : 220;
+          })(),
           transition: 'all 0.2s'
         }}>
           <Content

@@ -8,18 +8,23 @@ const packageJson = JSON.parse(
   readFileSync(resolve(__dirname, 'package.json'), 'utf-8')
 )
 
-// https://vite.dev/config/
+// 从环境变量读取 outDir，默认保持原行为
+const outDir = process.env.VITE_OUT_DIR || '../backend/static'
+
 export default defineConfig({
   plugins: [react()],
-  // 定义全局常量，在构建时注入
   define: {
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(packageJson.version),
     'import.meta.env.VITE_BUILD_TIME': JSON.stringify(
       new Date().toISOString().split('T')[0]
     ),
+    // SSE API URL 配置 - 用于独立的 SSE 子域名
+    'import.meta.env.VITE_SSE_API_URL': JSON.stringify(
+      process.env.VITE_SSE_API_URL || ''
+    ),
   },
   build: {
-    outDir: '../backend/static',
+    outDir,
     emptyOutDir: true,
     rollupOptions: {
       output: {

@@ -11,7 +11,6 @@ export const cardStyles = {
   // 悬浮效果
   hoverable: {
     cursor: 'pointer',
-    position: 'relative' as const,
   } as CSSProperties,
 
   // 角色卡片样式
@@ -33,52 +32,15 @@ export const cardStyles = {
     borderRadius: 12,
   } as CSSProperties,
 
-  // 项目卡片样式 - 书籍风格 (Book Style)
+  // 项目卡片样式 - 现代化设计
   project: {
     height: '100%',
-    borderRadius: '6px 16px 16px 6px', // 左侧稍直(书脊)，右侧圆润
+    borderRadius: 20,
     overflow: 'hidden',
-    background: '#fff',
-    // 基础阴影 + 书籍厚度阴影
-    boxShadow: `
-      0 2px 8px rgba(0, 0, 0, 0.04),
-      4px 0 8px rgba(0, 0, 0, 0.02)
-    `,
-    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-    border: '1px solid rgba(0,0,0,0.02)',
-    borderLeft: '6px solid var(--color-primary)', // 书脊效果
-    display: 'flex',
-    flexDirection: 'column',
-    position: 'relative',
-  } as CSSProperties,
-
-  // 新建项目卡片样式 - 统一书籍风格
-  newProjectBook: {
-    height: '100%',
-    borderRadius: '6px 16px 16px 6px',
-    overflow: 'hidden',
-    background: '#fff',
-    // 基础阴影 + 书籍厚度阴影 (与普通项目一致)
-    boxShadow: `
-      0 2px 8px rgba(0, 0, 0, 0.04),
-      4px 0 8px rgba(0, 0, 0, 0.02)
-    `,
-    border: '1px solid rgba(0,0,0,0.02)',
-    borderLeft: '6px solid var(--color-primary)', // 与普通项目一致的书脊颜色
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'center',
-    alignItems: 'center',
-    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-    position: 'relative',
-  } as CSSProperties,
-
-  // 书架风格容器
-  bookshelf: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-    gap: '24px',
-    padding: '24px 0',
+    background: 'var(--color-bg-container)',
+    boxShadow: 'var(--shadow-card)',
+    transition: 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
+    border: '1px solid var(--color-border-secondary)',
   } as CSSProperties,
 
   // 卡片内容区域样式
@@ -112,28 +74,17 @@ export const cardStyles = {
   } as CSSProperties),
 };
 
-// 卡片悬浮动画 - 增强版 (Subtle Lift)
+// 卡片悬浮动画 - 增强版
 export const cardHoverHandlers = {
   onMouseEnter: (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.currentTarget;
-    target.style.transform = 'translateY(-6px) rotateY(-2deg)'; // 悬浮时轻微翻起
-    
-    // 统一书本悬浮态
-    target.style.boxShadow = `
-      -2px 0 4px rgba(0, 0, 0, 0.1), // 书脊阴影加深
-      8px 12px 24px rgba(0, 0, 0, 0.12)
-    `;
-
+    target.style.transform = 'translateY(-10px) scale(1.01)';
+    target.style.boxShadow = 'var(--shadow-elevated)';
   },
   onMouseLeave: (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.currentTarget;
-    target.style.transform = 'translateY(0) rotateY(0)';
-    
-    // 统一恢复基础阴影
-    target.style.boxShadow = `
-      0 2px 8px rgba(0, 0, 0, 0.04),
-      4px 0 8px rgba(0, 0, 0, 0.02)
-    `;
+    target.style.transform = 'translateY(0) scale(1)';
+    target.style.boxShadow = 'var(--shadow-card)';
   },
 };
 
@@ -161,17 +112,123 @@ export const characterGridConfig = {
 export const textStyles = {
   label: {
     fontSize: 12,
-    color: 'rgba(0, 0, 0, 0.45)',
+    color: 'var(--color-text-tertiary)',
   } as CSSProperties,
 
   value: {
     fontSize: 14,
-    color: 'rgba(0, 0, 0, 0.85)',
+    color: 'var(--color-text-base)',
   } as CSSProperties,
 
   description: {
     fontSize: 12,
-    color: 'rgba(0, 0, 0, 0.45)',
+    color: 'var(--color-text-tertiary)',
     lineHeight: 1.6,
+  } as CSSProperties,
+};
+
+// 头部按钮样式配置
+export const headerButtonStyles = {
+  // 主要按钮（渐变背景）
+  primary: {
+    borderRadius: 12,
+    background: 'rgba(255, 255, 255, 0.2)',
+    border: '1px solid rgba(255, 255, 255, 0.4)',
+    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.15)',
+    color: '#fff',
+    fontWeight: 500,
+    height: 44,
+    backdropFilter: 'blur(10px)',
+    transition: 'all 0.3s ease',
+  } as CSSProperties,
+
+  // 次要按钮
+  secondary: {
+    borderRadius: 12,
+    background: 'rgba(255, 255, 255, 0.15)',
+    border: '1px solid rgba(255, 255, 255, 0.3)',
+    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+    color: '#fff',
+    height: 44,
+    backdropFilter: 'blur(10px)',
+    transition: 'all 0.3s ease',
+  } as CSSProperties,
+
+  // 高亮按钮（如灵感模式）
+  highlight: {
+    borderRadius: 12,
+    background: 'rgba(255, 193, 7, 0.95)',
+    border: '1px solid rgba(255, 255, 255, 0.3)',
+    boxShadow: '0 4px 16px rgba(255, 193, 7, 0.4)',
+    color: '#fff',
+    fontWeight: 600,
+    height: 44,
+    transition: 'all 0.3s ease',
+  } as CSSProperties,
+
+  // 移动端按钮
+  mobile: {
+    borderRadius: 10,
+    height: 42,
+    fontWeight: 500,
+    padding: '0 8px',
+    fontSize: 13,
+  } as CSSProperties,
+};
+
+// 语义化颜色映射（用于替换硬编码颜色）
+export const semanticColors = {
+  success: 'var(--color-success)',      // 替换 #52c41a
+  info: 'var(--color-info)',            // 替换 #1890ff
+  warning: 'var(--color-warning)',      // 替换 #faad14
+  error: 'var(--color-error)',          // 替换 #ff4d4f
+  primary: 'var(--color-primary)',      // 替换 #722ed1 或其他主色
+  purple: 'var(--color-primary)',       // #722ed1 映射到主色
+};
+
+// Switch 组件容器样式
+export const switchContainerStyles = {
+  // 标准容器样式
+  standard: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    flexShrink: 0,
+    minWidth: '44px',
+  } as CSSProperties,
+
+  // 带间距的容器样式
+  withMargin: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    flexShrink: 0,
+    minWidth: '44px',
+    marginLeft: 8,
+  } as CSSProperties,
+};
+
+// Switch 组件直接样式
+export const switchStyles = {
+  // 防止压缩的基础样式
+  base: {
+    display: 'inline-block',  // 确保尺寸稳定
+    flexShrink: 0,
+    minWidth: '44px',
+    minHeight: '22px',
+  } as CSSProperties,
+  
+  // 小尺寸 Switch 样式
+  small: {
+    display: 'inline-block',
+    flexShrink: 0,
+    minWidth: '28px',
+    minHeight: '16px',
+  } as CSSProperties,
+  
+  // 默认尺寸 Switch 样式
+  default: {
+    display: 'inline-block',
+    flexShrink: 0,
+    minWidth: '44px',
+    minHeight: '22px',
   } as CSSProperties,
 };

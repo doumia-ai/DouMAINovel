@@ -1,9 +1,9 @@
 """导入导出服务"""
 import json
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Optional, Any
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_
+from sqlalchemy import select
 from app.models.project import Project
 from app.models.chapter import Chapter
 from app.models.character import Character
@@ -92,7 +92,7 @@ class ImportExportService:
             "chapter_count": project.chapter_count,
             "narrative_perspective": project.narrative_perspective,
             "character_count": project.character_count,
-            "outline_mode": project.outline_mode,
+            "outline_mode": project.outline_mode, 
             "user_id": project.user_id,
             "created_at": project.created_at.isoformat() if project.created_at else None,
         }
@@ -286,25 +286,39 @@ class ImportExportService:
     @staticmethod
     async def _export_relationships(project_id: str, db: AsyncSession) -> List[RelationshipExportData]:
         """导出关系"""
+        # 先获取所有关系
         result = await db.execute(
-            select(CharacterRelationship, Character)
-            .join(Character, CharacterRelationship.character_from_id == Character.id)
+            select(CharacterRelationship)
             .where(CharacterRelationship.project_id == project_id)
         )
-        relationships = result.all()
+        relationships = result.scalars().all()
         
+        if not relationships:
+            return []
+        
+        # 收集所有需要查询的角色ID（批量查询替代N+1）
+        char_ids = set()
+        for rel in relationships:
+            char_ids.add(rel.character_from_id)
+            char_ids.add(rel.character_to_id)
+        
+        # 一次性查询所有相关角色
+        char_result = await db.execute(
+            select(Character).where(Character.id.in_(char_ids))
+        )
+        characters = char_result.scalars().all()
+        char_mapping = {char.id: char.name for char in characters}
+        
+        # 构建导出数据
         exported = []
-        for rel, char_from in relationships:
-            # 获取目标角色名称
-            target_result = await db.execute(
-                select(Character).where(Character.id == rel.character_to_id)
-            )
-            char_to = target_result.scalar_one_or_none()
+        for rel in relationships:
+            source_name = char_mapping.get(rel.character_from_id)
+            target_name = char_mapping.get(rel.character_to_id)
             
-            if char_to:
+            if source_name and target_name:
                 exported.append(RelationshipExportData(
-                    source_name=char_from.name,
-                    target_name=char_to.name,
+                    source_name=source_name,
+                    target_name=target_name,
                     relationship_name=rel.relationship_name,
                     intimacy_level=rel.intimacy_level or 50,
                     status=rel.status or "active",
@@ -450,23 +464,25 @@ class ImportExportService:
         )
         careers = result.scalars().all()
         
-        return [
-            CareerExportData(
+        exported = []
+        for career in careers:
+            # 解析stages JSON字符串
+            stages = None
+            if career.stages:
+                try:
+                    stages = json.loads(career.stages) if isinstance(career.stages, str) else career.stages
+                except:
+                    stages = None
+            
+            exported.append(CareerExportData(
                 name=career.name,
-                type=career.type,
                 description=career.description,
                 category=career.category,
-                stages=career.stages,
-                max_stage=career.max_stage or 10,
-                requirements=career.requirements,
-                special_abilities=career.special_abilities,
-                worldview_rules=career.worldview_rules,
-                attribute_bonuses=career.attribute_bonuses,
-                source=career.source or "ai",
+                stages=stages,
                 created_at=career.created_at.isoformat() if career.created_at else None
-            )
-            for career in careers
-        ]
+            ))
+        
+        return exported
     
     @staticmethod
     async def _export_character_careers(project_id: str, db: AsyncSession) -> List[CharacterCareerExportData]:
@@ -484,12 +500,9 @@ class ImportExportService:
             CharacterCareerExportData(
                 character_name=char.name,
                 career_name=career.name,
-                career_type=cc.career_type,
                 current_stage=cc.current_stage or 1,
-                stage_progress=cc.stage_progress or 0,
-                started_at=cc.started_at,
-                reached_current_stage_at=cc.reached_current_stage_at,
-                notes=cc.notes
+                is_main_career=cc.career_type == "main" if hasattr(cc, 'career_type') else False,
+                notes=cc.notes if hasattr(cc, 'notes') else None
             )
             for cc, char, career in character_careers
         ]
@@ -514,7 +527,7 @@ class ImportExportService:
         result = await db.execute(
             select(StoryMemory)
             .where(StoryMemory.project_id == project_id)
-            .order_by(StoryMemory.story_timeline, StoryMemory.chapter_position)
+            .order_by(StoryMemory.created_at)
         )
         memories = result.scalars().all()
         
@@ -528,21 +541,17 @@ class ImportExportService:
                     for char_id in mem.related_characters
                 ]
             
+            # 将importance_score (0.0-1.0) 转换为 importance (0-100)
+            importance = 50
+            if mem.importance_score is not None:
+                importance = int(mem.importance_score * 100) if mem.importance_score <= 1.0 else int(mem.importance_score)
+            
             exported.append(StoryMemoryExportData(
                 chapter_title=chapter_mapping.get(mem.chapter_id) if mem.chapter_id else None,
                 memory_type=mem.memory_type,
-                title=mem.title,
                 content=mem.content,
-                full_context=mem.full_context,
+                importance=importance,
                 related_characters=related_char_names,
-                related_locations=mem.related_locations,
-                tags=mem.tags,
-                importance_score=mem.importance_score or 0.5,
-                story_timeline=mem.story_timeline,
-                chapter_position=mem.chapter_position or 0,
-                text_length=mem.text_length or 0,
-                is_foreshadow=mem.is_foreshadow or 0,
-                foreshadow_strength=mem.foreshadow_strength,
                 created_at=mem.created_at.isoformat() if mem.created_at else None
             ))
         
@@ -1134,19 +1143,20 @@ class ImportExportService:
         career_mapping = {}
         
         for career_data in careers_data:
+            # 处理stages - 如果是列表则序列化为JSON字符串
+            stages = career_data.get("stages", [])
+            if isinstance(stages, list):
+                stages = json.dumps(stages, ensure_ascii=False)
+            elif stages is None:
+                stages = "[]"
+            
             career = Career(
                 project_id=project_id,
                 name=career_data.get("name"),
-                type=career_data.get("type", "main"),
+                type=career_data.get("type", "main"),  # 默认为主职业
                 description=career_data.get("description"),
                 category=career_data.get("category"),
-                stages=career_data.get("stages", "[]"),
-                max_stage=career_data.get("max_stage", 10),
-                requirements=career_data.get("requirements"),
-                special_abilities=career_data.get("special_abilities"),
-                worldview_rules=career_data.get("worldview_rules"),
-                attribute_bonuses=career_data.get("attribute_bonuses"),
-                source=career_data.get("source", "ai")
+                stages=stages
             )
             db.add(career)
             await db.flush()
@@ -1184,18 +1194,16 @@ class ImportExportService:
                 char_career = CharacterCareer(
                     character_id=char_id,
                     career_id=career_id,
-                    career_type=cc_data.get("career_type", "main"),
+                    career_type="main" if cc_data.get("is_main_career", False) else "sub",
                     current_stage=cc_data.get("current_stage", 1),
-                    stage_progress=cc_data.get("stage_progress", 0),
-                    started_at=cc_data.get("started_at"),
-                    reached_current_stage_at=cc_data.get("reached_current_stage_at"),
+                    stage_progress=0,
                     notes=cc_data.get("notes")
                 )
                 db.add(char_career)
                 count += 1
                 
                 # 同时更新角色的主职业信息
-                if cc_data.get("career_type") == "main":
+                if cc_data.get("is_main_career", False):
                     char_result = await db.execute(
                         select(Character).where(Character.id == char_id)
                     )
@@ -1233,22 +1241,19 @@ class ImportExportService:
                     if char_mapping.get(name)
                 ]
             
+            # 处理importance_score - 如果是整数(0-100)则转换为浮点数(0.0-1.0)
+            importance = mem_data.get("importance", 50)
+            if isinstance(importance, int) and importance > 1:
+                importance = importance / 100.0
+            
             memory = StoryMemory(
                 project_id=project_id,
                 chapter_id=chapter_id,
                 memory_type=mem_data.get("memory_type"),
-                title=mem_data.get("title"),
                 content=mem_data.get("content"),
-                full_context=mem_data.get("full_context"),
                 related_characters=related_char_ids,
-                related_locations=mem_data.get("related_locations"),
-                tags=mem_data.get("tags"),
-                importance_score=mem_data.get("importance_score", 0.5),
-                story_timeline=mem_data.get("story_timeline", 0),
-                chapter_position=mem_data.get("chapter_position", 0),
-                text_length=mem_data.get("text_length", 0),
-                is_foreshadow=mem_data.get("is_foreshadow", 0),
-                foreshadow_strength=mem_data.get("foreshadow_strength")
+                importance_score=importance,
+                story_timeline=0  # 默认值，因为导出数据中可能没有此字段
             )
             db.add(memory)
             count += 1

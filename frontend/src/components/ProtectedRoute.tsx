@@ -1,39 +1,17 @@
-import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { Spin } from 'antd';
-import { authApi } from '../services/api';
-import { sessionManager } from '../utils/sessionManager';
+import { useAuth } from '../hooks/useAuth.js';
 
 interface ProtectedRouteProps {
   children: ReactNode;
 }
 
-export default function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+export default function ProtectedRoute({ children }: ProtectedRouteProps): JSX.Element {
+  const { isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        await authApi.getCurrentUser();
-        setIsAuthenticated(true);
-        // 启动会话管理器
-        sessionManager.start();
-      } catch {
-        setIsAuthenticated(false);
-        // 停止会话管理器
-        sessionManager.stop();
-      }
-    };
-    checkAuth();
-    
-    return () => {
-      // 组件卸载时不停止会话管理器，让它在整个应用生命周期内运行
-    };
-  }, []);
-
-  if (isAuthenticated === null) {
+  if (isLoading) {
     return (
       <div style={{
         display: 'flex',

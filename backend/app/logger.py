@@ -1,9 +1,19 @@
 """统一日志配置模块 - Uvicorn风格"""
 import logging
 import sys
+import io
 from pathlib import Path
 from logging.handlers import RotatingFileHandler
 from typing import Optional
+
+
+# 在Windows上设置控制台编码为UTF-8
+if sys.platform == 'win32':
+    # 设置标准输出和标准错误的编码为UTF-8
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    if hasattr(sys.stderr, 'reconfigure'):
+        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
 
 
 class UvicornFormatter(logging.Formatter):
@@ -49,6 +59,36 @@ class UvicornFormatter(logging.Formatter):
         return f"{colored_level}:     {record.name}{request_id_str} - {record.getMessage()}"
 
 
+class UTF8StreamHandler(logging.StreamHandler):
+    """支持UTF-8编码的流处理器"""
+    
+    def __init__(self, stream=None):
+        if stream is None:
+            stream = sys.stderr
+        
+        # 在Windows上，尝试使用UTF-8编码包装流
+        if sys.platform == 'win32' and hasattr(stream, 'buffer'):
+            try:
+                stream = io.TextIOWrapper(stream.buffer, encoding='utf-8', errors='replace', line_buffering=True)
+            except Exception:
+                pass  # 如果失败，使用原始流
+        
+        super().__init__(stream)
+    
+    def emit(self, record):
+        """发送日志记录"""
+        try:
+            msg = self.format(record)
+            stream = self.stream
+            # 确保消息是字符串
+            if isinstance(msg, bytes):
+                msg = msg.decode('utf-8', errors='replace')
+            stream.write(msg + self.terminator)
+            self.flush()
+        except Exception:
+            self.handleError(record)
+
+
 # 全局标志，防止重复初始化
 _logging_configured = False
 
@@ -82,8 +122,8 @@ def setup_logging(
     # 清除已有的处理器，避免重复
     root_logger.handlers.clear()
     
-    # 1. 创建控制台处理器（带颜色）
-    console_handler = logging.StreamHandler(sys.stderr)
+    # 1. 创建控制台处理器（带颜色，使用UTF-8编码）
+    console_handler = UTF8StreamHandler(sys.stderr)
     console_handler.setLevel(getattr(logging, level.upper()))
     console_formatter = UvicornFormatter(use_colors=True)
     console_handler.setFormatter(console_formatter)

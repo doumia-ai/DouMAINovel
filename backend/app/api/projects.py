@@ -564,11 +564,6 @@ async def export_project_data(
     Args:
         project_id: 项目ID
         options: 导出选项
-            - include_generation_history: 是否包含生成历史
-            - include_writing_styles: 是否包含写作风格
-            - include_careers: 是否包含职业系统
-            - include_memories: 是否包含故事记忆
-            - include_plot_analysis: 是否包含剧情分析
     
     Returns:
         JSON文件下载
@@ -580,7 +575,7 @@ async def export_project_data(
             logger.warning("未登录用户尝试导出项目数据")
             raise HTTPException(status_code=401, detail="未登录")
         
-        logger.info(f"开始导出项目数据: project_id={project_id}, user_id={user_id}, options={options.model_dump()}")
+        logger.info(f"开始导出项目数据: project_id={project_id}, user_id={user_id}")
         
         # 只查询当前用户的项目
         result = await db.execute(
@@ -595,15 +590,12 @@ async def export_project_data(
             logger.warning(f"项目不存在或无权访问: project_id={project_id}, user_id={user_id}")
             raise HTTPException(status_code=404, detail="项目不存在")
         
-        # 导出数据（使用所有选项）
+        # 导出数据
         export_data = await ImportExportService.export_project(
             project_id=project_id,
             db=db,
             include_generation_history=options.include_generation_history,
-            include_writing_styles=options.include_writing_styles,
-            include_careers=options.include_careers,
-            include_memories=options.include_memories,
-            include_plot_analysis=options.include_plot_analysis
+            include_writing_styles=options.include_writing_styles
         )
         
         # 转换为JSON

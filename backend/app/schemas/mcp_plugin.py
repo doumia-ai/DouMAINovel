@@ -18,6 +18,7 @@ class MCPPluginBase(BaseModel):
     display_name: Optional[str] = Field(None, description="显示名称")
     description: Optional[str] = Field(None, description="插件描述")
     plugin_type: str = Field(default="http", description="插件类型：http/stdio")
+    provider_type: str = Field(default="mcp", description="Provider类型：mcp=MCP协议服务器，http=普通HTTP API")
     category: str = Field(default="general", description="分类")
     sort_order: int = Field(default=0, description="排序顺序")
 
@@ -31,6 +32,9 @@ class MCPPluginCreate(MCPPluginBase):
     headers: Optional[Dict[str, str]] = Field(None, description="HTTP请求头")
     config: Optional[Dict[str, Any]] = Field(None, description="插件特定配置")
     enabled: bool = Field(default=True, description="是否启用")
+    # HTTP Tool Provider 专用字段
+    openapi_path: Optional[str] = Field(default="/openapi.json", description="OpenAPI schema路径")
+    tool_endpoint_template: Optional[str] = Field(None, description="工具调用URL模板")
 
 
 class MCPPluginSimpleCreate(BaseModel):
@@ -53,6 +57,9 @@ class MCPPluginUpdate(BaseModel):
     enabled: Optional[bool] = None
     category: Optional[str] = None
     sort_order: Optional[int] = None
+    provider_type: Optional[str] = None
+    openapi_path: Optional[str] = None
+    tool_endpoint_template: Optional[str] = None
 
 
 class MCPPluginResponse(BaseModel):
@@ -62,6 +69,7 @@ class MCPPluginResponse(BaseModel):
     display_name: str
     description: Optional[str] = None
     plugin_type: str
+    provider_type: str = "mcp"
     category: str
     
     # HTTP类型字段
@@ -72,6 +80,10 @@ class MCPPluginResponse(BaseModel):
     command: Optional[str] = None
     args: Optional[List[str]] = None
     env: Optional[Dict[str, str]] = None
+    
+    # HTTP Tool Provider 专用字段
+    openapi_path: Optional[str] = None
+    tool_endpoint_template: Optional[str] = None
     
     # 状态字段
     enabled: bool

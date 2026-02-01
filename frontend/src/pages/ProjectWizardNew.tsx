@@ -1,20 +1,31 @@
 import { useState, useEffect } from 'react';
+
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Form, Input, InputNumber, Select, Button, Card,
-  Row, Col, Typography, Space, message, Radio
+  Row, Col, Typography, Space, message, Radio, Spin
 } from 'antd';
 import {
   RocketOutlined, ArrowLeftOutlined, CheckCircleOutlined
 } from '@ant-design/icons';
 import { AIProjectGenerator, type GenerationConfig } from '../components/AIProjectGenerator';
+import { useTheme } from '../contexts/ThemeContext';
+import api from '../services/api/index.js';
 import type { WizardBasicInfo } from '../types';
 
 const { TextArea } = Input;
 const { Title, Paragraph } = Typography;
 
+interface Genre {
+  id: string;
+  name: string;
+  is_builtin: boolean;
+  description?: string;
+}
+
 export default function ProjectWizardNew() {
   const navigate = useNavigate();
+  const { actualTheme } = useTheme();
   const [searchParams] = useSearchParams();
   const [form] = Form.useForm();
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -23,6 +34,9 @@ export default function ProjectWizardNew() {
   const [currentStep, setCurrentStep] = useState<'form' | 'generating'>('form');
   const [generationConfig, setGenerationConfig] = useState<GenerationConfig | null>(null);
   const [resumeProjectId, setResumeProjectId] = useState<string | null>(null);
+  const [genres, setGenres] = useState<Genre[]>([]);
+  const [genresLoading, setGenresLoading] = useState(true);
+  const [, setGenresLoadError] = useState(false);
 
   useEffect(() => {
     const handleResize = () => {
@@ -32,6 +46,38 @@ export default function ProjectWizardNew() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // 加载类型列表
+  useEffect(() => {
+    const fetchGenres = async () => {
+      try {
+        setGenresLoading(true);
+        setGenresLoadError(false);
+        const response: { genres: Genre[]; total: number } = await api.get('/genres');
+        setGenres(response.genres || []);
+      } catch (error) {
+        console.error('获取类型列表失败:', error);
+        setGenresLoadError(true);
+        message.warning('类型列表加载失败，使用默认类型');
+        // 如果获取失败，使用默认类型作为降级方案
+        setGenres([
+          { id: '1', name: '玄幻', is_builtin: true },
+          { id: '2', name: '都市', is_builtin: true },
+          { id: '3', name: '历史', is_builtin: true },
+          { id: '4', name: '科幻', is_builtin: true },
+          { id: '5', name: '武侠', is_builtin: true },
+          { id: '6', name: '仙侠', is_builtin: true },
+          { id: '7', name: '奇幻', is_builtin: true },
+          { id: '8', name: '悬疑', is_builtin: true },
+          { id: '9', name: '言情', is_builtin: true },
+          { id: '10', name: '修仙', is_builtin: true },
+        ]);
+      } finally {
+        setGenresLoading(false);
+      }
+    };
+    fetchGenres();
+  }, []);
+
   // 检查URL参数,如果有project_id则恢复生成
   useEffect(() => {
     const projectId = searchParams.get('project_id');
@@ -39,7 +85,6 @@ export default function ProjectWizardNew() {
       setResumeProjectId(projectId);
       handleResumeGeneration(projectId);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   // 恢复未完成项目的生成
@@ -53,11 +98,16 @@ export default function ProjectWizardNew() {
       }
       const project = await response.json();
 
+      // 将 genre 字符串转换为数组（后端存储为"类型1、类型2"格式）
+      const genreArray = project.genre
+        ? project.genre.split('、').map((g: string) => g.trim()).filter((g: string) => g)
+        : [];
+
       const config: GenerationConfig = {
         title: project.title,
         description: project.description || '',
         theme: project.theme || '',
-        genre: project.genre || '',
+        genre: genreArray,
         narrative_perspective: project.narrative_perspective || '第三人称',
         target_words: project.target_words || 100000,
         chapter_count: 3,
@@ -104,13 +154,25 @@ export default function ProjectWizardNew() {
 
   // 渲染表单页面
   const renderForm = () => (
-    <Card>
+    <Card style={{ background: 'var(--color-bg-container)' }}>
       <Title level={isMobile ? 4 : 3} style={{ marginBottom: 24 }}>
         创建新项目
       </Title>
-      <Paragraph type="secondary" style={{ marginBottom: 32 }}>
+      <Paragraph style={{ marginBottom: 32, color: actualTheme === 'dark' ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.45)' }}>
         填写基本信息后，AI将自动为您生成世界观、角色和大纲节点（大纲可在项目内手动展开为章节）
       </Paragraph>
+
+      {actualTheme === 'dark' && (
+        <style>{`
+          .ant-form-item-label > label {
+            color: rgba(255, 255, 255, 0.85) !important;
+          }
+          /* 修复 Radio 文字在深色模式下的颜色 */
+          .ant-radio-wrapper {
+             color: rgba(255, 255, 255, 0.85) !important;
+          }
+        `}</style>
+      )}
 
       <Form
         form={form}
@@ -122,7 +184,7 @@ export default function ProjectWizardNew() {
           narrative_perspective: '第三人称',
           character_count: 5,
           target_words: 100000,
-          outline_mode: 'one-to-one', // 默认为传统模式（1-1）
+          outline_mode: 'one-to-many', // 默认为细化模式
         }}
       >
         <Form.Item
@@ -170,17 +232,14 @@ export default function ProjectWizardNew() {
             size="large"
             tokenSeparators={[',']}
             maxTagCount={5}
+            loading={genresLoading}
+            notFoundContent={genresLoading ? <Spin size="small" /> : null}
           >
-            <Select.Option value="玄幻">玄幻</Select.Option>
-            <Select.Option value="都市">都市</Select.Option>
-            <Select.Option value="历史">历史</Select.Option>
-            <Select.Option value="科幻">科幻</Select.Option>
-            <Select.Option value="武侠">武侠</Select.Option>
-            <Select.Option value="仙侠">仙侠</Select.Option>
-            <Select.Option value="奇幻">奇幻</Select.Option>
-            <Select.Option value="悬疑">悬疑</Select.Option>
-            <Select.Option value="言情">言情</Select.Option>
-            <Select.Option value="修仙">修仙</Select.Option>
+            {genres.map(genre => (
+              <Select.Option key={genre.id} value={genre.name}>
+                {genre.name}
+              </Select.Option>
+            ))}
           </Select>
         </Form.Item>
 
@@ -190,15 +249,17 @@ export default function ProjectWizardNew() {
           rules={[{ required: true, message: '请选择大纲章节模式' }]}
           tooltip="创建后不可更改，请根据创作习惯选择"
         >
-          <Radio.Group size="large">
+          <Radio.Group size="large" style={{ width: '100%' }}>
             <Row gutter={16}>
-              <Col xs={24} sm={12}>
+              <Col xs={24} sm={12} style={{ marginBottom: isMobile ? 16 : 0 }}>
                 <Card
                   hoverable
                   style={{
                     borderColor: form.getFieldValue('outline_mode') === 'one-to-one' ? 'var(--color-primary)' : 'var(--color-border)',
                     borderWidth: 2,
                     height: '100%',
+                    // 修复1: 显式指定背景色，跟随 CSS 变量，解决深色模式下变白的问题
+                    background: 'var(--color-bg-container)', 
                   }}
                   onClick={() => form.setFieldValue('outline_mode', 'one-to-one')}
                 >
@@ -208,10 +269,11 @@ export default function ProjectWizardNew() {
                         <CheckCircleOutlined style={{ marginRight: 8, color: 'var(--color-success)' }} />
                         传统模式 (1→1)
                       </div>
-                      <div style={{ fontSize: 12, color: '#666' }}>
+                      {/* 修复2: 文字颜色根据主题动态变化 */}
+                      <div style={{ fontSize: 12, color: actualTheme === 'dark' ? 'rgba(255,255,255,0.65)' : '#666' }}>
                         一个大纲对应一个章节，简单直接
                       </div>
-                      <div style={{ fontSize: 11, color: '#999' }}>
+                      <div style={{ fontSize: 11, color: actualTheme === 'dark' ? 'rgba(255,255,255,0.45)' : '#999' }}>
                         💡 适合：简单剧情、快速创作、短篇小说
                       </div>
                     </Space>
@@ -226,6 +288,8 @@ export default function ProjectWizardNew() {
                     borderColor: form.getFieldValue('outline_mode') === 'one-to-many' ? 'var(--color-primary)' : 'var(--color-border)',
                     borderWidth: 2,
                     height: '100%',
+                    // 修复1: 显式指定背景色
+                    background: 'var(--color-bg-container)',
                   }}
                   onClick={() => form.setFieldValue('outline_mode', 'one-to-many')}
                 >
@@ -235,10 +299,11 @@ export default function ProjectWizardNew() {
                         <CheckCircleOutlined style={{ marginRight: 8, color: 'var(--color-success)' }} />
                         细化模式 (1→N) 推荐
                       </div>
-                      <div style={{ fontSize: 12, color: '#666' }}>
+                      {/* 修复2: 文字颜色根据主题动态变化 */}
+                      <div style={{ fontSize: 12, color: actualTheme === 'dark' ? 'rgba(255,255,255,0.65)' : '#666' }}>
                         一个大纲可展开为多个章节，灵活控制
                       </div>
-                      <div style={{ fontSize: 11, color: '#999' }}>
+                      <div style={{ fontSize: 11, color: actualTheme === 'dark' ? 'rgba(255,255,255,0.45)' : '#999' }}>
                         💡 适合：复杂剧情、长篇创作、需要细化控制
                       </div>
                     </Space>
@@ -321,7 +386,7 @@ export default function ProjectWizardNew() {
 
   return (
     <div style={{
-      minHeight: '100dvh',
+      minHeight: '100vh',
       background: 'var(--color-bg-base)',
     }}>
       {/* 顶部标题栏 - 固定不滚动 */}
@@ -359,7 +424,6 @@ export default function ProjectWizardNew() {
             color: '#fff',
             textShadow: '0 2px 4px rgba(0,0,0,0.1)',
           }}>
-            <RocketOutlined style={{ marginRight: 8 }} />
             项目创建向导
           </Title>
 

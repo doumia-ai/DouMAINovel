@@ -29,9 +29,35 @@ async def lifespan(app: FastAPI):
     """应用生命周期管理"""
     # 注册MCP状态同步服务
     register_status_sync()
-    
+
+    # 初始化内置小说类型
+    try:
+        from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
+        from app.database import get_engine
+        from app.services.genre_init import init_builtin_genres
+        # 使用系统用户ID获取共享引擎
+        engine = await get_engine("system")
+        AsyncSessionLocal = async_sessionmaker(
+            engine,
+            class_=AsyncSession,
+            expire_on_commit=False
+        )
+        async with AsyncSessionLocal() as db:
+            await init_builtin_genres(db)
+    except ImportError as e:
+        logger.error(f"初始化内置类型失败 - 模块导入错误: {e}")
+    except ConnectionError as e:
+        logger.error(f"初始化内置类型失败 - 数据库连接错误: {e}")
+    except Exception as e:
+        # 区分数据库未迁移和其他错误
+        error_msg = str(e).lower()
+        if "no such table" in error_msg or "relation" in error_msg and "does not exist" in error_msg:
+            logger.warning(f"初始化内置类型跳过 - 数据库表不存在（请先运行迁移）: {e}")
+        else:
+            logger.error(f"初始化内置类型失败: {e}")
+
     logger.info("应用启动完成")
-    
+
     yield
     
     # 清理MCP插件
@@ -102,7 +128,20 @@ else:
 @app.get("/health")
 async def health_check():
     """健康检查"""
-    return {"status": "ok"}
+    return {"status": "ok", "service": "DouMAINovel API"}
+
+
+@app.get("/api/health/detailed")
+async def detailed_health_check(request: Request):
+    """详细健康检查（包含认证状态）"""
+    user_id = getattr(request.state, 'user_id', None)
+    return {
+        "status": "ok",
+        "service": "DouMAINovel API",
+        "authenticated": user_id is not None,
+        "user_id": user_id,
+        "timestamp": "2026-01-22T00:00:00Z"
+    }
 
 
 @app.get("/health/db-sessions")
@@ -130,7 +169,7 @@ from app.api import (
     wizard_stream, relationships, organizations,
     auth, users, settings, writing_styles, memories,
     mcp_plugins, admin, inspiration, prompt_templates,
-    changelog, careers, foreshadows
+    changelog, careers, genres, aigc_detect, foreshadows
 )
 
 app.include_router(auth.router, prefix="/api")
@@ -144,15 +183,17 @@ app.include_router(inspiration.router, prefix="/api")
 app.include_router(outlines.router, prefix="/api")
 app.include_router(characters.router, prefix="/api")
 app.include_router(careers.router, prefix="/api")  # 职业管理API
+app.include_router(genres.router, prefix="/api/genres", tags=["类型管理"])  # 类型管理API
 app.include_router(chapters.router, prefix="/api")
 app.include_router(relationships.router, prefix="/api")
 app.include_router(organizations.router, prefix="/api")
 app.include_router(writing_styles.router, prefix="/api")
 app.include_router(memories.router)  # 记忆管理API (已包含/api前缀)
-app.include_router(foreshadows.router)  # 伏笔管理API (已包含/api前缀)
 app.include_router(mcp_plugins.router, prefix="/api")  # MCP插件管理API
 app.include_router(prompt_templates.router, prefix="/api")  # 提示词模板管理API
 app.include_router(changelog.router, prefix="/api")  # 更新日志API
+app.include_router(aigc_detect.router, prefix="/api")  # AIGC检测代理API
+app.include_router(foreshadows.router, prefix="/api/foreshadows", tags=["伏笔管理"])  # 伏笔管理API
 
 static_dir = Path(__file__).parent.parent / "static"
 if static_dir.exists():
@@ -185,7 +226,7 @@ else:
     @app.get("/")
     async def root():
         return {
-            "message": "欢迎使用MuMuAINovel",
+            "message": "欢迎使用AI Story Creator",
             "version": config_settings.app_version,
             "docs": "/docs",
             "notice": "请先构建前端: cd frontend && npm run build"

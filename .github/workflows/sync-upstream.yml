@@ -1,4 +1,4 @@
-name: Sync upstream main
+name: Sync upstream main (PR)
 
 on:
   schedule:
@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   sync:
@@ -24,43 +25,32 @@ jobs:
           git remote add upstream https://github.com/xiamuceer-j/MuMuAINovel.git || true
           git fetch upstream
 
-      - name: Backup fork-specific files
+      - name: Create sync branch
         run: |
-          mkdir -p /tmp/fork-backup/.github/workflows
-          cp -r .github/workflows/* /tmp/fork-backup/.github/workflows/ 2>/dev/null || true
+          git checkout -B sync-upstream upstream/main
 
-      - name: Reset main to upstream/main
+      - name: Restore fork workflows
         run: |
-          git reset --hard upstream/main
+          git checkout origin/main -- .github/workflows
 
-      - name: Restore fork-specific files
+      - name: Commit sync branch
         run: |
-          mkdir -p .github/workflows
-          cp -r /tmp/fork-backup/.github/workflows/* .github/workflows/ 2>/dev/null || true
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "chore: sync upstream main (keep fork workflows)" || echo "No changes"
 
-      - name: Commit restored files if changed
+      - name: Push sync branch
         run: |
-          git config user.name "doumia-ai"
-          git config user.email "your-email@example.com"
+          git push origin sync-upstream --force
 
-          git add .github/workflows/
-          if git diff --staged --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "chore: restore fork-specific workflow files after upstream sync"
-          fi
-
-      - name: Fetch origin main
-        run: |
-          git fetch origin main
-
-      - name: Push to origin main with PAT
-        env:
-          PAT_TOKEN: ${{ secrets.SYNC_PAT }}
-        run: |
-          git push https://x-access-token:${PAT_TOKEN}@github.com/doumia-ai/DouMAINovel.git \
-            main --force
-
-      - name: Show synced commit
-        run: |
-          git --no-pager log -1 --oneline
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: sync-upstream
+          base: main
+          title: "chore: sync upstream main"
+          body: |
+            Automated sync from upstream.
+            Fork workflows are preserved.

@@ -22,7 +22,7 @@ import {
   StarFilled
 } from '@ant-design/icons';
 import { useStore } from '../store';
-import { writingStyleApi } from '../services/api';
+import { writingStyleApi } from '../services/api/index.js';
 import type { WritingStyle, WritingStyleCreate, WritingStyleUpdate } from '../types';
 
 const { TextArea } = Input;
@@ -53,7 +53,6 @@ export default function WritingStyles() {
   // 加载风格列表 - 如果有项目则加载项目风格（包含默认标记），否则加载用户风格
   useEffect(() => {
     loadStyles();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentProject?.id]);
 
   const loadStyles = async () => {
@@ -170,10 +169,10 @@ export default function WritingStyles() {
         position: 'sticky',
         top: 0,
         zIndex: 10,
-        backgroundColor: '#fff',
+        backgroundColor: 'var(--color-bg-container)',
         padding: isMobile ? '12px 0' : '16px 0',
         marginBottom: isMobile ? 12 : 16,
-        borderBottom: '1px solid #f0f0f0',
+        borderBottom: '1px solid var(--color-border)',
         display: 'flex',
         flexDirection: isMobile ? 'column' : 'row',
         gap: isMobile ? 12 : 0,
@@ -223,7 +222,7 @@ export default function WritingStyles() {
                     display: 'flex',
                     flexDirection: 'column',
                     borderRadius: 12,
-                    border: style.is_default ? '2px solid #1890ff' : '1px solid #f0f0f0',
+                    border: style.is_default ? '2px solid #1890ff' : '1px solid var(--color-border)',
                   }}
                   bodyStyle={{
                     flex: 1,
@@ -249,7 +248,7 @@ export default function WritingStyles() {
                       style={{
                         fontSize: 18,
                         cursor: style.user_id === null ? 'not-allowed' : 'pointer',
-                        color: style.user_id === null ? '#ccc' : undefined
+                        color: style.user_id === null ? 'var(--color-text-quaternary)' : undefined
                       }}
                     />,
                     <Popconfirm
@@ -264,7 +263,7 @@ export default function WritingStyles() {
                       <DeleteOutlined
                         style={{
                           fontSize: 18,
-                          color: style.user_id === null ? '#ccc' : undefined,
+                          color: style.user_id === null ? 'var(--color-text-quaternary)' : undefined,
                           cursor: style.user_id === null ? 'not-allowed' : 'pointer'
                         }}
                       />
@@ -295,7 +294,7 @@ export default function WritingStyles() {
                       style={{
                         fontSize: 12,
                         marginBottom: 0,
-                        backgroundColor: '#fafafa',
+                        backgroundColor: 'var(--color-bg-layout)',
                         padding: 8,
                         borderRadius: 4,
                         flex: 1,
