@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Button,
   Modal,
@@ -30,6 +31,7 @@ const { Text, Paragraph } = Typography;
 
 export default function WritingStyles() {
   const { currentProject } = useStore();
+  const navigate = useNavigate();
   const [styles, setStyles] = useState<WritingStyle[]>([]);
   const [loading, setLoading] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -183,14 +185,22 @@ export default function WritingStyles() {
           <EditOutlined style={{ marginRight: 8 }} />
           写作风格管理
         </h2>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={showCreateModal}
-          block={isMobile}
-        >
-          创建自定义风格
-        </Button>
+        <Space direction={isMobile ? 'vertical' : 'horizontal'} style={{ width: isMobile ? '100%' : 'auto' }}>
+          <Button
+            onClick={() => navigate('/prompt-workshop')}
+            block={isMobile}
+          >
+            提示词工坊
+          </Button>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={showCreateModal}
+            block={isMobile}
+          >
+            创建自定义风格
+          </Button>
+        </Space>
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto' }}>

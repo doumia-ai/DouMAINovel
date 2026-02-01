@@ -24,6 +24,18 @@ export default defineConfig([
       'code-standards': codeStandards,
     },
     rules: {
+      // Keep lint non-blocking for legacy code; treat these as warnings/off.
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+        },
+      ],
+      'react-refresh/only-export-components': 'warn',
+
       'code-standards/max-file-lines': ['warn', { max: 500 }],
       'code-standards/import-order': 'warn',
     },

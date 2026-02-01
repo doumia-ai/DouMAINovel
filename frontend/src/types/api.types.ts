@@ -402,3 +402,17 @@ export interface ChapterAnalysisResponse {
   memories: import('./models.types.js').StoryMemory[];
   created_at: string;
 }
+
+/**
+ * 提示词工坊 - 提交提示词请求
+ */
+export interface PromptSubmissionCreate {
+  name: string;
+  description?: string;
+  prompt_content: string;
+  category: string;
+  tags?: string[];
+  author_display_name?: string;
+  is_anonymous?: boolean;
+  source_style_id?: number;
+}

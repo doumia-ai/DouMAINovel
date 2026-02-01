@@ -68,7 +68,11 @@ export class SSEClient {
     });
   }
 
-  private handleMessage(message: SSEMessage, resolve: Function, reject: Function) {
+  private handleMessage(
+    message: SSEMessage,
+    resolve: (value: unknown) => void,
+    reject: (reason?: unknown) => void
+  ) {
     switch (message.type) {
       case 'progress':
         if (this.options.onProgress && message.progress !== undefined) {
@@ -192,10 +196,11 @@ export class SSEPostClient {
   }
 
   private async attemptConnect(_attempt: number): Promise<any> {
-    return new Promise(async (resolve, reject) => {
+    return new Promise((resolve, reject) => {
       let timeoutId: number | null = null;
-      
-      try {
+
+      const run = async () => {
+        try {
         this.abortController = new AbortController();
         
         // 设置超时
@@ -294,7 +299,7 @@ export class SSEPostClient {
                 } else {
                   // 标准消息处理
                   const message: SSEMessage = data;
-                  await this.handleMessage(message, resolve, reject);
+                  this.handleMessage(message, resolve, reject);
                   currentEvent = '';  // 重置事件类型
                 }
               }
@@ -309,26 +314,33 @@ export class SSEPostClient {
           window.clearTimeout(timeoutId);
         }
 
-      } catch (error: any) {
-        // 清除超时
-        if (timeoutId !== null) {
-          window.clearTimeout(timeoutId);
-        }
-        
-        if (error.name === 'AbortError') {
-          reject(new Error('请求超时或已取消'));
-        } else {
-          console.error('SSE POST请求失败:', error);
-          if (this.options.onError) {
-            this.options.onError(error.message || '请求失败');
+        } catch (error: any) {
+          // 清除超时
+          if (timeoutId !== null) {
+            window.clearTimeout(timeoutId);
           }
-          reject(error);
+
+          if (error.name === 'AbortError') {
+            reject(new Error('请求超时或已取消'));
+          } else {
+            console.error('SSE POST请求失败:', error);
+            if (this.options.onError) {
+              this.options.onError(error.message || '请求失败');
+            }
+            reject(error);
+          }
         }
-      }
+      };
+
+      void run();
     });
   }
 
-  private async handleMessage(message: SSEMessage, resolve: Function, reject: Function) {
+  private handleMessage(
+    message: SSEMessage,
+    resolve: (value: unknown) => void,
+    reject: (reason?: unknown) => void
+  ) {
     switch (message.type) {
       case 'progress':
         if (this.options.onProgress && message.progress !== undefined) {

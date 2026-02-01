@@ -42,6 +42,10 @@ env/
 .env.local
 .env.*.local
 
+# Prompt workshop instance id
+.instance_id
+backend/.instance_id
+
 # Database files
 *.db
 *.db-shm

@@ -779,3 +779,41 @@ export interface GenreListResponse {
   genres: Genre[];
   total: number;
 }
+
+/**
+ * 提示词工坊条目
+ */
+export interface PromptWorkshopItem {
+  id: string;
+  name: string;
+  description?: string | null;
+  prompt_content: string;
+  category: string;
+  tags?: string[] | null;
+  author_name?: string | null;
+  is_official: boolean;
+  download_count: number;
+  like_count: number;
+  is_liked?: boolean | null;
+  created_at?: string | null;
+}
+
+/**
+ * 提示词工坊提交记录
+ */
+export interface PromptSubmission {
+  id: string;
+  name: string;
+  description?: string | null;
+  prompt_content?: string | null;
+  category: string;
+  tags?: string[] | null;
+  author_display_name?: string | null;
+  is_anonymous: boolean;
+  status: 'pending' | 'approved' | 'rejected' | string;
+  review_note?: string | null;
+  reviewed_at?: string | null;
+  created_at?: string | null;
+  source_instance?: string | null;
+  submitter_name?: string | null;
+}

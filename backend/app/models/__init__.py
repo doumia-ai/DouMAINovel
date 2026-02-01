@@ -18,6 +18,7 @@ from app.models.career import Career, CharacterCareer
 from app.models.prompt_template import PromptTemplate
 from app.models.genre import Genre
 from app.models.foreshadow import Foreshadow
+from app.models.prompt_workshop import PromptWorkshopItem, PromptSubmission, PromptWorkshopLike
 
 __all__ = [
     "Project",
@@ -44,5 +45,8 @@ __all__ = [
     "CharacterCareer",
     "PromptTemplate",
     "Genre",
-    "Foreshadow"
+    "Foreshadow",
+    "PromptWorkshopItem",
+    "PromptSubmission",
+    "PromptWorkshopLike"
 ]

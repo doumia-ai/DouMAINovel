@@ -4,6 +4,7 @@ from typing import Optional
 from pathlib import Path
 import logging
 import os
+import uuid
 
 # 获取项目根目录(从backend/app/config.py向上两级)
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -25,7 +26,7 @@ class Settings(BaseSettings):
     
     # 应用配置
     app_name: str = "DouMAINovel"
-    app_version: str = "1.3.0-e"
+    app_version: str = "1.3.3-e"
     app_host: str = "0.0.0.0"
     app_port: int = 8000
     debug: bool = True
@@ -116,6 +117,11 @@ class Settings(BaseSettings):
     
     # AIGC 检测服务配置
     aigc_detect_url: str = "http://aigc-text-detector:8080"  # AIGC 检测服务地址（Docker 网络内部地址）
+
+    # 提示词工坊配置
+    WORKSHOP_MODE: str = "client"  # client: 本地实例(代理云端), server: 云端提示词工坊服务
+    WORKSHOP_CLOUD_URL: str = "https://mumuverse.space:1566"  # 云端服务地址
+    WORKSHOP_API_TIMEOUT: int = 30  # 云端API请求超时（秒）
     
     class Config:
         env_file = ".env"
@@ -128,3 +134,48 @@ settings = Settings()
 config_logger.info(f"配置加载完成: {settings.app_name} v{settings.app_version}")
 config_logger.debug(f"调试模式: {settings.debug}")
 config_logger.debug(f"AI提供商: {settings.default_ai_provider}")
+
+
+# ==================== 提示词工坊实例标识 ====================
+
+def get_or_create_instance_id() -> str:
+    """获取或创建实例唯一标识
+
+    - Server 模式：固定使用 "server" 作为标识，确保与所有 Client 实例区分
+    - Client 模式：从 .instance_id 文件读取或自动生成唯一标识
+
+    注意：当前项目的 PROJECT_ROOT 指向 backend 目录，因此 .instance_id 默认保存在 backend/.instance_id。
+    """
+    # Server 模式使用固定标识
+    if settings.WORKSHOP_MODE.lower() == "server":
+        config_logger.info("Server 模式：使用固定实例标识 'server'")
+        return "server"
+
+    # Client 模式：从文件读取或生成
+    instance_file = PROJECT_ROOT / ".instance_id"
+    if instance_file.exists():
+        try:
+            instance_id = instance_file.read_text(encoding="utf-8").strip()
+            if instance_id and instance_id != "server":
+                return instance_id
+        except Exception as e:
+            config_logger.warning(f"读取实例标识失败，将重新生成: {e}")
+
+    instance_id = str(uuid.uuid4())[:12]
+    try:
+        instance_file.write_text(instance_id, encoding="utf-8")
+        config_logger.info(f"生成新的实例标识: {instance_id}")
+    except Exception as e:
+        config_logger.warning(f"写入实例标识失败（将使用内存值）: {e}")
+
+    return instance_id
+
+
+INSTANCE_ID = get_or_create_instance_id()
+
+
+def is_workshop_server() -> bool:
+    return settings.WORKSHOP_MODE.lower() == "server"
+
+
+config_logger.info(f"提示词工坊模式: {settings.WORKSHOP_MODE}, 实例ID: {INSTANCE_ID}")

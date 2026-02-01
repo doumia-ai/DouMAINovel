@@ -169,6 +169,7 @@ from app.api import (
     wizard_stream, relationships, organizations,
     auth, users, settings, writing_styles, memories,
     mcp_plugins, admin, inspiration, prompt_templates,
+    prompt_workshop,
     changelog, careers, genres, aigc_detect, foreshadows
 )
 
@@ -191,6 +192,7 @@ app.include_router(writing_styles.router, prefix="/api")
 app.include_router(memories.router)  # 记忆管理API (已包含/api前缀)
 app.include_router(mcp_plugins.router, prefix="/api")  # MCP插件管理API
 app.include_router(prompt_templates.router, prefix="/api")  # 提示词模板管理API
+app.include_router(prompt_workshop.router, prefix="/api")  # 提示词工坊API
 app.include_router(changelog.router, prefix="/api")  # 更新日志API
 app.include_router(aigc_detect.router, prefix="/api")  # AIGC检测代理API
 app.include_router(foreshadows.router, prefix="/api/foreshadows", tags=["伏笔管理"])  # 伏笔管理API

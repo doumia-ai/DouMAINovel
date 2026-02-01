@@ -123,6 +123,7 @@ export default function Characters() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { actualTheme } = useTheme();
+  const { isMobile } = useResponsive();
 
   const {
     refreshCharacters,
@@ -630,8 +631,6 @@ export default function Characters() {
   };
 
   const displayList = getDisplayList();
-
-  const { isMobile } = useResponsive();
 
   return (
     <ConfigProvider

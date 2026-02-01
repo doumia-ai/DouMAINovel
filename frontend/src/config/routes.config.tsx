@@ -18,6 +18,7 @@ import ProjectDetail from '../pages/ProjectDetail.js';
 import ProjectList from '../pages/ProjectList.js';
 import ProjectWizardNew from '../pages/ProjectWizardNew.js';
 import PromptTemplates from '../pages/PromptTemplates.js';
+import PromptWorkshop from '../pages/PromptWorkshop.js';
 import Relationships from '../pages/Relationships.js';
 import Settings from '../pages/Settings.js';
 import Sponsor from '../pages/Sponsor.js';
@@ -123,6 +124,15 @@ export const routes: RouteConfig[] = [
       requiresAuth: true,
       showFooter: true,
       title: '提示词模板',
+    },
+  },
+  {
+    path: '/prompt-workshop',
+    element: <PromptWorkshop />,
+    meta: {
+      requiresAuth: true,
+      showFooter: true,
+      title: '提示词工坊',
     },
   },
   {

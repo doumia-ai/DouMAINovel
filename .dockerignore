@@ -48,6 +48,10 @@ Thumbs.db
 .env.*.local
 backend/.env
 
+# Prompt workshop instance id
+.instance_id
+backend/.instance_id
+
 # 数据库文件（不包含在镜像中）
 data/
 data_old/

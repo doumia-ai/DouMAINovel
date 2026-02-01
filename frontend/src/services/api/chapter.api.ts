@@ -1,6 +1,8 @@
 import type { Chapter, ChapterCreate, ChapterUpdate } from '../../types/index.js';
+import type { SSEClientOptions } from '../../utils/sseClient.js';
 
 import { httpClient } from '../http.client.js';
+import { ssePost } from '../../utils/sseClient.js';
 
 /**
  * Chapter management API endpoints
@@ -60,4 +62,33 @@ export const chapterApi = {
         completed_at: string | null;
       }>;
     }>(`/chapters/${chapterId}/regeneration/tasks`, { params: { limit } }),
+
+  /**
+   * 局部重写（流式）
+   */
+  partialRegenerateStream: (
+    chapterId: string,
+    data: {
+      selected_text: string;
+      start_position: number;
+      end_position: number;
+      user_instructions: string;
+      context_chars?: number;
+      style_id?: number;
+      length_mode?: 'similar' | 'expand' | 'condense' | 'custom';
+      target_word_count?: number;
+    },
+    options?: SSEClientOptions
+  ) => ssePost(`/api/chapters/${chapterId}/partial-regenerate-stream`, data, options),
+
+  /**
+   * 应用局部重写结果（保存到章节）
+   */
+  applyPartialRegenerate: (
+    chapterId: string,
+    data: { new_text: string; start_position: number; end_position: number }
+  ) => httpClient.post<unknown, { success: boolean; message: string; word_count: number; old_word_count: number }>(
+    `/chapters/${chapterId}/apply-partial-regenerate`,
+    data
+  ),
 };

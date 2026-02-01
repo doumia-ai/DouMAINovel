@@ -23,6 +23,7 @@ export { settingsApi } from './settings.api.js';
 export { userApi } from './user.api.js';
 export { wizardStreamApi } from './wizard-stream.api.js';
 export { writingStyleApi } from './writing-style.api.js';
+export { promptWorkshopApi } from './prompt-workshop.api.js';
 
 export default axios.create({
   baseURL: '/api',

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 
 import type { TextAreaRef } from 'antd/es/input/TextArea';
 import { EditOutlined, FileTextOutlined, ThunderboltOutlined, LockOutlined, DownloadOutlined, SettingOutlined, FundOutlined, SyncOutlined, CheckCircleOutlined, CloseCircleOutlined, RocketOutlined, StopOutlined, InfoCircleOutlined, CaretRightOutlined, DeleteOutlined, BookOutlined, FormOutlined, PlusOutlined, ReadOutlined } from '@ant-design/icons';
@@ -10,6 +10,8 @@ import ChapterAnalysis from '../components/ChapterAnalysis.js';
 import ChapterReader from '../components/ChapterReader.js';
 import ExpansionPlanEditor from '../components/ExpansionPlanEditor.js';
 import FloatingIndexPanel from '../components/FloatingIndexPanel.js';
+import PartialRegenerateModal from '../components/PartialRegenerateModal.js';
+import PartialRegenerateToolbar from '../components/PartialRegenerateToolbar.js';
 import { SSELoadingOverlay } from '../components/SSELoadingOverlay.js';
 import { SSEProgressModal } from '../components/SSEProgressModal.js';
 import { projectApi, writingStyleApi, chapterApi } from '../services/api/index.js';
@@ -48,6 +50,8 @@ const setCachedWordCount = (value: number): void => {
   }
 };
 
+const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+
 export default function Chapters() {
   const { currentProject, chapters, outlines, setCurrentChapter, setCurrentProject } = useStore();
   const [modal, contextHolder] = Modal.useModal();
@@ -81,6 +85,14 @@ export default function Chapters() {
   // 规划编辑状态
   const [planEditorVisible, setPlanEditorVisible] = useState(false);
   const [editingPlanChapter, setEditingPlanChapter] = useState<Chapter | null>(null);
+
+  // 局部重写状态
+  const [partialRegenerateToolbarVisible, setPartialRegenerateToolbarVisible] = useState(false);
+  const [partialRegenerateToolbarPosition, setPartialRegenerateToolbarPosition] = useState({ top: 0, left: 0 });
+  const [selectedTextForRegenerate, setSelectedTextForRegenerate] = useState('');
+  const [selectionStartPosition, setSelectionStartPosition] = useState(0);
+  const [selectionEndPosition, setSelectionEndPosition] = useState(0);
+  const [partialRegenerateModalVisible, setPartialRegenerateModalVisible] = useState(false);
 
   // 单章节生成进度状态
   const [singleChapterProgress, setSingleChapterProgress] = useState(0);
@@ -374,6 +386,69 @@ export default function Chapters() {
     
     return { sortedChapters: sorted, groupedChapters: grouped };
   }, [chapters]);
+
+  const hidePartialToolbar = useCallback(() => {
+    setPartialRegenerateToolbarVisible(false);
+    setSelectedTextForRegenerate('');
+  }, []);
+
+  const updatePartialSelection = useCallback((pos?: { x: number; y: number }) => {
+    const textArea = contentTextAreaRef.current?.resizableTextArea?.textArea;
+    if (!textArea) return;
+
+    const start = textArea.selectionStart ?? 0;
+    const end = textArea.selectionEnd ?? 0;
+
+    if (start === end) {
+      hidePartialToolbar();
+      return;
+    }
+
+    const fullContent: string = editorForm.getFieldValue('content') ?? textArea.value ?? '';
+    const selectedText = fullContent.slice(start, end);
+
+    // 过滤空白/太短的选择
+    if (!selectedText.trim() || selectedText.trim().length < 5) {
+      hidePartialToolbar();
+      return;
+    }
+
+    setSelectedTextForRegenerate(selectedText);
+    setSelectionStartPosition(start);
+    setSelectionEndPosition(end);
+
+    // 计算工具条位置（优先用鼠标位置，其次退化到输入框位置）
+    const rect = textArea.getBoundingClientRect();
+    const rawLeft = (pos?.x ?? rect.left + 24);
+    const rawTop = (pos?.y ?? rect.top) - 44;
+
+    const left = clamp(rawLeft, 16, window.innerWidth - 240);
+    const top = clamp(rawTop, 16, window.innerHeight - 80);
+
+    setPartialRegenerateToolbarPosition({ top, left });
+    setPartialRegenerateToolbarVisible(true);
+  }, [clamp, editorForm, hidePartialToolbar]);
+
+  const handleOpenPartialRegenerate = useCallback(() => {
+    setPartialRegenerateToolbarVisible(false);
+    setPartialRegenerateModalVisible(true);
+  }, []);
+
+  const handleApplyPartialRegenerate = useCallback((newText: string, startPos: number, endPos: number) => {
+    const currentContent: string = editorForm.getFieldValue('content') || '';
+    const newContent = currentContent.substring(0, startPos) + newText + currentContent.substring(endPos);
+
+    editorForm.setFieldsValue({ content: newContent });
+    setPartialRegenerateModalVisible(false);
+    message.success('局部重写已应用');
+  }, [editorForm]);
+
+  useEffect(() => {
+    if (!isEditorOpen || isGenerating) {
+      setPartialRegenerateModalVisible(false);
+      hidePartialToolbar();
+    }
+  }, [hidePartialToolbar, isEditorOpen, isGenerating]);
 
   if (!currentProject) return null;
 
@@ -2242,8 +2317,29 @@ export default function Chapters() {
               placeholder="开始写作..."
               style={{ fontFamily: 'monospace', fontSize: isMobile ? 12 : 14 }}
               disabled={isGenerating}
+              onMouseUp={(e) => {
+                window.requestAnimationFrame(() => {
+                  updatePartialSelection({ x: e.clientX, y: e.clientY });
+                });
+              }}
+              onKeyUp={() => {
+                window.requestAnimationFrame(() => {
+                  updatePartialSelection();
+                });
+              }}
+              onBlur={() => {
+                hidePartialToolbar();
+              }}
             />
           </Form.Item>
+
+          {/* 局部重写浮动工具栏 */}
+          <PartialRegenerateToolbar
+            visible={partialRegenerateToolbarVisible && !isGenerating}
+            position={partialRegenerateToolbarPosition}
+            selectedText={selectedTextForRegenerate}
+            onRegenerate={handleOpenPartialRegenerate}
+          />
 
           <Form.Item>
             <Space style={{ width: '100%', justifyContent: 'flex-end', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center' }}>
@@ -2637,6 +2733,20 @@ export default function Chapters() {
             setReadingChapter(null);
           }}
           onChapterChange={handleReaderChapterChange}
+        />
+      )}
+
+      {/* 局部重写弹窗 */}
+      {editingId && (
+        <PartialRegenerateModal
+          visible={partialRegenerateModalVisible}
+          chapterId={editingId}
+          selectedText={selectedTextForRegenerate}
+          startPosition={selectionStartPosition}
+          endPosition={selectionEndPosition}
+          styleId={selectedStyleId}
+          onClose={() => setPartialRegenerateModalVisible(false)}
+          onApply={handleApplyPartialRegenerate}
         />
       )}
 

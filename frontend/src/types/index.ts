@@ -4,6 +4,8 @@
  */
 
 // 通用类型
+export { PROMPT_CATEGORIES, POPULAR_TAGS } from './promptCategories.js';
+
 export type {
   ApiResponse,
   PaginationResponse,
@@ -48,6 +50,7 @@ export type {
   SyncFromAnalysisResponse,
   ForeshadowContextResponse,
   ChapterAnalysisResponse,
+  PromptSubmissionCreate,
 } from './api.types.js';
 
 // 数据模型类型
@@ -104,4 +107,6 @@ export type {
   GenreCreate,
   GenreUpdate,
   GenreListResponse,
+  PromptWorkshopItem,
+  PromptSubmission,
 } from './models.types.js';
