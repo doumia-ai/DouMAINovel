@@ -13,10 +13,12 @@ from app.services.ai_config import AIClientConfig, default_config
 from app.services.ai_clients.openai_client import OpenAIClient
 from app.services.ai_clients.anthropic_client import AnthropicClient
 from app.services.ai_clients.gemini_client import GeminiClient
+from app.services.ai_clients.volces_client import VolcesClient
 from app.services.ai_clients.base_client import cleanup_all_clients
 from app.services.ai_providers.openai_provider import OpenAIProvider
 from app.services.ai_providers.anthropic_provider import AnthropicProvider
 from app.services.ai_providers.gemini_provider import GeminiProvider
+from app.services.ai_providers.volces_provider import VolcesProvider
 from app.services.ai_providers.base_provider import BaseAIProvider
 from app.services.json_helper import clean_json_response, parse_json
 
@@ -95,6 +97,7 @@ class AIService:
         self._openai_provider: Optional[OpenAIProvider] = None
         self._anthropic_provider: Optional[AnthropicProvider] = None
         self._gemini_provider: Optional[GeminiProvider] = None
+        self._volces_provider: Optional[VolcesProvider] = None
         
         # 初始化 OpenAI
         openai_key = api_key if api_provider == "openai" else app_settings.openai_api_key
@@ -114,6 +117,15 @@ class AIService:
         if api_provider == "gemini" and api_key:
             client = GeminiClient(api_key, api_base_url, self.config)
             self._gemini_provider = GeminiProvider(client)
+
+        # 初始化 Volces / Ark（OpenAI Compatible 网关）
+        if api_provider == "volces" and api_key:
+            client = VolcesClient(
+                api_key,
+                api_base_url or "https://ark.cn-beijing.volces.com/api/v3",
+                self.config,
+            )
+            self._volces_provider = VolcesProvider(client)
 
     @property
     def enable_mcp(self) -> bool:
@@ -154,6 +166,8 @@ class AIService:
             return self._anthropic_provider
         if p == "gemini" and self._gemini_provider:
             return self._gemini_provider
+        if p == "volces" and self._volces_provider:
+            return self._volces_provider
         raise ValueError(f"Provider {p} 未初始化")
 
     async def _prepare_mcp_tools(self, auto_mcp: bool = True, force_refresh: bool = False) -> Optional[List[Dict]]:

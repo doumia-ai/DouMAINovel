@@ -251,8 +251,9 @@ export default function SettingsPage() {
 
   const apiProviders = [
     { value: 'openai', label: 'OpenAI Compatible', defaultUrl: 'https://api.openai.com/v1' },
-    // { value: 'anthropic', label: 'Anthropic (Claude)', defaultUrl: 'https://api.anthropic.com' },
+    { value: 'anthropic', label: 'Anthropic (Claude)', defaultUrl: 'https://api.anthropic.com' },
     { value: 'gemini', label: 'Google Gemini', defaultUrl: 'https://generativelanguage.googleapis.com/v1beta' },
+    { value: 'volces', label: '火山方舟', defaultUrl: 'https://ark.cn-beijing.volces.com/api/v3' },
   ];
 
   const handleProviderChange = (value: string) => {
@@ -741,8 +742,12 @@ export default function SettingsPage() {
     switch (provider) {
       case 'openai':
         return 'blue';
+      case 'anthropic':
+        return 'purple';
       case 'gemini':
         return 'green';
+      case 'volces':
+        return 'orange';
       default:
         return 'default';
     }
@@ -1520,7 +1525,9 @@ export default function SettingsPage() {
             >
               <Select onChange={handlePresetProviderChange}>
                 <Select.Option value="openai">OpenAI Compatible</Select.Option>
+                <Select.Option value="anthropic">Anthropic (Claude)</Select.Option>
                 <Select.Option value="gemini">Google Gemini</Select.Option>
+                <Select.Option value="volces">火山方舟</Select.Option>
               </Select>
             </Form.Item>
 

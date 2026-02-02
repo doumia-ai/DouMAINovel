@@ -62,6 +62,16 @@ class OpenAIClient(BaseAIClient):
         if is_zhipu:
             # GLM-4.5 系列支持较大的输出长度，设置合理值避免被默认值截断
             payload["max_tokens"] = min(max_tokens, 8192)
+        elif self._is_ark_api():
+            # Volcengine Ark 网关对 max_tokens 有硬上限（常见为 <= 32768）。
+            # 上游若传入异常大值会直接 400，因此这里做保护。
+            try:
+                safe_max_tokens = int(max_tokens)
+            except Exception:
+                safe_max_tokens = 2048
+            if safe_max_tokens <= 0:
+                safe_max_tokens = 2048
+            payload["max_tokens"] = min(safe_max_tokens, 32768)
         else:
             payload["max_tokens"] = max_tokens
 
