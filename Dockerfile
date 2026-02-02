@@ -20,7 +20,7 @@ RUN npm install
 COPY frontend/ ./
 
 # 接收构建参数
-ARG VITE_SSE_API_URL="https://sse.ciii.eu.org/api"
+ARG VITE_SSE_API_URL=""
 
 # 关键：通过环境变量控制输出目录和SSE API URL
 ENV VITE_OUT_DIR=dist
