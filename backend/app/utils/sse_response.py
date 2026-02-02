@@ -413,6 +413,8 @@ def create_sse_response(generator: AsyncGenerator[str, None]) -> StreamingRespon
             # 这是正常行为，不需要记录警告
             pass
     
+    # 同源模式：不需要为 SSE 单独加 "Access-Control-Allow-Origin: *"。
+    # 该头在 allow_credentials=true 的场景下还可能造成浏览器拒绝（跨域时不能同时 * + credentials）。
     return StreamingResponse(
         wrapper(),
         media_type="text/event-stream; charset=utf-8",  # 明确指定charset
@@ -420,8 +422,5 @@ def create_sse_response(generator: AsyncGenerator[str, None]) -> StreamingRespon
             "Cache-Control": "no-cache, no-transform",  # 禁用缓存和转换
             # 移除 Connection: keep-alive (HTTP/2不兼容)
             "X-Accel-Buffering": "no",  # 禁用nginx缓冲
-            "Access-Control-Allow-Origin": "*",  # CORS支持
-            "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type, Authorization",
         }
     )

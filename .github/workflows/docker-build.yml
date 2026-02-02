@@ -43,5 +43,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
-            VITE_SSE_API_URL=https://sse.ciio.eu.org/api
-            COOKIE_DOMAIN=.ciio.eu.org
+            # 同源模式：不设置 VITE_SSE_API_URL（保持空），SSE 请求将走当前域名的 /api/... 路径
+            VITE_SSE_API_URL=
+            COOKIE_DOMAIN=

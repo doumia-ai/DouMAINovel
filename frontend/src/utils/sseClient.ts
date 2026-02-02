@@ -1,5 +1,6 @@
 // SSE 基础 URL 配置
-// 优先使用环境变量，如果未设置则使用当前域名
+// 现阶段要求“同源请求”（不做跨域），因此默认使用相对路径。
+// 仍保留 VITE_SSE_API_URL 作为可选开关（将来如需独立 SSE 域名再启用）。
 const SSE_BASE_URL = (import.meta as any).env?.VITE_SSE_API_URL || '';
 
 export interface SSEMessage {
@@ -215,6 +216,9 @@ export class SSEPostClient {
           headers: {
             'Content-Type': 'application/json',
           },
+          // 关键：允许携带 Cookie（即使未来切到子域名/跨域 SSE，也能保持登录态）
+          // 同源情况下加上也不会有副作用。
+          credentials: 'include',
           body: JSON.stringify(this.data),
           signal: this.abortController.signal,
         });
@@ -411,8 +415,9 @@ export class SSEPostClient {
  * 如果配置了 SSE_BASE_URL，则使用它；否则使用相对路径
  */
 function buildSSEUrl(path: string): string {
+  // 同源优先：默认直接走相对路径（/api/...），保证 Cookie/会话自然工作。
+  // 若未来确实需要独立 SSE 域名，可通过 VITE_SSE_API_URL 显式开启。
   if (SSE_BASE_URL) {
-    // 移除路径开头的 /api，因为 SSE_BASE_URL 应该已经包含了完整的基础路径
     const cleanPath = path.startsWith('/api') ? path.substring(4) : path;
     return `${SSE_BASE_URL}${cleanPath}`;
   }
