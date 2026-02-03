@@ -156,6 +156,8 @@ const ChapterRegenerationModal: React.FC<ChapterRegenerationModalProps> = ({
             accumulatedContent += content;
             // 仅作为备用字数统计
             currentWordCount = accumulatedContent.length;
+            // 🔧 实时更新已生成字数（后端 progress 事件可能不带 word_count）
+            setWordCount(currentWordCount);
             // 不再自己计算进度，完全依赖后端发送的progress消息
           },
           onResult: (data: any) => {
