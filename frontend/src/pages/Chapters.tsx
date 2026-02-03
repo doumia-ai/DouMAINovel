@@ -203,7 +203,16 @@ export default function Chapters() {
           if (task.status === 'completed') {
             message.success(`章节分析完成`);
           } else if (task.status === 'failed') {
-            message.error(`章节分析失败: ${task.error_message || '未知错误'}`);
+            // 后端可能返回兜底“超时自动恢复”文案：这不等于分析必然失败，可能仍在后台继续。
+            // 因此这里不再把“超时自动恢复”当作硬失败弹错，而是提示后台分析中，并继续等待用户刷新/稍后查看。
+            const errMsg = task.error_message || '未知错误';
+            const isAutoTimeout = errMsg.includes('任务超时') || errMsg.includes('任务启动超时') || task.auto_recovered;
+
+            if (isAutoTimeout) {
+              message.warning('章节分析耗时较长，已转为后台分析中，请稍后查看结果');
+            } else {
+              message.error(`章节分析失败: ${errMsg}`);
+            }
           }
         }
       } catch (error) {
@@ -213,13 +222,14 @@ export default function Chapters() {
 
     pollingIntervalsRef.current[chapterId] = interval;
 
-    // 5分钟超时
+    // 轮询兜底：超过一定时间停止轮询，但不提示“失败”（分析可能仍在后台进行）
     setTimeout(() => {
       if (pollingIntervalsRef.current[chapterId]) {
         clearInterval(pollingIntervalsRef.current[chapterId]);
         delete pollingIntervalsRef.current[chapterId];
+        message.info('章节分析仍在进行，已停止实时轮询；稍后可刷新或打开分析面板查看结果');
       }
-    }, 300000);
+    }, 10 * 60 * 1000); // 10分钟
   };
 
   const loadWritingStyles = async () => {

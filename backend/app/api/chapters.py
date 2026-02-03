@@ -1650,11 +1650,16 @@ async def get_analysis_task_status(
 ):
     """
     查询指定章节的最新分析任务状态
-    
-    自动恢复机制：
-    - 如果任务状态为running且超过1分钟未更新，自动标记为failed
-    - 如果任务状态为pending且超过2分钟未启动，自动标记为failed
-    
+
+    ⚠️ 注意：章节分析属于后台异步任务，耗时可能较长（尤其是内容较多/模型较慢/启用工具/重试时）。
+    因此这里的“自动恢复/超时判定”只能用于极端卡死的兜底，不应过于激进，否则会出现：
+    - 前端轮询看到 status=failed 后提示“分析失败/超时”
+    - 但后台任务仍在运行并最终写入分析结果（用户感知为“误报失败”）
+
+    自动恢复机制（兜底）：
+    - running：超过 60 分钟仍未完成才标记为 failed
+    - pending：超过 10 分钟仍未启动才标记为 failed
+
     返回:
     - has_task: 是否存在分析任务
     - task_id: 任务ID（如果存在）
@@ -1664,24 +1669,24 @@ async def get_analysis_task_status(
     - auto_recovered: 是否被自动恢复
     - created_at: 创建时间
     - completed_at: 完成时间
-    
+
     注意：当章节不存在或无权访问时返回404，当没有分析任务时返回has_task=false
     """
     from datetime import timedelta
-    
+
     # 先获取章节以验证存在性和权限
     chapter_result = await db.execute(
         select(Chapter).where(Chapter.id == chapter_id)
     )
     chapter = chapter_result.scalar_one_or_none()
-    
+
     if not chapter:
         raise HTTPException(status_code=404, detail="章节不存在")
-    
+
     # 验证用户权限
     user_id = getattr(request.state, 'user_id', None)
     await verify_project_access(chapter.project_id, user_id, db)
-    
+
     # 获取该章节最新的分析任务
     result = await db.execute(
         select(AnalysisTask)
@@ -1690,7 +1695,7 @@ async def get_analysis_task_status(
         .limit(1)
     )
     task = result.scalar_one_or_none()
-    
+
     if not task:
         # 返回无任务状态，而不是抛出404错误
         return {
@@ -1705,35 +1710,39 @@ async def get_analysis_task_status(
             "started_at": None,
             "completed_at": None
         }
-    
+
     auto_recovered = False
     current_time = datetime.now()
-    
-    # 自动恢复卡住的任务
+
+    # 兜底超时阈值（避免误报）
+    RUNNING_TIMEOUT = timedelta(minutes=60)
+    PENDING_TIMEOUT = timedelta(minutes=10)
+
+    # 自动恢复卡住的任务（极端兜底）
     if task.status == 'running':
-        # 如果任务在running状态超过1分钟，标记为失败
-        if task.started_at and (current_time - task.started_at) > timedelta(minutes=1):
+        # 如果任务在 running 状态超过阈值仍未完成，标记为失败
+        if task.started_at and (current_time - task.started_at) > RUNNING_TIMEOUT:
             task.status = 'failed'
-            task.error_message = '任务超时（超过1分钟未完成，已自动恢复）'
+            task.error_message = '任务超时（超过60分钟未完成，已自动恢复）'
             task.completed_at = current_time
             task.progress = 0
             auto_recovered = True
             await db.commit()
             await db.refresh(task)
             logger.warning(f"🔄 自动恢复卡住的任务: {task.id}, 章节: {chapter_id}")
-    
+
     elif task.status == 'pending':
-        # 如果任务在pending状态超过2分钟仍未开始，标记为失败
-        if task.created_at and (current_time - task.created_at) > timedelta(minutes=2):
+        # 如果任务在 pending 状态超过阈值仍未开始，标记为失败
+        if task.created_at and (current_time - task.created_at) > PENDING_TIMEOUT:
             task.status = 'failed'
-            task.error_message = '任务启动超时（超过2分钟未启动，已自动恢复）'
+            task.error_message = '任务启动超时（超过10分钟未启动，已自动恢复）'
             task.completed_at = current_time
             task.progress = 0
             auto_recovered = True
             await db.commit()
             await db.refresh(task)
             logger.warning(f"🔄 自动恢复未启动的任务: {task.id}, 章节: {chapter_id}")
-    
+
     return {
         "has_task": True,
         "task_id": task.id,
@@ -3491,4 +3500,3 @@ async def update_chapter_expansion_plan(
         "expansion_plan": updated_plan,
         "message": "规划信息更新成功"
     }
-
