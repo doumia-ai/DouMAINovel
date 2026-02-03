@@ -124,9 +124,16 @@ class GenerationHistoryExportData(BaseModel):
 class CareerExportData(BaseModel):
     """职业导出数据"""
     name: str
+    type: Optional[str] = None
     description: Optional[str] = None
     category: Optional[str] = None
     stages: Optional[List[Dict[str, Any]]] = None
+    max_stage: Optional[int] = None
+    requirements: Optional[str] = None
+    special_abilities: Optional[str] = None
+    worldview_rules: Optional[str] = None
+    attribute_bonuses: Optional[str] = None
+    source: Optional[str] = None
     created_at: Optional[str] = None
 
 
@@ -134,7 +141,11 @@ class CharacterCareerExportData(BaseModel):
     """角色职业关联导出数据"""
     character_name: str
     career_name: str
+    career_type: Optional[str] = None
     current_stage: int = 1
+    stage_progress: int = 0
+    started_at: Optional[str] = None
+    reached_current_stage_at: Optional[str] = None
     is_main_career: bool = False
     notes: Optional[str] = None
 
@@ -143,9 +154,19 @@ class StoryMemoryExportData(BaseModel):
     """故事记忆导出数据"""
     chapter_title: Optional[str] = None
     memory_type: str
+    title: Optional[str] = None
     content: str
+    full_context: Optional[str] = None
     importance: int = 50
     related_characters: Optional[List[str]] = None
+    related_locations: Optional[Any] = None
+    tags: Optional[Any] = None
+    importance_score: Optional[float] = None
+    story_timeline: Optional[int] = None
+    chapter_position: Optional[int] = None
+    text_length: Optional[int] = None
+    is_foreshadow: Optional[int] = None
+    foreshadow_strength: Optional[float] = None
     created_at: Optional[str] = None
 
 
